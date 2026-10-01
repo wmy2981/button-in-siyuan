@@ -97,14 +97,14 @@
 
 ### 4.1 最小示例：返回值 + console
 
-```js
+```javascript
 console.log("按钮被点了");
 return 1 + 1;   // 弹窗里会显示：返回值: 2
 ```
 
 ### 4.2 彩色输出
 
-```js
+```javascript
 console.log("\u001b[32m✓\u001b[0m 任务完成");
 console.log("\u001b[1;33m注意\u001b[0m：这只是演示");
 console.log("\u001b[38;5;208m256 色\u001b[0m 与 \u001b[38;2;10;200;30m真彩色\u001b[0m");
@@ -115,7 +115,7 @@ return "颜色演示结束";
 
 ### 4.3 当前文档有多少字（只读）
 
-```js
+```javascript
 const editor = protyle || getActiveEditor();
 if (!editor) {
     return "没有找到打开的编辑器";
@@ -132,7 +132,7 @@ return stat.runeCount;
 
 ### 4.4 在当前文档末尾追加一段内容（只追加）
 
-```js
+```javascript
 const editor = protyle || getActiveEditor();
 const rootID = editor?.protyle?.block?.rootID;
 if (!rootID) {
@@ -154,7 +154,7 @@ return "已追加";
 
 思源把任务列表项存成 `subtype = 't'` 的块，未完成的任务 markdown 形如 `- [ ] 内容`。
 
-```js
+```javascript
 const response = await fetchPost("/api/query/sql", {
     stmt: "SELECT content, id FROM blocks WHERE subtype = 't' AND markdown LIKE '%- [ ]%' ORDER BY updated DESC LIMIT 10",
 });
@@ -170,7 +170,7 @@ return response.data.length;
 
 `createDocWithMd` 不会覆盖同名文档，路径带时间戳最稳妥。
 
-```js
+```javascript
 const notebooks = await fetchPost("/api/notebook/lsNotebooks", {});
 const notebook = notebooks.data?.notebooks?.find((item) => item && !item.closed);
 if (!notebook) {
@@ -192,7 +192,7 @@ return response.data;
 
 ### 4.7 打开一个块
 
-```js
+```javascript
 // 换成你自己的块 ID（右键块 → 复制 → 复制块 ID）
 openTab({app, doc: {id: "20240101000000-abcdefg"}});
 return "已打开";
@@ -200,7 +200,7 @@ return "已打开";
 
 ### 4.8 复制文档 Markdown 到剪贴板
 
-```js
+```javascript
 const editor = protyle || getActiveEditor();
 const rootID = editor?.protyle?.block?.rootID;
 if (!rootID) {
@@ -214,7 +214,7 @@ return "已复制";
 
 ### 4.9 给当前文档加一个自定义属性
 
-```js
+```javascript
 const editor = protyle || getActiveEditor();
 const rootID = editor?.protyle?.block?.rootID;
 if (!rootID) {
@@ -231,7 +231,7 @@ return response.code === 0 ? "已记录点击时间" : `失败：${response.msg}
 
 `fetchPost` 返回内核响应，`code` 为 `0` 才是成功；网络或权限问题会抛出异常，用 `try / catch` 包一下最稳。
 
-```js
+```javascript
 try {
     const response = await fetchPost("/api/block/getBlockInfo", {id: blockID});
     if (response.code !== 0) {
@@ -250,7 +250,7 @@ try {
 
 桌面端主窗口关闭了同源限制，跨域请求也能直接发；失败时错误会显示在弹窗里。
 
-```js
+```javascript
 try {
     const response = await fetch("https://api.github.com/repos/siyuan-note/siyuan");
     const data = await response.json();
@@ -264,7 +264,7 @@ try {
 
 ### 4.12 记住点击次数（插件私有数据）
 
-```js
+```javascript
 const count = (await plugin.loadData("click-count")) || 0;
 const next = count + 1;
 await plugin.saveData("click-count", next);
@@ -274,7 +274,7 @@ return next;
 
 ### 4.13 弹一个自己的窗口
 
-```js
+```javascript
 const dialog = new Dialog({
     title: "由按钮弹出的窗口",
     width: "min(560px, 92vw)",
@@ -291,7 +291,7 @@ return "已弹出";
 
 ### 4.14 让用户输入后再跳转
 
-```js
+```javascript
 openInputDialog({
     title: "打开块",
     label: "块 ID",

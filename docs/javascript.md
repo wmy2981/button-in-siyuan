@@ -100,14 +100,14 @@ Paste any of these into "Edit button block → Button action → JavaScript" and
 
 ### 4.1 Minimal: return value + console
 
-```js
+```javascript
 console.log("the button was clicked");
 return 1 + 1;   // the dialog shows: Return value: 2
 ```
 
 ### 4.2 Coloured output
 
-```js
+```javascript
 console.log("\u001b[32m✓\u001b[0m done");
 console.log("\u001b[1;33mheads up\u001b[0m: this is only a demo");
 console.log("\u001b[38;5;208m256 colours\u001b[0m and \u001b[38;2;10;200;30mtrue colour\u001b[0m");
@@ -118,7 +118,7 @@ return "colour demo finished";
 
 ### 4.3 How many characters does this document have (read-only)
 
-```js
+```javascript
 const editor = protyle || getActiveEditor();
 if (!editor) {
     return "no editor found";
@@ -135,7 +135,7 @@ return stat.runeCount;
 
 ### 4.4 Append a paragraph to the end of the document
 
-```js
+```javascript
 const editor = protyle || getActiveEditor();
 const rootID = editor?.protyle?.block?.rootID;
 if (!rootID) {
@@ -157,7 +157,7 @@ return "appended";
 
 SiYuan stores task list items as blocks with `subtype = 't'`; an open task's markdown looks like `- [ ] text`.
 
-```js
+```javascript
 const response = await fetchPost("/api/query/sql", {
     stmt: "SELECT content, id FROM blocks WHERE subtype = 't' AND markdown LIKE '%- [ ]%' ORDER BY updated DESC LIMIT 10",
 });
@@ -173,7 +173,7 @@ return response.data.length;
 
 `createDocWithMd` never overwrites a document with the same path, so a timestamped path is the safe choice.
 
-```js
+```javascript
 const notebooks = await fetchPost("/api/notebook/lsNotebooks", {});
 const notebook = notebooks.data?.notebooks?.find((item) => item && !item.closed);
 if (!notebook) {
@@ -195,7 +195,7 @@ return response.data;
 
 ### 4.7 Open a block
 
-```js
+```javascript
 // replace with your own block ID (right-click a block → Copy → Copy block ID)
 openTab({app, doc: {id: "20240101000000-abcdefg"}});
 return "opened";
@@ -203,7 +203,7 @@ return "opened";
 
 ### 4.8 Copy the document Markdown to the clipboard
 
-```js
+```javascript
 const editor = protyle || getActiveEditor();
 const rootID = editor?.protyle?.block?.rootID;
 if (!rootID) {
@@ -217,7 +217,7 @@ return "copied";
 
 ### 4.9 Add a custom attribute to the document
 
-```js
+```javascript
 const editor = protyle || getActiveEditor();
 const rootID = editor?.protyle?.block?.rootID;
 if (!rootID) {
@@ -235,7 +235,7 @@ return response.code === 0 ? "click time recorded" : `failed: ${response.msg}`;
 `fetchPost` resolves with the kernel response; only `code === 0` means success. Network and permission problems
 throw, so wrapping in `try / catch` is the safe pattern.
 
-```js
+```javascript
 try {
     const response = await fetchPost("/api/block/getBlockInfo", {id: blockID});
     if (response.code !== 0) {
@@ -255,7 +255,7 @@ try {
 The desktop main window disables the same-origin restriction, so cross-origin requests work directly; failures
 show up as the error line of the dialog.
 
-```js
+```javascript
 try {
     const response = await fetch("https://api.github.com/repos/siyuan-note/siyuan");
     const data = await response.json();
@@ -269,7 +269,7 @@ try {
 
 ### 4.12 Remember how often the button was clicked (plugin data)
 
-```js
+```javascript
 const count = (await plugin.loadData("click-count")) || 0;
 const next = count + 1;
 await plugin.saveData("click-count", next);
@@ -279,7 +279,7 @@ return next;
 
 ### 4.13 Show your own dialog
 
-```js
+```javascript
 const dialog = new Dialog({
     title: "A dialog built by a button",
     width: "min(560px, 92vw)",
@@ -296,7 +296,7 @@ return "dialog shown";
 
 ### 4.14 Ask the user, then jump
 
-```js
+```javascript
 openInputDialog({
     title: "Open block",
     label: "Block ID",

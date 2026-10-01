@@ -1,6 +1,7 @@
 // 校验 docs/ 里的 JavaScript 文档与代码一致：
-// 1. 每段 ```js 示例都能被 new Function 解析（与按钮执行时的包装方式完全一致）
-// 2. 文档接口表里列出的名字，与 src/scriptApi.ts 实际注入的名字一致（不多不少）
+// 1. 每段 ```javascript 示例都能被 new Function 解析（与按钮执行时的包装方式完全一致）
+// 2. 示例的代码块语言必须是 javascript（思源代码块的高亮语言名，不用缩写 js）
+// 3. 文档接口表里列出的名字，与 src/scriptApi.ts 实际注入的名字一致（不多不少）
 //
 // 文档是内嵌进插件里的，用户会照着抄；示例写错或接口表漏项都在这里拦住。
 // 用法：node scripts/check-docs.mjs（已挂在 npm run check 上）
@@ -14,11 +15,17 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const docs = ["docs/javascript.zh-CN.md", "docs/javascript.md"];
 const problems = [];
 
-// ---- 1. 示例语法 ----
+// ---- 1. 示例语法与代码块语言 ----
 let fenceCount = 0;
 docs.forEach((file) => {
     const text = fs.readFileSync(path.join(root, file), "utf8");
-    Array.from(text.matchAll(/```js\n([\s\S]*?)```/g)).forEach((match, index) => {
+    // 语言写成 js 之类的一律算错：文档里的代码块统一用 javascript
+    Array.from(text.matchAll(/```(\w+)\n/g)).forEach((match) => {
+        if (match[1] !== "javascript") {
+            problems.push(`${file}: 代码块语言是 \`\`\`${match[1]}，应写成 \`\`\`javascript`);
+        }
+    });
+    Array.from(text.matchAll(/```javascript\n([\s\S]*?)```/g)).forEach((match, index) => {
         fenceCount++;
         try {
             new Function(`return (async () => {\n${match[1]}\n})()`);
@@ -28,7 +35,7 @@ docs.forEach((file) => {
     });
 });
 if (fenceCount === 0) {
-    problems.push("两份文档里都没有找到 ```js 示例");
+    problems.push("两份文档里都没有找到 ```javascript 示例");
 }
 
 // ---- 2. 接口清单 ----
@@ -129,4 +136,4 @@ if (problems.length) {
     problems.forEach((problem) => console.error(problem));
     process.exit(1);
 }
-console.log(`docs: ${fenceCount} 段示例语法合法，接口表覆盖全部 ${scopeNames.length} 个注入项`);
+console.log(`docs: ${fenceCount} 段 javascript 示例语法合法，接口表覆盖全部 ${scopeNames.length} 个注入项`);
