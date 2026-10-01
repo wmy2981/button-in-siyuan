@@ -3,7 +3,7 @@
   "author": "wmy2981",
   "url": "https://github.com/wmy2981/button-in-siyuan",
   "version": "0.1.0",
-  "minAppVersion": "3.8.5",
+  "minAppVersion": "3.8.6",
   "backends": [
     "all"
   ],
