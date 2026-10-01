@@ -4,6 +4,9 @@ import {EditorState, type Extension} from "@codemirror/state";
 import {EditorView, placeholder} from "@codemirror/view";
 import {tags, type Tag} from "@lezer/highlight";
 import {basicSetup} from "codemirror";
+import {createLogger} from "./logger";
+
+const log = createLogger("codeEditor");
 
 /**
  * JavaScript 代码编辑器：CodeMirror 提供行号、语法高亮、括号匹配与补全。
@@ -96,6 +99,11 @@ const readCodeTheme = () => {
         });
     });
     holder.remove();
+    if (specs.length === 0) {
+        log.warn("没读到代码高亮主题的标记配色，编辑器只有基础配色", {background, color: base.color});
+    } else {
+        log.debug("读取代码高亮主题", {background, color: base.color, tokens: specs.length});
+    }
     return {base, background, specs};
 };
 
@@ -133,12 +141,15 @@ const createTheme = (base: ITextStyle, background: string) => EditorView.theme({
     ".cm-gutters": {
         border: "0",
         paddingLeft: "4px",
-        color: "var(--b3-theme-on-surface-light)",
+        color: "var(--b3-theme-on-surface)",
         backgroundColor: "transparent",
     },
     ".cm-lineNumbers .cm-gutterElement": {
+        // 行号样式与思源自己的代码块一致（_typography.scss 的 linenumber__rows）
         minWidth: "20px",
         padding: "0 6px 0 0",
+        fontSize: "85%",
+        textAlign: "right",
     },
     ".cm-activeLine": {
         backgroundColor: "var(--b3-list-hover)",
@@ -193,13 +204,15 @@ export const createCodeEditor = (options: {
     placeholder?: string;
 } = {}): ICodeEditor => {
     const {base, background, specs} = readCodeTheme();
+    const dark = isDarkMode();
+    const lineWrap = Boolean(window.siyuan?.config?.editor?.codeLineWrap);
     const extensions: Extension[] = [
         basicSetup,
         javascript(),
         syntaxHighlighting(HighlightStyle.define(specs)),
         createTheme(base, background),
     ];
-    if (window.siyuan?.config?.editor?.codeLineWrap) {
+    if (lineWrap) {
         extensions.push(EditorView.lineWrapping);
     }
     if (options.placeholder) {
@@ -211,6 +224,7 @@ export const createCodeEditor = (options: {
         state: EditorState.create({doc: options.value || "", extensions}),
         parent: element,
     });
+    log.debug("创建代码编辑器", {chars: view.state.doc.length, dark, lineWrap, tokens: specs.length});
     return {
         element,
         getValue: () => view.state.doc.toString(),
