@@ -11,7 +11,7 @@ npm run build    # 打包构建：写 dist/ 与 package.zip
 npm run typecheck
 npm run check    # i18n 键校验 + 文档校验 + typecheck + build
 node scripts/check-i18n.mjs       # 单独校验文案键：i18nKeys.ts 与 src/i18n/*.json 必须同键、非空
-node scripts/check-docs.mjs       # 单独校验文档：示例语法 + 接口表与 src/scriptApi.ts 的注入清单一致
+node scripts/check-docs.mjs       # 单独校验文档：代码块语言与示例语法 + 接口表与 src/scriptApi.ts 的注入清单一致
 node scripts/render-icon.mjs      # src/buttonIcon.ts → assets/icon.svg + icon.png（160×160，≤64 KiB）
 node scripts/render-preview.mjs   # assets/preview.html → assets/preview.png（1024×768，≤512 KiB）
 node scripts/snapshot-editor.mjs  # 把真实 CodeMirror 的 CSS/DOM 快照写回 assets/preview.html
@@ -87,6 +87,10 @@ node scripts/snapshot-editor.mjs  # 把真实 CodeMirror 的 CSS/DOM 快照写�
   `console`（`log/info/debug/warn/error/table/dir`）收集输出，`finally` 里恢复。思源接口作为形参注入
   （清单在 `src/scriptApi.ts`，注入的是宿主 `plugin/API.ts` 里除 `exitSiYuan`/`lockScreen` 之外的全部能力，
   外加 `siyuan`/`Lute`/`protyle`/`blockID`/`i18n` 等上下文）；新增注入项要同步 `docs/javascript*.md` 的接口表。
+  **`fetchPost` / `fetchGet` 注入的是包装过的版本**：宿主的这两个是回调式的（不给回调时返回的 Promise
+  解析成 `undefined`，见 `app/src/util/fetch.ts`），脚本里 `await fetchPost(...)` 会拿到 `undefined` 再
+  `response.code` 直接报错，所以 `src/scriptApi.ts` 里做了补全 —— 传了回调走宿主原实现，没传回调改用
+  `fetchSyncPost` / 原生 `fetch` 拿响应。改这里时别把包装去掉。
   结果弹窗按级别给前缀配色，正文支持 ANSI 转义（16 色/256 色/真彩/加粗下划线等），复制时去掉转义。
 * **资源链接的坑**：`openTab({asset})` 只在资源是图片/音视频/PDF（宿主的
   `Constants.SIYUAN_ASSETS_EXTS`）且不带 `download=true` 时才会建页签，其他资源会让宿主的
@@ -100,8 +104,12 @@ node scripts/snapshot-editor.mjs  # 把真实 CodeMirror 的 CSS/DOM 快照写�
   `scripts/check-i18n.mjs`，两份文案必须同键、非空，加键时别忘了另一份。
 * **内置文档**：`docs/*.md` 由 webpack 的 `asset/source` 内嵌进 index.js，编辑窗口里的入口用
   `Lute.New().ProtylePreviewStr("", markdown)`（思源的富文本预览渲染器）转成 HTML，放进
-  `.b3-typography` 容器；按 `window.siyuan.config.lang` 选中文或英文文档。文档同时随包发布到
-  `docs/`。改了文档跑 `node scripts/check-docs.mjs`：示例语法、接口表与注入清单都在那里校验。
+  `.b3-typography` 容器，再调 `ProtyleMethod.highlightRender` 让代码块按 `data-language` 上色
+  （思源对 `.b3-typography` 走的就是这条「预览」分支，`app/src/protyle/render/highlightRender.ts`）；
+  按 `window.siyuan.config.lang` 选中文或英文文档。文档同时随包发布到
+  `docs/`。**代码块语言统一写 `javascript`**（`js` 之类会被 hljs 当别名，但不与思源代码块的语言名一致）。
+  改了文档跑 `node scripts/check-docs.mjs`：代码块语言（统一 `javascript`，不用缩写 `js`）、
+  示例语法、接口表与注入清单都在那里校验。
 * **日志**：每个模块 `createLogger("<模块名>")` 建一个 logger，前缀形如 `[button-in-siyuan][buttonBlock]`，
   第二个参数传结构化细节对象。分级约定：`debug` 走 `console.debug`（浏览器默认归到 Verbose，不打扰用户）
   记渲染、菜单命中、主题探针等过程细节；`info` 记加载/卸载、打开对话框、保存、执行操作等用户可见动作；
