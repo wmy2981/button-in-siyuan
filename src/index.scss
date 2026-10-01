@@ -1,0 +1,46 @@
+// 按钮块的自有样式；颜色、字体、圆角一律沿用思源变量，其余只做布局。
+.bis-script-output {
+    max-height: 320px;
+    overflow: auto;
+}
+
+.bis-script-input {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.bis-icon-picker {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+    gap: 4px;
+    max-height: 320px;
+    overflow: auto;
+
+    &__item {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 32px;
+        padding: 0;
+        border: 0;
+        border-radius: var(--b3-border-radius);
+        background-color: transparent;
+        color: var(--b3-theme-on-surface);
+        cursor: pointer;
+
+        &:hover {
+            color: var(--b3-theme-on-background);
+            background-color: var(--b3-list-hover);
+        }
+
+        &--current {
+            color: var(--b3-theme-primary);
+            background-color: var(--b3-theme-primary-lightest);
+        }
+    }
+
+    &__empty {
+        color: var(--b3-theme-on-surface);
+        text-align: center;
+    }
+}

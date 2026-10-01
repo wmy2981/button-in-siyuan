@@ -1,0 +1,41 @@
+{
+  "name": "button-in-siyuan",
+  "author": "wmy2981",
+  "url": "https://github.com/wmy2981/button-in-siyuan",
+  "version": "0.1.0",
+  "minAppVersion": "3.8.5",
+  "backends": [
+    "all"
+  ],
+  "frontends": [
+    "all"
+  ],
+  "disabledInPublish": true,
+  "displayName": {
+    "default": "Button Block",
+    "zh-CN": "按钮块"
+  },
+  "description": {
+    "default": "Insert native SiYuan buttons into documents, with text, a built-in icon and a link or JavaScript action.",
+    "zh-CN": "在文档中插入思源原生样式的按钮块，可设置文本、内置图标，以及链接跳转或 JavaScript 操作。"
+  },
+  "readme": {
+    "default": "README.md",
+    "zh-CN": "README.zh-CN.md"
+  },
+  "icon": "icon.png",
+  "preview": "preview.png",
+  "funding": {
+    "custom": [
+      "https://afdian.com/a/wmy2981"
+    ]
+  },
+  "keywords": [
+    "按钮",
+    "button",
+    "自定义块",
+    "custom block",
+    "快捷操作",
+    "JavaScript"
+  ]
+}
