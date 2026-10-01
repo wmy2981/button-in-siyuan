@@ -5,6 +5,7 @@ import {createCodeEditor} from "./codeEditor";
 import type {IContext} from "./context";
 import {createIconElement, openIconPicker} from "./icon";
 import {createLogger} from "./logger";
+import {openScriptDocs} from "./scriptDocs";
 
 const log = createLogger("editDialog");
 
@@ -62,6 +63,8 @@ export const openButtonBlockEditor = (context: IContext, options: {
         <div data-bis="script-editor"></div>
         <div class="fn__hr--small"></div>
         <div class="ft__on-surface ft__smaller">${i18n.scriptCodeTip}</div>
+        <div class="fn__hr--small"></div>
+        <button type="button" class="bis-docs-link" data-bis="docs">${i18n.scriptDocs}</button>
     </div>
 </div>
 <div class="b3-dialog__action">
@@ -128,6 +131,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
         log.debug("取消编辑按钮块", {blockID});
         dialog.destroy();
     });
+    field<HTMLButtonElement>("docs").addEventListener("click", () => openScriptDocs(context));
     field<HTMLButtonElement>("save").addEventListener("click", () => {
         let action: TButtonAction | undefined;
         if (actionElement.value === "link") {

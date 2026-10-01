@@ -21,6 +21,8 @@
   "scriptCode": "JavaScript code",
   "scriptCodePlaceholder": "return 1 + 1;",
   "scriptCodeTip": "Runs when the button is clicked. Use return for a result, await is supported, and console output shows up in the dialog.",
+  "scriptDocs": "JavaScript documentation (API list and examples)",
+  "scriptDocsFailed": "The documentation cannot be opened right now",
   "scriptOutput": "JavaScript output",
   "returnValue": "Return value",
   "errorValue": "Error",

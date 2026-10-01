@@ -31,6 +31,8 @@ module.exports = (env, argv) => {
                 patterns: [
                     ...packageImages,
                     {from: "README*.md", to: "./dist/"},
+                    // 文档同时打进包里（index.js 里已经内嵌了一份，这里是给用户直接翻阅的原文件）
+                    {from: "docs/", to: "./dist/docs/"},
                     {from: "plugin.json", to: "./dist/"},
                     {from: "src/i18n/", to: "./dist/i18n/"},
                 ],
@@ -108,6 +110,12 @@ module.exports = (env, argv) => {
                             loader: "sass-loader",
                         },
                     ],
+                },
+                {
+                    // docs/ 里的文档作为字符串内嵌进 index.js，编辑窗口的文档弹窗离线也能看
+                    test: /\.md$/,
+                    include: [path.resolve(__dirname, "docs")],
+                    type: "asset/source",
                 },
             ],
         },

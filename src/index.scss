@@ -8,6 +8,30 @@
     width: auto;
     min-width: 200px;
 }
+// 编辑窗口里指向 JavaScript 文档的入口。思源没有单独的链接样式类，这里做成链接的样子：
+// 主色文字、悬浮加下划线，点击开的是插件内置的文档弹窗而不是网址。
+.bis-docs-link {
+    padding: 0;
+    border: 0;
+    background-color: transparent;
+    color: var(--b3-theme-primary);
+    font-family: inherit;
+    font-size: var(--b3-font-size);
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+// 文档弹窗里的正文：与思源的富文本预览一样用 .b3-typography 排版，这里只加滚动与选中。
+.bis-script-docs {
+    max-height: 70vh;
+    overflow: auto;
+    user-select: text;
+}
+
 // JavaScript 输出弹窗与思源「运行信息」弹窗保持一致：等宽字体、可滚动、可选中。
 // 每行是一个 div（行内按 ANSI 转义分段上色），行前缀的颜色由脚本输出模块用思源变量设置。
 .bis-script-output {
