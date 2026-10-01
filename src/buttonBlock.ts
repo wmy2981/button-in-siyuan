@@ -1,6 +1,9 @@
 import {Constants, Dialog, openMobileFileById, openTab} from "siyuan";
 import type {IContext} from "./context";
 import {createIconElement} from "./icon";
+import {createLogger} from "./logger";
+
+const log = createLogger("buttonBlock");
 
 /** 自定义块类型名；块信息由插件包名与它组成，例如 button-in-siyuan/button。 */
 export const BUTTON_BLOCK_TYPE = "button";
@@ -40,7 +43,7 @@ export const parseButtonConfig = (content: string, defaultText: string): IButton
     try {
         parsed = JSON.parse(content);
     } catch (error) {
-        console.warn("[button-in-siyuan] custom block content is not JSON:", error);
+        log.warn("块内容不是合法 JSON，按原始内容显示", {content, error});
         return undefined;
     }
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
@@ -68,7 +71,14 @@ const contentSetters = new Map<string, (content: string) => boolean>();
 /** 写回按钮块配置；该块当前不在渲染状态时返回 false。 */
 export const updateButtonContent = (blockID: string, config: IButtonConfig) => {
     const setContent = contentSetters.get(blockID);
-    return setContent ? setContent(serializeButtonConfig(config)) : false;
+    if (!setContent) {
+        log.warn("按钮块当前不在渲染状态，无法写回", {blockID, rendered: contentSetters.size});
+        return false;
+    }
+    const content = serializeButtonConfig(config);
+    const written = setContent(content);
+    log.debug("写回按钮块", {blockID, written, content});
+    return written;
 };
 
 const formatValue = (value: unknown): string => {
@@ -112,10 +122,12 @@ const isAssetTabOpenable = (path: string) => {
 const openLink = (context: IContext, link: string) => {
     const address = link.trim();
     if (!address) {
+        log.warn("链接地址为空，忽略这次点击");
         return;
     }
     const blockID = /^siyuan:\/\/blocks\/([^/?#]+)/.exec(address)?.[1];
     if (blockID) {
+        log.info("打开思源块", {blockID, isMobile: context.isMobile});
         if (context.isMobile) {
             openMobileFileById(context.app, blockID);
         } else {
@@ -125,14 +137,21 @@ const openLink = (context: IContext, link: string) => {
     }
     if (address.startsWith("assets/")) {
         if (!context.isMobile && isAssetTabOpenable(address)) {
+            log.info("在思源页签里打开资源", {address});
             openTab({app: context.app, asset: {path: address}});
         } else {
             // 移动端没有资源页签接口，思源也打不开的资源（如压缩包）同样交给系统，
             // 与宿主 iOS 分支一致，用绝对地址交给外部打开
+            log.warn("该资源没有可用的思源页签，交给系统打开", {
+                address,
+                extension: getAssetExtension(address),
+                isMobile: context.isMobile,
+            });
             window.open(new URL(address, location.origin).href);
         }
         return;
     }
+    log.info("交给系统打开链接", {address});
     window.open(address);
 };
 
@@ -144,6 +163,7 @@ const showScriptOutput = (context: IContext, output: string[], result: unknown, 
     if (typeof failure !== "undefined") {
         lines.push(`${context.i18n.errorValue}: ${formatValue(failure)}`);
     }
+    log.debug("打开运行结果弹窗", {consoleLines: output.length, totalLines: lines.length});
     // 弹窗结构照抄思源的「运行信息」弹窗（config/tabs/aboutTab.ts）
     const dialog = new Dialog({
         title: context.i18n.scriptOutput,
@@ -169,10 +189,12 @@ const runScript = async (context: IContext, code: string) => {
     const capture = (level: string) => (...args: unknown[]) => {
         output.push(`${level}: ${args.map(formatValue).join(" ")}`);
     };
+    log.info("开始执行 JavaScript 操作", {chars: code.length});
     console.log = capture("log");
     console.info = capture("info");
     console.warn = capture("warn");
     console.error = capture("error");
+    const startedAt = Date.now();
     let result: unknown;
     let failure: unknown;
     try {
@@ -186,12 +208,19 @@ const runScript = async (context: IContext, code: string) => {
         console.warn = originals.warn;
         console.error = originals.error;
     }
+    const detail = {ms: Date.now() - startedAt, consoleLines: output.length, hasResult: typeof result !== "undefined"};
+    if (typeof failure === "undefined") {
+        log.info("JavaScript 操作执行完成", detail);
+    } else {
+        log.error("JavaScript 操作执行出错", {failure, ...detail});
+    }
     showScriptOutput(context, output, result, failure);
 };
 
 const runAction = (context: IContext, config: IButtonConfig) => {
     const action = config.action;
     if (!action) {
+        log.debug("按钮没有配置操作，忽略这次点击");
         return;
     }
     if (action.type === "link") {
@@ -210,6 +239,7 @@ export const renderButtonBlock = (context: IContext, options: {
     const blockID = options.element.closest<HTMLElement>('[data-type="NodeCustomBlock"]')?.getAttribute("data-node-id") || "";
     const config = parseButtonConfig(options.content, context.i18n.defaultButtonText);
     if (!config) {
+        log.warn("块内容不是本插件配置，按原始内容显示", {blockID, content: options.content});
         const preElement = document.createElement("pre");
         preElement.textContent = options.content;
         options.element.append(preElement);
@@ -218,6 +248,13 @@ export const renderButtonBlock = (context: IContext, options: {
     if (blockID) {
         contentSetters.set(blockID, options.setContent);
     }
+    log.debug("渲染按钮块", {
+        blockID,
+        text: config.text,
+        icon: config.icon || "none",
+        action: config.action?.type || "none",
+        hasSetter: Boolean(blockID),
+    });
     const button = document.createElement("button");
     button.type = "button";
     // 与思源原生按钮完全一致的类名（设置面板里的 b3-button b3-button--outline fn__size200）：
@@ -227,7 +264,10 @@ export const renderButtonBlock = (context: IContext, options: {
     if (config.icon) {
         button.prepend(createIconElement(config.icon));
     }
-    const click = () => runAction(context, config);
+    const click = () => {
+        log.debug("点击按钮块", {blockID, text: config.text, action: config.action?.type || "none"});
+        runAction(context, config);
+    };
     button.addEventListener("click", click);
     options.element.append(button);
     return () => {
@@ -235,5 +275,6 @@ export const renderButtonBlock = (context: IContext, options: {
         if (blockID && contentSetters.get(blockID) === options.setContent) {
             contentSetters.delete(blockID);
         }
+        log.debug("清理按钮块渲染", {blockID});
     };
 };
