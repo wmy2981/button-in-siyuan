@@ -55,6 +55,8 @@ export default class ButtonInSiYuan extends Plugin {
         };
         this.eventBus.on("click-blockicon", this.blockIconMenu);
         this.protyleSlash = [{
+            // filter 是斜杠菜单的搜索关键字（不显示给用户，所以不放进 i18n）：
+            // 中文界面按「按钮块」、英文界面按 button 都能搜到
             filter: [context.i18n.insertButtonBlock, "button", "按钮块", "anniu"],
             // 斜杠菜单里的图标是本插件自绘的按钮块图形（src/buttonIcon.ts），与市集图标同源
             html: `<div class="b3-list-item__first">${createButtonBlockIconHtml()}<span class="b3-list-item__text">${context.i18n.insertButtonBlock}</span></div>`,
