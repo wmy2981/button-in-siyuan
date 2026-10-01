@@ -22,6 +22,7 @@ export type II18n = {
     linkAddress: string;
     linkAddressPlaceholder: string;
     linkAddressTip: string;
+    assetOpenFailed: string;
     scriptCode: string;
     scriptCodePlaceholder: string;
     scriptCodeTip: string;

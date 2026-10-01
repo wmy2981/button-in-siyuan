@@ -1,4 +1,4 @@
-import {Constants, Dialog, openMobileFileById, openTab} from "siyuan";
+import {Constants, Dialog, fetchPost, getFrontend, openMobileFileById, openTab, platformUtils, showMessage} from "siyuan";
 import type {IContext} from "./context";
 import {createIconElement} from "./icon";
 import {createLogger} from "./logger";
@@ -105,17 +105,67 @@ const getAssetExtension = (path: string) => {
     return index === -1 ? "" : clean.substring(index).toLowerCase();
 };
 
+/** 地址里的查询串（不含锚点）。 */
+const getAssetQuery = (path: string) => path.split("#", 1)[0].split("?", 2)[1] || "";
+
+const HEIF_EXTENSIONS = [".heic", ".heif"];
+
 /**
- * 判断资源能否交给思源的资源页签渲染。宿主的资源页签只支持图片、音视频与 PDF
- * （HEIF 还要求地址不带 download=true）；不满足前置条件时 openTab 会创建出空页签把布局搞坏，
- * 所以这里先按同样的条件判断，不满足的改由系统处理。
+ * 判断资源能否交给思源的资源页签渲染，条件与宿主的 editor/openLink.ts 完全一致：
+ * 扩展名在 Constants.SIYUAN_ASSETS_EXTS 里、HEIF 不带 download=true（宿主的
+ * isBrowserRenderableImagePath）、PDF 必须是库内资源。不满足时 openTab 会让宿主的 newTab
+ * 返回 undefined，wnd.addTab(undefined) 直接把页签布局搞坏（思源整窗报错），所以必须先判断。
  */
-const isAssetTabOpenable = (path: string) => {
-    if (!Constants.SIYUAN_ASSETS_EXTS.includes(getAssetExtension(path))) {
+const isPreviewableAsset = (path: string) => {
+    const extension = getAssetExtension(path);
+    if (!Constants.SIYUAN_ASSETS_EXTS.includes(extension)) {
         return false;
     }
-    const query = path.split("#", 1)[0].split("?", 2)[1] || "";
-    return !new URLSearchParams(query).getAll("download").some((value) => value.toLowerCase() === "true");
+    if (HEIF_EXTENSIONS.includes(extension) &&
+        new URLSearchParams(getAssetQuery(path)).getAll("download").some((value) => value.toLowerCase() === "true")) {
+        return false;
+    }
+    return extension !== ".pdf" || path.startsWith("assets/");
+};
+
+/** 只有桌面端（含桌面端新窗口）有本地文件系统；浏览器前端没有，交给宿主的移动端逻辑。 */
+const hasLocalFileSystem = () => {
+    const frontend = getFrontend();
+    return frontend === "desktop" || frontend === "desktop-window";
+};
+
+/** 桌面端 Electron 的 ipcRenderer；浏览器前端没有 window.require，返回 undefined。 */
+const getIpcRenderer = () => {
+    const requireFunc = (window as unknown as {require?: (name: string) => unknown}).require;
+    if (typeof requireFunc !== "function") {
+        return;
+    }
+    const electron = requireFunc("electron") as {ipcRenderer?: {send: (channel: string, data: unknown) => void}} | undefined;
+    return electron?.ipcRenderer;
+};
+
+/**
+ * 用系统默认程序打开资源，步骤与宿主的 openBy(url, "app") 一致：
+ * 先向内核要资源的绝对路径，再通过宿主的 openPath 通道交给 Electron 的 shell.openPath。
+ * 之前这里用 window.open 打开资源地址，结果被浏览器类插件接管，非图片类资源在浏览器里也打不开。
+ */
+const openAssetWithSystem = (context: IContext, address: string) => {
+    fetchPost("/api/asset/resolveAssetPath", {path: address}, (response) => {
+        const filePath = typeof response.data === "string" ? response.data : "";
+        if (response.code !== 0 || !filePath) {
+            log.error("解析资源路径失败，无法交给系统打开", {address, code: response.code, msg: response.msg});
+            showMessage(response.msg || context.i18n.assetOpenFailed);
+            return;
+        }
+        const ipcRenderer = getIpcRenderer();
+        if (!ipcRenderer) {
+            log.error("当前环境没有 Electron 的 ipcRenderer，无法交给系统打开", {address, filePath});
+            showMessage(context.i18n.assetOpenFailed);
+            return;
+        }
+        log.info("交给系统默认程序打开资源", {address, filePath});
+        ipcRenderer.send(Constants.SIYUAN_CMD, {cmd: "openPath", filePath});
+    });
 };
 
 /** 思源内部链接用原生接口打开，其余链接交给系统默认处理（与思源打开链接的行为一致）。 */
@@ -136,18 +186,21 @@ const openLink = (context: IContext, link: string) => {
         return;
     }
     if (address.startsWith("assets/")) {
-        if (!context.isMobile && isAssetTabOpenable(address)) {
+        if (!context.isMobile && isPreviewableAsset(address)) {
             log.info("在思源页签里打开资源", {address});
             openTab({app: context.app, asset: {path: address}});
+        } else if (hasLocalFileSystem()) {
+            // 图片/音视频/PDF 之外的资源（txt、zip、docx…）思源没有对应的页签，
+            // 与宿主的 openLink 一样按「外部应用」处理
+            openAssetWithSystem(context, address);
         } else {
-            // 移动端没有资源页签接口，思源也打不开的资源（如压缩包）同样交给系统，
-            // 与宿主 iOS 分支一致，用绝对地址交给外部打开
-            log.warn("该资源没有可用的思源页签，交给系统打开", {
+            // 浏览器前端与移动端没有本地文件系统，交给宿主自己的打开逻辑（宿主在浏览器前端同样打不开这类资源）
+            log.warn("当前环境没有本地文件系统，交给宿主打开资源", {
                 address,
                 extension: getAssetExtension(address),
-                isMobile: context.isMobile,
+                frontend: getFrontend(),
             });
-            window.open(new URL(address, location.origin).href);
+            platformUtils.openByMobile(address);
         }
         return;
     }

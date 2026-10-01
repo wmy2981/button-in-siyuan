@@ -17,6 +17,7 @@
   "linkAddress": "Link address",
   "linkAddressPlaceholder": "https://… / siyuan://blocks/… / assets/…",
   "linkAddressTip": "Any link works: http(s), siyuan://blocks/<block ID>, assets/<asset path>, mailto: and other protocols registered on the system.",
+  "assetOpenFailed": "Cannot open the asset",
   "scriptCode": "JavaScript code",
   "scriptCodePlaceholder": "return 1 + 1;",
   "scriptCodeTip": "Runs when the button is clicked. Use return for a result, await is supported, and console output shows up in the dialog.",
