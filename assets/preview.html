@@ -508,6 +508,23 @@
         min-width: 200px;
     }
 
+    /* 选中的图标保持自己的配色（见 src/index.scss 的 .bis-icon-button） */
+    .bis-icon-button .svg {
+        color: var(--b3-theme-on-background);
+    }
+
+    /* 编辑窗口里指向 JavaScript 文档的入口（见 src/index.scss 的 .bis-docs-link） */
+    .bis-docs-link {
+        padding: 0;
+        border: 0;
+        background-color: transparent;
+        color: var(--b3-theme-primary);
+        font-family: inherit;
+        font-size: var(--b3-font-size);
+        text-align: left;
+        cursor: pointer;
+    }
+
     /* CodeMirror 的样式不手写：见下面由真实编辑器导出的 CSS 快照 */
 </style>
 <!-- editor-css:start 由 scripts/snapshot-editor.mjs 生成，勿手改 -->
@@ -634,11 +651,11 @@
 .ͼ1.cm-focused .cm-nonmatchingBracket {background-color: #bb555544;}
 .ͼ1 .cm-foldPlaceholder {background-color: #eee; border: 1px solid #ddd; color: #888; border-radius: .2em; margin: 0 1px; padding: 0 1px; cursor: pointer;}
 .ͼ1 .cm-foldGutter span {padding: 0 1px; cursor: pointer;}
-.ͼ1q {color: rgb(36, 41, 46); background-color: rgb(255, 255, 255); font-family: var(--b3-font-family-code); font-size: var(--b3-font-size-editor, var(--b3-font-size)); border-radius: var(--b3-border-radius);}
-.ͼ1q.cm-focused {outline: none;}
-.ͼ1q .cm-scroller {font-family: inherit; line-height: 1.625; min-height: 112px; max-height: 320px; overflow: auto;}
+.ͼ1q {color: rgb(36, 41, 46); background-color: rgb(255, 255, 255); font-family: var(--b3-font-family-code); font-size: 14px; border-radius: var(--b3-border-radius); outline: 1px solid var(--b3-border-color); outline-offset: -1px; height: 100px; min-height: 100px; max-height: 55vh; resize: vertical; overflow: hidden;}
+.ͼ1q.cm-focused {outline-color: var(--b3-theme-primary-light); box-shadow: 0 0 0 .6px var(--b3-theme-primary-lighter);}
+.ͼ1q .cm-scroller {font-family: inherit; line-height: 1.625; height: 100%; overflow: auto;}
 .ͼ1q .cm-content {caret-color: rgb(36, 41, 46);}
-.ͼ1q .cm-gutters {border: 0; padding-left: 4px; color: var(--b3-theme-on-surface); background-color: transparent;}
+.ͼ1q .cm-gutters {border: 0; padding-left: 4px; color: var(--b3-theme-on-surface); background-color: rgb(255, 255, 255);}
 .ͼ1q .cm-lineNumbers .cm-gutterElement {min-width: 20px; padding: 0 6px 0 0;}
 .ͼ1q .cm-activeLine {background-color: var(--b3-list-hover);}
 .ͼ1q .cm-activeLineGutter {color: var(--b3-theme-on-background); background-color: transparent;}
@@ -904,7 +921,7 @@
                 <div class="ft__on-surface">按钮图标</div>
                 <div class="fn__hr--small"></div>
                 <div class="fn__flex">
-                    <button class="b3-button b3-button--outline" type="button"><svg class="svg"><use xlink:href="#iconCirclePlay"></use></svg>iconCirclePlay</button>
+                    <button class="b3-button b3-button--outline bis-icon-button" type="button"><svg class="svg"><use xlink:href="#iconCirclePlay"></use></svg>iconCirclePlay</button>
                     <div class="fn__space"></div>
                     <button class="b3-button b3-button--outline" type="button">不使用图标</button>
                 </div>
@@ -921,10 +938,12 @@
                 <div class="fn__hr--small"></div>
                 <!-- JavaScript 代码编辑器：真实 CodeMirror 的 DOM 快照 -->
 <!-- editor-dom:start 由 scripts/snapshot-editor.mjs 生成，勿手改 -->
-                <div class="bis-code"><div class="cm-editor ͼ1 ͼ2 ͼ4 ͼ1q"><div class="cm-announced" aria-live="polite"></div><div tabindex="-1" class="cm-scroller"><div class="cm-gutters cm-gutters-before" aria-hidden="true" style="min-height: 112px; position: sticky;"><div class="cm-gutter cm-lineNumbers"><div class="cm-gutterElement" style="height: 0px; visibility: hidden; pointer-events: none;">9</div><div class="cm-gutterElement cm-activeLineGutter" style="height: 26px; margin-top: 4px;">1</div><div class="cm-gutterElement" style="height: 26px;">2</div><div class="cm-gutterElement" style="height: 26px;">3</div><div class="cm-gutterElement" style="height: 26px;">4</div></div><div class="cm-gutter cm-foldGutter"><div class="cm-gutterElement" style="height: 0px; visibility: hidden; pointer-events: none;"><span title="Unfold line">›</span></div><div class="cm-gutterElement cm-activeLineGutter" style="height: 26px; margin-top: 4px;"></div></div></div><div spellcheck="false" autocorrect="off" autocapitalize="off" writingsuggestions="false" translate="no" contenteditable="true" class="cm-content" role="textbox" aria-multiline="true" data-language="javascript" style="tab-size: 4;"><div class="cm-line cm-activeLine"><span class="ͼs">const</span> <span class="ͼ1g">el</span> <span class="ͼ1n">=</span> <span class="ͼ1g">document</span><span class="ͼ1o">.</span><span class="ͼ19">querySelector</span>(<span class="ͼt">".protyle-wysiwyg"</span>);</div><div class="cm-line"><span class="ͼs">const</span> <span class="ͼ1g">text</span> <span class="ͼ1n">=</span> <span class="ͼ1g">el</span><span class="ͼ1o">.</span><span class="ͼ1i">innerText</span><span class="ͼ1o">.</span><span class="ͼ19">replace</span>(<span class="ͼw">/\s/g</span>, <span class="ͼt">""</span>);</div><div class="cm-line"><span class="ͼ1g">console</span><span class="ͼ1o">.</span><span class="ͼ19">log</span>(<span class="ͼt">"字数："</span> <span class="ͼ1n">+</span> <span class="ͼ1g">text</span><span class="ͼ1o">.</span><span class="ͼ1i">length</span>);</div><div class="cm-line"><span class="ͼp">return</span> <span class="ͼt">"统计完成"</span>;</div></div><div class="cm-layer cm-layer-above cm-cursorLayer" aria-hidden="true" style="z-index: 150; animation-duration: 1200ms;"><div class="cm-cursor cm-cursor-primary" style="left: 40.7969px; top: 7px; height: 19px;"></div></div><div class="cm-layer cm-selectionLayer" aria-hidden="true" style="z-index: -2;"></div></div></div></div>
+                <div class="bis-code"><div class="cm-editor ͼ1 ͼ2 ͼ4 ͼ1q"><div class="cm-announced" aria-live="polite"></div><div tabindex="-1" class="cm-scroller"><div class="cm-gutters cm-gutters-before" aria-hidden="true" style="min-height: 99px; position: sticky;"><div class="cm-gutter cm-lineNumbers"><div class="cm-gutterElement" style="height: 0px; visibility: hidden; pointer-events: none;">9</div><div class="cm-gutterElement cm-activeLineGutter" style="height: 22.75px; margin-top: 4px;">1</div><div class="cm-gutterElement" style="height: 22.75px;">2</div><div class="cm-gutterElement" style="height: 22.75px;">3</div><div class="cm-gutterElement" style="height: 22.75px;">4</div></div><div class="cm-gutter cm-foldGutter"><div class="cm-gutterElement" style="height: 0px; visibility: hidden; pointer-events: none;"><span title="Unfold line">›</span></div><div class="cm-gutterElement cm-activeLineGutter" style="height: 22.75px; margin-top: 4px;"></div></div></div><div spellcheck="false" autocorrect="off" autocapitalize="off" writingsuggestions="false" translate="no" contenteditable="true" class="cm-content" role="textbox" aria-multiline="true" data-language="javascript" style="tab-size: 4;"><div class="cm-line cm-activeLine"><span class="ͼs">const</span> <span class="ͼ1g">el</span> <span class="ͼ1n">=</span> <span class="ͼ1g">document</span><span class="ͼ1o">.</span><span class="ͼ19">querySelector</span>(<span class="ͼt">".protyle-wysiwyg"</span>);</div><div class="cm-line"><span class="ͼs">const</span> <span class="ͼ1g">text</span> <span class="ͼ1n">=</span> <span class="ͼ1g">el</span><span class="ͼ1o">.</span><span class="ͼ1i">innerText</span><span class="ͼ1o">.</span><span class="ͼ19">replace</span>(<span class="ͼw">/\s/g</span>, <span class="ͼt">""</span>);</div><div class="cm-line"><span class="ͼ1g">console</span><span class="ͼ1o">.</span><span class="ͼ19">log</span>(<span class="ͼt">"字数："</span> <span class="ͼ1n">+</span> <span class="ͼ1g">text</span><span class="ͼ1o">.</span><span class="ͼ1i">length</span>);</div><div class="cm-line"><span class="ͼp">return</span> <span class="ͼt">"统计完成"</span>;</div></div><div class="cm-layer cm-layer-above cm-cursorLayer" aria-hidden="true" style="z-index: 150; animation-duration: 1200ms;"><div class="cm-cursor cm-cursor-primary" style="left: 39.7031px; top: 6px; height: 17px;"></div></div><div class="cm-layer cm-selectionLayer" aria-hidden="true" style="z-index: -2;"></div></div></div></div>
                 <!-- editor-dom:end -->
                 <div class="fn__hr--small"></div>
                 <div class="ft__on-surface ft__smaller">代码在思源前端上下文里执行，支持 await；返回值、console 输出与抛出的错误都会显示在结果弹窗里。</div>
+                <div class="fn__hr--small"></div>
+                <button class="bis-docs-link" type="button">查看 JavaScript 文档（接口清单与示例）</button>
             </div>
             <div class="b3-dialog__action">
                 <button class="b3-button b3-button--cancel" type="button">取消</button>
