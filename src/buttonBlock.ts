@@ -104,17 +104,17 @@ const showScriptOutput = (context: IContext, output: string[], result: unknown, 
         title: context.i18n.scriptOutput,
         width: context.isMobile ? "92vw" : "560px",
         content: `<div class="b3-dialog__content">
-    <pre class="fn__code bis-script-output" data-type="output"></pre>
+    <pre class="fn__code bis-script-output" data-bis="output"></pre>
 </div>
 <div class="b3-dialog__action">
-    <button class="b3-button b3-button--text" data-type="close">${context.i18n.close}</button>
+    <button class="b3-button b3-button--text" data-bis="close">${context.i18n.close}</button>
 </div>`,
     });
-    const outputElement = dialog.element.querySelector<HTMLElement>('[data-type="output"]');
+    const outputElement = dialog.element.querySelector<HTMLElement>('[data-bis="output"]');
     if (outputElement) {
         outputElement.textContent = lines.join("\n") || context.i18n.noOutput;
     }
-    dialog.element.querySelector('[data-type="close"]')?.addEventListener("click", () => dialog.destroy());
+    dialog.element.querySelector('[data-bis="close"]')?.addEventListener("click", () => dialog.destroy());
 };
 
 /** 执行 JavaScript 操作：捕获 console 输出与返回值，连同错误一起显示在原生弹窗里。 */

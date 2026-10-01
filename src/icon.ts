@@ -38,19 +38,19 @@ export const openIconPicker = (context: IContext, options: {
         title: i18n.chooseIconTitle,
         width: context.isMobile ? "92vw" : "560px",
         content: `<div class="b3-dialog__content">
-    <input class="b3-text-field fn__block" data-type="search" spellcheck="false" placeholder="${i18n.searchIcon}">
+    <input class="b3-text-field fn__block" data-bis="search" spellcheck="false" placeholder="${i18n.searchIcon}">
     <div class="fn__hr"></div>
-    <div class="bis-icon-picker" data-type="list"></div>
-    <div class="bis-icon-picker__empty" data-type="empty">${i18n.noMatchedIcon}</div>
+    <div class="bis-icon-picker" data-bis="list"></div>
+    <div class="bis-icon-picker__empty" data-bis="empty">${i18n.noMatchedIcon}</div>
 </div>
 <div class="b3-dialog__action">
-    <button class="b3-button b3-button--cancel" data-type="cancel">${i18n.cancel}</button>
+    <button class="b3-button b3-button--cancel" data-bis="cancel">${i18n.cancel}</button>
 </div>`,
     });
-    const searchElement = dialog.element.querySelector<HTMLInputElement>('[data-type="search"]');
-    const listElement = dialog.element.querySelector<HTMLElement>('[data-type="list"]');
-    const emptyElement = dialog.element.querySelector<HTMLElement>('[data-type="empty"]');
-    const cancelElement = dialog.element.querySelector<HTMLElement>('[data-type="cancel"]');
+    const searchElement = dialog.element.querySelector<HTMLInputElement>('[data-bis="search"]');
+    const listElement = dialog.element.querySelector<HTMLElement>('[data-bis="list"]');
+    const emptyElement = dialog.element.querySelector<HTMLElement>('[data-bis="empty"]');
+    const cancelElement = dialog.element.querySelector<HTMLElement>('[data-bis="cancel"]');
     if (!searchElement || !listElement || !emptyElement || !cancelElement) {
         dialog.destroy();
         return;

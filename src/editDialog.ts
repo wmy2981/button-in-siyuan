@@ -37,48 +37,48 @@ export const openButtonBlockEditor = (context: IContext, options: {protyle: IPro
         content: `<div class="b3-dialog__content">
     <div class="ft__on-surface">${i18n.buttonText}</div>
     <div class="fn__hr--small"></div>
-    <input class="b3-text-field fn__block" data-type="text" spellcheck="false" placeholder="${i18n.defaultButtonText}">
+    <input class="b3-text-field fn__block" data-bis="text" spellcheck="false" placeholder="${i18n.defaultButtonText}">
     <div class="fn__hr"></div>
     <div class="ft__on-surface">${i18n.buttonIcon}</div>
     <div class="fn__hr--small"></div>
     <div class="fn__flex">
-        <button class="b3-button b3-button--outline" data-type="icon">${i18n.chooseIcon}</button>
+        <button class="b3-button b3-button--outline" data-bis="icon">${i18n.chooseIcon}</button>
         <div class="fn__space"></div>
-        <button class="b3-button b3-button--outline" data-type="clear-icon">${i18n.clearIcon}</button>
+        <button class="b3-button b3-button--outline" data-bis="clear-icon">${i18n.clearIcon}</button>
     </div>
     <div class="fn__hr"></div>
     <div class="ft__on-surface">${i18n.buttonAction}</div>
     <div class="fn__hr--small"></div>
-    <select class="b3-select fn__block" data-type="action">
+    <select class="b3-select fn__block" data-bis="action">
         <option value="">${i18n.actionNone}</option>
         <option value="link">${i18n.actionLink}</option>
         <option value="script">${i18n.actionScript}</option>
     </select>
-    <div data-type="link-field">
+    <div data-bis="link-field">
         <div class="fn__hr"></div>
         <div class="ft__on-surface">${i18n.linkAddress}</div>
         <div class="fn__hr--small"></div>
-        <input class="b3-text-field fn__block" data-type="link" spellcheck="false" placeholder="${i18n.linkAddressPlaceholder}">
+        <input class="b3-text-field fn__block" data-bis="link" spellcheck="false" placeholder="${i18n.linkAddressPlaceholder}">
         <div class="fn__hr--small"></div>
         <div class="ft__on-surface ft__smaller">${i18n.linkAddressTip}</div>
     </div>
-    <div data-type="script-field">
+    <div data-bis="script-field">
         <div class="fn__hr"></div>
         <div class="ft__on-surface">${i18n.scriptCode}</div>
         <div class="fn__hr--small"></div>
-        <textarea class="b3-text-field fn__block bis-script-input" data-type="script" spellcheck="false" placeholder="${i18n.scriptCodePlaceholder}"></textarea>
+        <textarea class="b3-text-field fn__block bis-script-input" data-bis="script" spellcheck="false" placeholder="${i18n.scriptCodePlaceholder}"></textarea>
         <div class="fn__hr--small"></div>
         <div class="ft__on-surface ft__smaller">${i18n.scriptCodeTip}</div>
     </div>
 </div>
 <div class="b3-dialog__action">
-    <button class="b3-button b3-button--cancel" data-type="cancel">${i18n.cancel}</button>
+    <button class="b3-button b3-button--cancel" data-bis="cancel">${i18n.cancel}</button>
     <div class="fn__space"></div>
-    <button class="b3-button b3-button--text" data-type="save">${i18n.save}</button>
+    <button class="b3-button b3-button--text" data-bis="save">${i18n.save}</button>
 </div>`,
     });
     const field = <T extends HTMLElement>(type: string) => {
-        const element = dialog.element.querySelector<T>(`[data-type="${type}"]`);
+        const element = dialog.element.querySelector<T>(`[data-bis="${type}"]`);
         if (!element) {
             throw new Error(`button-in-siyuan: dialog field [${type}] is missing`);
         }

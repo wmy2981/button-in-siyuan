@@ -41,7 +41,8 @@ node scripts/render-preview.mjs   # assets/preview.html → assets/preview.png�
 * **插入块**：斜杠菜单回调里用 `protyle.insert(protyle.protyle.lute.Md2BlockDOM(markdown), true)`，
   markdown 为 `;;;button-in-siyuan/button\n{JSON}\n;;;`。
 * **外观**：只用思源样式类（`b3-button`、`b3-text-field`、`b3-select`、`b3-dialog__content`、
-  `b3-dialog__action`、`fn__*`、`ft__*`）与 `--b3-*` 变量；自有类统一用 `bis-` 前缀。
+  `b3-dialog__action`、`fn__*`、`ft__*`）与 `--b3-*` 变量；自有类统一用 `bis-` 前缀，
+  自有对话框里的定位属性统一用 `data-bis`（`data-type` 是思源自己的派发键，不要占用）。
 * **图标**：从文档里的 `<symbol id="icon…">` 现取现用（内置图标集 + 图标包 + 插件图标），
   用 `<use>` 引用，元素带思源的 `.svg` 类以跟随 `currentColor`。
 * **操作执行**：`siyuan://blocks/<id>` 与 `assets/<path>` 用原生接口打开（桌面端 `openTab`、
