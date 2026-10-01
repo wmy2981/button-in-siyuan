@@ -1,0 +1,36 @@
+{
+  "name": "button-in-siyuan",
+  "version": "0.1.0",
+  "description": "Insert native SiYuan button blocks into documents",
+  "scripts": {
+    "dev": "webpack --mode development",
+    "build": "webpack --mode production",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run build"
+  },
+  "keywords": [
+    "siyuan",
+    "plugin",
+    "button"
+  ],
+  "author": "wmy2981",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "copy-webpack-plugin": "^14.0.0",
+    "css-loader": "^7.1.5",
+    "esbuild-loader": "^4.5.0",
+    "mini-css-extract-plugin": "^2.10.2",
+    "playwright": "^1.63.0",
+    "sass": "^1.105.1",
+    "sass-loader": "^17.0.1",
+    "sharp": "^0.35.5",
+    "siyuan": "^1.2.9",
+    "typescript": "^6.0.3",
+    "webpack": "^5.111.1",
+    "webpack-cli": "^7.2.3",
+    "zip-webpack-plugin": "^4.0.3"
+  }
+}

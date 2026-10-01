@@ -1,0 +1,10 @@
+/dev-refs
+/node_modules/
+/dist/
+/package.zip
+/index.js
+/index.css
+/kernel.js
+/i18n/
+/CLAUDE.local.md
+/.tmp-*

@@ -1,0 +1,46 @@
+name: CI
+
+# push main、PR 与手动触发都跑一遍静态检查，并确认 package.zip 里思源需要的文件齐全
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Check package contents
+        run: |
+          set -euo pipefail
+          unzip -l package.zip
+          for file in plugin.json index.js index.css icon.png i18n/en.json i18n/zh-CN.json; do
+            unzip -l package.zip "$file" > /dev/null
+            echo "ok: $file"
+          done
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: package.zip
