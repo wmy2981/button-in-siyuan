@@ -145,11 +145,9 @@ const createTheme = (base: ITextStyle, background: string) => EditorView.theme({
         backgroundColor: "transparent",
     },
     ".cm-lineNumbers .cm-gutterElement": {
-        // 行号样式与思源自己的代码块一致（_typography.scss 的 linenumber__rows）
+        // 行号与代码行同字号同基线（思源代码块的行号是 85% 字号，那样基线会差 2px，这里以对齐为准）
         minWidth: "20px",
         padding: "0 6px 0 0",
-        fontSize: "85%",
-        textAlign: "right",
     },
     ".cm-activeLine": {
         backgroundColor: "var(--b3-list-hover)",
