@@ -1,4 +1,4 @@
-import {Dialog, showMessage} from "siyuan";
+import {Dialog, ProtyleMethod, showMessage} from "siyuan";
 import docsEn from "../docs/javascript.md";
 import docsZh from "../docs/javascript.zh-CN.md";
 import type {IContext} from "./context";
@@ -46,5 +46,9 @@ export const openScriptDocs = (context: IContext) => {
         return;
     }
     docsElement.innerHTML = html;
+    // 代码块高亮交给思源自己：highlightRender 对 .b3-typography 走的是「预览」分支，
+    // 按代码块的 data-language 用 hljs 上色，并从 /stage/protyle 载入代码主题（离线可用）。
+    // 文档里的代码块语言统一写 javascript，就是这个 data-language。
+    ProtyleMethod.highlightRender(docsElement);
     dialog.element.querySelector('[data-bis="close"]')?.addEventListener("click", () => dialog.destroy());
 };
