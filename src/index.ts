@@ -1,7 +1,7 @@
 import {getFrontend, Plugin} from "siyuan";
 import type {IEventBusMap, Protyle} from "siyuan";
 import {createButtonBlockIconHtml} from "./buttonIcon";
-import {BUTTON_BLOCK_TYPE, parseButtonConfig, renderButtonBlock, serializeButtonConfig} from "./buttonBlock";
+import {BUTTON_BLOCK_TYPE, DEFAULT_BUTTON_ICON, parseButtonConfig, renderButtonBlock, serializeButtonConfig} from "./buttonBlock";
 import type {IContext} from "./context";
 import {openButtonBlockEditor} from "./editDialog";
 import type {II18n} from "./i18nKeys";
@@ -81,7 +81,8 @@ export default class ButtonInSiYuan extends Plugin {
             return;
         }
         const info = encodeBlockInfo(this.name, BUTTON_BLOCK_TYPE);
-        const content = serializeButtonConfig({text: this.context.i18n.defaultButtonText, icon: ""});
+        // 默认带一个图标：新建出来的按钮块不至于是一个光秃秃的按钮
+        const content = serializeButtonConfig({text: this.context.i18n.defaultButtonText, icon: DEFAULT_BUTTON_ICON});
         const markdown = `;;;${info}\n${content}\n;;;`;
         protyle.insert(lute.Md2BlockDOM(markdown), true);
         log.info("插入按钮块", {blockInfo: info});

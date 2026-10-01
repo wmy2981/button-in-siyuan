@@ -10,6 +10,9 @@ const log = createLogger("buttonBlock");
 /** 自定义块类型名；块信息由插件包名与它组成，例如 button-in-siyuan/button。 */
 export const BUTTON_BLOCK_TYPE = "button";
 
+/** 新建按钮块时默认使用的思源内置图标。 */
+export const DEFAULT_BUTTON_ICON = "iconCirclePlay";
+
 /** 按钮操作，当前支持链接跳转与运行 JavaScript。 */
 export type TButtonAction = {type: "link", link: string} | {type: "script", script: string};
 
