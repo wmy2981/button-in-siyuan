@@ -5,7 +5,7 @@ every API SiYuan exposes to plugins, and can read or write kernel data. This doc
 which APIs are available, and gives examples you can paste as-is.
 
 > Written for plugin version 0.1.0; the APIs were checked against the SiYuan 3.8.x sources
-> (`app/src/plugin/API.ts`, `kernel/api/`). Every example only reads or appends — nothing deletes or overwrites notes.
+> (`app/src/plugin/API.ts`, `kernel/api/`).
 
 ---
 
@@ -347,11 +347,3 @@ showMessage("done, no dialog");
   friends. A wrong click cannot be undone, so the examples here only read or append.
 - **Debugging**: `console` output is captured by the dialog and does not stay in DevTools; use `showMessage`,
   or a `debugger` statement, when you need to see something there.
-
-## 6. Related sources
-
-- This plugin: `src/scriptApi.ts` (the injected list, including the awaitable `fetchPost` / `fetchGet`),
-  `src/scriptRunner.ts` (execution and console capture),
-  `src/scriptOutput.ts` (result dialog, ANSI colours, copy).
-- SiYuan: `app/src/plugin/API.ts` (the full plugin API that this plugin mirrors), `app/src/util/fetch.ts`
-  (`fetchPost`), `kernel/api/` (the HTTP handlers), `app/src/menus/index.ts` (native context menu for inputs).

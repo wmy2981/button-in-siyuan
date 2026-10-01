@@ -14,14 +14,13 @@
   （`b3-button b3-button--outline fn__size200`）：宽 200px、界面字号，悬停与按下效果全部由
   思源自身的 CSS 提供，插件不自定义按钮外观。
 * 图标从当前界面可用的 SVG 图标里选（内置图标集，以及图标包和插件注册的图标），带搜索框；
-  新建的按钮块默认带 `iconCirclePlay`。
 * 按钮操作可选，只能是一件事：链接跳转，或运行 JavaScript。
 * JavaScript 代码编辑器是 CodeMirror，带行号、语法高亮、括号匹配与补全，配色跟随思源的代码高亮设置。
 * 所有对话框、菜单与表单控件都是思源原生 UI。
 
 ## 安装
 
-1. 集市安装（上架后）：<kbd>设置</kbd> > <kbd>集市</kbd> > <kbd>下载</kbd>，搜索「按钮块」。
+1. 集市安装（上架后）：<kbd>设置</kbd> > <kbd>集市</kbd> > <kbd>插件</kbd>，搜索「按钮块」。
 2. 手动安装：从最新 Release 下载 `package.zip`，解压为
    `{工作空间}/data/plugins/button-in-siyuan/`，然后在
    <kbd>设置</kbd> > <kbd>集市</kbd> > <kbd>已下载</kbd> 中启用。
@@ -34,8 +33,6 @@
 2. 打开「编辑按钮块」：点击该块的块图标后选 <kbd>插件</kbd> > <kbd>编辑按钮块</kbd>，
    或者在按钮上右键（桌面端）/ 长按（移动端）。
 3. 在对话框里设置文本、图标和操作后确定。
-
-块内容本身是一段纯 JSON，只有插件启用时才会渲染成按钮。
 
 ## 设置项
 
@@ -65,22 +62,12 @@
 右键用的是思源自己的原生文本菜单（撤销、重做、复制、剪切、粘贴、粘贴为纯文本、全选）。
 
 点击按钮时代码在页面上下文里执行，支持 `await`；`return` 的结果、执行期间的 `console` 输出
-（`log / info / debug / warn / error / table / dir`，支持 ANSI 彩色输出）以及抛出的错误
-都会显示在结果弹窗里，弹窗可以一键复制纯文本。
+以及抛出的错误都会显示在结果弹窗里，弹窗可以一键复制纯文本。
 
-脚本里可以直接调用思源给插件开放的全部接口：`fetchPost`、`openTab`、`showMessage`、`Dialog`、
-`openInputDialog`、`platformUtils`、`protyle`（当前按钮块所在的编辑器）、`blockID` 等 51 个，
-另外还有 `window`、`document`、`Lute`、`window.siyuan` 这些页面全局。
+脚本里可以直接调用思源给插件开放的全部接口
 
 完整说明与可以直接粘贴运行的示例：[docs/javascript.zh-CN.md](./docs/javascript.zh-CN.md)。
 编辑窗口里的「JavaScript 文档」链接会把这些文档渲染在弹窗里，离线可用。
-
-## 快捷键
-
-| 操作 | 快捷键 |
-| --- | --- |
-| 插入按钮块 | 斜杠菜单 `/按钮块`（无独立快捷键） |
-| 编辑按钮块 | 无（块菜单 > <kbd>插件</kbd> > <kbd>编辑按钮块</kbd>，或按钮上右键 / 长按） |
 
 ## 限制
 
@@ -96,12 +83,6 @@ npm install          # 需要 Node.js 20+
 npm run check        # i18n 键校验 + tsc --noEmit + 打包构建
 npm run build        # 产出 dist/ 与 package.zip
 ```
-
-`npm run dev` 是 watch 构建，只写仓库根的 `index.js`、`index.css`、`i18n/`，供本机
-`data/plugins/button-in-siyuan` 符号链接直接加载；`npm run build` 才是打包构建。
-图标与预览图分别由 `node scripts/render-icon.mjs`、`node scripts/render-preview.mjs` 生成
-（后者首次需要执行一次 `npx playwright install chromium`）；改了代码编辑器的外观后，先跑
-`node scripts/snapshot-editor.mjs` 把真实 CodeMirror 的样式与 DOM 快照写回 `assets/preview.html`。
 
 ## 许可证
 

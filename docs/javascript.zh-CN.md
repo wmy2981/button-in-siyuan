@@ -4,7 +4,6 @@
 也能读写内核数据。本文说明它怎么执行、能用哪些接口，并给出可以直接粘贴运行的例子。
 
 > 对应插件版本 0.1.0；文中的接口都按思源 3.8.x 的源码核对过（`app/src/plugin/API.ts`、`kernel/api/`）。
-> 例子只做「读取」或「追加」，不会删除、覆盖你的笔记。
 
 ---
 
@@ -339,9 +338,3 @@ showMessage("已执行，没有弹窗");
 - **调试**：脚本里的 `console` 输出会被弹窗收走（不会留在开发者工具里）；想同时看开发者工具，
   可以写 `window.console.log` 之外的通道，例如 `showMessage`，或临时用 `debugger` 断点。
 
-## 6. 相关源码
-
-- 本插件：`src/scriptApi.ts`（注入清单，含可 `await` 的 `fetchPost` / `fetchGet`）、`src/scriptRunner.ts`（执行与 console 捕获）、
-  `src/scriptOutput.ts`（结果弹窗、ANSI 颜色、复制）。
-- 思源：`app/src/plugin/API.ts`（插件 API 全集，本插件按它注入）、`app/src/util/fetch.ts`（`fetchPost`）、
-  `kernel/api/`（各 HTTP 接口的实现）、`app/src/menus/index.ts`（输入框的原生右键菜单）。

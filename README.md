@@ -15,8 +15,7 @@ edited in a native SiYuan dialog.
   (`b3-button b3-button--outline fn__size200`): 200px wide, UI font size, and hover/pressed
   effects all come from SiYuan's own CSS — the plugin does not restyle the button.
 * The icon is picked from the SVG icons available in the current interface (the built-in icon set,
-  plus icons provided by icon packages and plugins), with a search box; a new button block starts
-  with `iconCirclePlay`.
+  plus icons provided by icon packages and plugins), with a search box.
 * A button action is optional and is one of: open a link, or run JavaScript.
 * The JavaScript editor is CodeMirror, with line numbers, syntax highlighting, bracket matching and
   completion; its colors follow SiYuan's code highlighting setting.
@@ -25,7 +24,7 @@ edited in a native SiYuan dialog.
 ## Install
 
 1. From the marketplace (after the plugin is listed): <kbd>Settings</kbd> > <kbd>Marketplace</kbd> >
-   <kbd>Download</kbd> > search for "Button Block".
+   <kbd>Plugins</kbd> > search for "Button Block".
 2. Manually: download `package.zip` from the latest Release, unzip it as
    `{workspace}/data/plugins/button-in-siyuan/`, then enable the plugin in
    <kbd>Settings</kbd> > <kbd>Marketplace</kbd> > <kbd>Downloaded</kbd>.
@@ -39,8 +38,6 @@ Requires SiYuan 3.8.6 or later.
 2. Open "Edit button block": click the block icon and choose <kbd>Plugin</kbd> >
    <kbd>Edit button block</kbd>, or right-click the button (desktop) / long-press it (mobile).
 3. Set the text, the icon and the action in the dialog, then confirm.
-
-The block content itself is plain JSON; the button only renders while the plugin is enabled.
 
 ## Settings
 
@@ -73,24 +70,13 @@ be resized vertically, and right-clicking opens SiYuan's own native text menu (u
 cut, paste, paste as plain text, select all).
 
 The code runs in the page context when the button is clicked; `await` is supported. The `return`
-value, everything written to `console` while it runs (`log / info / debug / warn / error / table /
-dir`, with ANSI colours) and any thrown error are shown in the result dialog, which can copy the
-whole output as plain text.
+value, everything written to `console` while it runs and any thrown error are shown in the result
+dialog, which can copy the whole output as plain text.
 
-Scripts can call every API SiYuan exposes to plugins: `fetchPost`, `openTab`, `showMessage`,
-`Dialog`, `openInputDialog`, `platformUtils`, `protyle` (the editor that contains the button),
-`blockID` and 51 in total, plus the usual page globals such as `window`, `document`, `Lute` and
-`window.siyuan`.
+Scripts can call every API SiYuan exposes to plugins.
 
 Full guide with ready-to-paste examples: [docs/javascript.md](./docs/javascript.md). The
 "JavaScript documentation" link inside the edit dialog renders these docs in a dialog, offline.
-
-## Shortcuts
-
-| Operation | Shortcut |
-| --- | --- |
-| Insert a button block | `/button` or `/按钮块` in the slash menu (no dedicated shortcut) |
-| Edit a button block | None (block icon menu > <kbd>Plugin</kbd> > <kbd>Edit button block</kbd>, or right-click / long-press the button) |
 
 ## Limitations
 
@@ -109,13 +95,6 @@ npm install          # Node.js 20+
 npm run check        # i18n key check + tsc --noEmit + packaging build
 npm run build        # dist/ + package.zip
 ```
-
-`npm run dev` writes a watch build to the repository root (`index.js`, `index.css`, `i18n/`) for a
-local `data/plugins/button-in-siyuan` symlink; `npm run build` is the packaging build.
-Icons and the preview image are rendered with `node scripts/render-icon.mjs` and
-`node scripts/render-preview.mjs` (the latter needs `npx playwright install chromium` once).
-After changing the look of the code editor, run `node scripts/snapshot-editor.mjs` first: it writes the
-real CodeMirror CSS and DOM back into `assets/preview.html`.
 
 ## License
 
