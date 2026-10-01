@@ -17,9 +17,20 @@ export interface IButtonConfig {
 
 export const serializeButtonConfig = (config: IButtonConfig) => JSON.stringify(config);
 
+/** 解析按钮操作；不是本插件支持的操作时返回 undefined。 */
+const parseButtonAction = (value: TButtonAction | undefined): TButtonAction | undefined => {
+    if (value?.type === "link" && typeof value.link === "string") {
+        return {type: "link", link: value.link};
+    }
+    if (value?.type === "script" && typeof value.script === "string") {
+        return {type: "script", script: value.script};
+    }
+    return;
+};
+
 /**
- * 解析自定义块内容：空内容按默认配置处理；不是本插件写入的配置时返回 undefined，
- * 由渲染器按思源原生方式展示原始内容，避免误改用户数据。
+ * 解析自定义块内容：空内容按默认配置处理；内容不是本插件写入的配置时返回 undefined，
+ * 由渲染器按思源原生方式展示原始内容，也不提供编辑入口，避免覆盖用户自己的数据。
  */
 export const parseButtonConfig = (content: string, defaultText: string): IButtonConfig | undefined => {
     if (!content.trim()) {
@@ -32,21 +43,32 @@ export const parseButtonConfig = (content: string, defaultText: string): IButton
         console.warn("[button-in-siyuan] custom block content is not JSON:", error);
         return undefined;
     }
-    if (typeof parsed !== "object" || parsed === null) {
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
         return undefined;
     }
     const source = parsed as Partial<IButtonConfig>;
-    const config: IButtonConfig = {
+    const action = parseButtonAction(source.action);
+    // 至少要有一个本插件认识的字段，才当成按钮配置
+    if (typeof source.text !== "string" && typeof source.icon !== "string" && !action) {
+        return undefined;
+    }
+    return {
         text: typeof source.text === "string" ? source.text : defaultText,
         icon: typeof source.icon === "string" ? source.icon : "",
+        action,
     };
-    const action = source.action;
-    if (action?.type === "link" && typeof action.link === "string") {
-        config.action = {type: "link", link: action.link};
-    } else if (action?.type === "script" && typeof action.script === "string") {
-        config.action = {type: "script", script: action.script};
-    }
-    return config;
+};
+
+/**
+ * 渲染器拿到的 setContent 由宿主实现：它会先做兜底、写回 data-content、提交事务，再强制重新渲染。
+ * 这里按块 ID 记住它，供「编辑按钮块」写回；插件自己改 data-content 再提交事务不会触发重渲染。
+ */
+const contentSetters = new Map<string, (content: string) => boolean>();
+
+/** 写回按钮块配置；该块当前不在渲染状态时返回 false。 */
+export const updateButtonContent = (blockID: string, config: IButtonConfig) => {
+    const setContent = contentSetters.get(blockID);
+    return setContent ? setContent(serializeButtonConfig(config)) : false;
 };
 
 const formatValue = (value: unknown): string => {
@@ -83,7 +105,8 @@ const openLink = (context: IContext, link: string) => {
     }
     if (address.startsWith("assets/")) {
         if (context.isMobile) {
-            window.open(address);
+            // 移动端没有资源页签接口，与宿主 iOS 的处理一致，用绝对地址交给外部打开
+            window.open(new URL(address, location.origin).href);
         } else {
             openTab({app: context.app, asset: {path: address}});
         }
@@ -157,13 +180,21 @@ const runAction = (context: IContext, config: IButtonConfig) => {
 };
 
 /** 自定义块渲染器：内容变化时思源会重新调用，返回值用于清理事件监听器。 */
-export const renderButtonBlock = (context: IContext, options: {element: HTMLElement, content: string}) => {
+export const renderButtonBlock = (context: IContext, options: {
+    element: HTMLElement,
+    content: string,
+    setContent: (content: string) => boolean,
+}) => {
+    const blockID = options.element.closest<HTMLElement>('[data-type="NodeCustomBlock"]')?.getAttribute("data-node-id") || "";
     const config = parseButtonConfig(options.content, context.i18n.defaultButtonText);
     if (!config) {
         const preElement = document.createElement("pre");
         preElement.textContent = options.content;
         options.element.append(preElement);
         return;
+    }
+    if (blockID) {
+        contentSetters.set(blockID, options.setContent);
     }
     const button = document.createElement("button");
     button.type = "button";
@@ -175,5 +206,10 @@ export const renderButtonBlock = (context: IContext, options: {element: HTMLElem
     const click = () => runAction(context, config);
     button.addEventListener("click", click);
     options.element.append(button);
-    return () => button.removeEventListener("click", click);
+    return () => {
+        button.removeEventListener("click", click);
+        if (blockID && contentSetters.get(blockID) === options.setContent) {
+            contentSetters.delete(blockID);
+        }
+    };
 };

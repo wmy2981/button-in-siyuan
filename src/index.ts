@@ -1,6 +1,6 @@
 import {getFrontend, Plugin} from "siyuan";
 import type {IEventBusMap, Protyle} from "siyuan";
-import {BUTTON_BLOCK_TYPE, renderButtonBlock, serializeButtonConfig} from "./buttonBlock";
+import {BUTTON_BLOCK_TYPE, parseButtonConfig, renderButtonBlock, serializeButtonConfig} from "./buttonBlock";
 import type {IContext} from "./context";
 import {openButtonBlockEditor} from "./editDialog";
 import type {II18n} from "./i18nKeys";
@@ -76,21 +76,28 @@ export default class ButtonInSiYuan extends Plugin {
         if (protyle.disabled) {
             return;
         }
-        const element = blockElements.find(item => {
+        const blockElement = blockElements.find(item => {
             if (item.getAttribute("data-type") !== "NodeCustomBlock") {
                 return false;
             }
             const info = parseBlockInfo(item.getAttribute("data-info") || "");
             return info?.pluginName === this.name && info.blockType === BUTTON_BLOCK_TYPE;
         });
-        if (!element) {
+        if (!blockElement) {
+            return;
+        }
+        const blockID = blockElement.getAttribute("data-node-id") || "";
+        const i18n = this.context.i18n;
+        const config = parseButtonConfig(blockElement.getAttribute("data-content") || "", i18n.defaultButtonText);
+        // 内容不是本插件的配置时不提供编辑，避免把用户自己的数据覆盖成按钮配置
+        if (!blockID || !config) {
             return;
         }
         menu.addItem({
             id: "button-in-siyuan-edit",
             icon: "iconEdit",
-            label: this.context.i18n.editButtonBlock,
-            click: () => openButtonBlockEditor(this.context, {protyle, element}),
+            label: i18n.editButtonBlock,
+            click: () => openButtonBlockEditor(this.context, {blockID, config}),
         });
     };
 }

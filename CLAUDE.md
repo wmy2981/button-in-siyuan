@@ -34,10 +34,12 @@ node scripts/render-preview.mjs   # assets/preview.html → assets/preview.png�
   `button-in-siyuan/button`，块类型常量是 `BUTTON_BLOCK_TYPE`；块菜单只在
   `data-info` 能解析出相同包名与块类型时出现。
 * **块内容**：`data-content` 里是单行 JSON（`{"text","icon","action"}`，`action` 为
-  `{"type":"link","link"}` 或 `{"type":"script","script"}`）。内容为空按默认配置渲染；不是本插件
-  写入的 JSON 时原样 `<pre>` 兜底，绝不覆盖用户数据。
-* **写回块**：只能先改 `data-content`，再用 `protyle.getInstance().updateTransactionElement(element, oldHTML)`
-  走编辑器事务（与宿主内部 `setContent` 的路径一致），事务结束后思源会重新调用渲染器。
+  `{"type":"link","link"}` 或 `{"type":"script","script"}`）。内容为空按默认配置渲染；内容不是本插件
+  配置（认不出 `text`/`icon`/合法 `action`）时不渲染按钮、原样 `<pre>` 兜底，块菜单也不提供编辑入口，
+  绝不覆盖用户自己的数据。
+* **写回块**：只能通过宿主传给渲染器的 `setContent`（渲染器按块 ID 记下它，见 `updateButtonContent`）：
+  宿主会做兜底、写回 `data-content`、提交事务并**强制重新渲染**。自己改 `data-content` 再提交事务
+  不会刷新界面 —— `updateTransaction` 打的 `data-editing` 标记会让事务保留本地 DOM，渲染器不会被重跑。
 * **插入块**：斜杠菜单回调里用 `protyle.insert(protyle.protyle.lute.Md2BlockDOM(markdown), true)`，
   markdown 为 `;;;button-in-siyuan/button\n{JSON}\n;;;`。
 * **外观**：只用思源样式类（`b3-button`、`b3-text-field`、`b3-select`、`b3-dialog__content`、

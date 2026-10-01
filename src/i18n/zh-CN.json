@@ -24,7 +24,7 @@
   "returnValue": "返回值",
   "errorValue": "错误",
   "noOutput": "（无输出）",
-  "blockNotFound": "按钮块已不存在",
+  "blockNotEditable": "按钮块当前不可编辑",
   "save": "确定",
   "cancel": "取消",
   "close": "关闭"

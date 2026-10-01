@@ -24,7 +24,7 @@
   "returnValue": "Return value",
   "errorValue": "Error",
   "noOutput": "(no output)",
-  "blockNotFound": "The button block no longer exists",
+  "blockNotEditable": "The button block cannot be edited right now",
   "save": "OK",
   "cancel": "Cancel",
   "close": "Close"

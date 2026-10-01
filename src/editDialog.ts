@@ -1,35 +1,17 @@
 import {Dialog, showMessage} from "siyuan";
-import type {IProtyle} from "siyuan";
 import type {IButtonConfig, TButtonAction} from "./buttonBlock";
-import {parseButtonConfig, serializeButtonConfig} from "./buttonBlock";
+import {updateButtonContent} from "./buttonBlock";
 import type {IContext} from "./context";
 import {createIconElement, openIconPicker} from "./icon";
 
-/**
- * 按思源自定义块的更新方式写回配置：先改 data-content，再走编辑器事务，
- * 事务完成后思源会重新调用渲染器。找不到块（已被删除或换页）时返回 false。
- */
-const saveButtonBlock = (protyle: IProtyle, blockID: string, element: HTMLElement, config: IButtonConfig) => {
-    if (!blockID) {
-        return false;
-    }
-    const target = element.isConnected ? element :
-        protyle.wysiwyg?.element.querySelector<HTMLElement>(`[data-node-id="${blockID}"]`);
-    if (!target || target.getAttribute("data-type") !== "NodeCustomBlock") {
-        return false;
-    }
-    const oldHTML = target.outerHTML;
-    target.setAttribute("data-content", serializeButtonConfig(config));
-    protyle.getInstance().updateTransactionElement(target, oldHTML);
-    return true;
-};
-
-/** 打开「编辑按钮块」对话框。 */
-export const openButtonBlockEditor = (context: IContext, options: {protyle: IProtyle, element: HTMLElement}) => {
+/** 打开「编辑按钮块」对话框，确定后由宿主的自定义块渲染器写回并重新渲染。 */
+export const openButtonBlockEditor = (context: IContext, options: {
+    blockID: string,
+    config: IButtonConfig,
+}) => {
     const {i18n} = context;
-    const blockID = options.element.getAttribute("data-node-id") || "";
-    const config = parseButtonConfig(options.element.getAttribute("data-content") || "", i18n.defaultButtonText) ||
-        {text: i18n.defaultButtonText, icon: ""};
+    const blockID = options.blockID;
+    const config = options.config;
     let icon = config.icon;
     const dialog = new Dialog({
         title: i18n.editButtonBlock,
@@ -147,8 +129,8 @@ export const openButtonBlockEditor = (context: IContext, options: {protyle: IPro
             action = {type: "script", script};
         }
         const next: IButtonConfig = {text: textElement.value.trim() || i18n.defaultButtonText, icon, action};
-        if (!saveButtonBlock(options.protyle, blockID, options.element, next)) {
-            showMessage(i18n.blockNotFound);
+        if (!updateButtonContent(blockID, next)) {
+            showMessage(i18n.blockNotEditable);
             return;
         }
         dialog.destroy();
