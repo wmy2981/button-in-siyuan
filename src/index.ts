@@ -38,6 +38,7 @@ export default class ButtonInSiYuan extends Plugin {
     private get context(): IContext {
         return {
             app: this.app,
+            plugin: this,
             i18n: this.i18n as II18n,
             isMobile: this.isMobile,
         };

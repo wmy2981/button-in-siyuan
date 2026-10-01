@@ -1,5 +1,6 @@
 import type {IContext} from "./context";
 import {createLogger} from "./logger";
+import {createScriptScope} from "./scriptApi";
 import type {IScriptEntry, TScriptLevel} from "./scriptOutput";
 import {showScriptOutput} from "./scriptOutput";
 
@@ -49,8 +50,8 @@ const captureConsole = (entries: IScriptEntry[]) => {
 };
 
 /**
- * 执行按钮的 JavaScript 操作：捕获 console 输出与返回值，连同错误一起显示在结果弹窗里
- * （见 scriptOutput.ts）。
+ * 执行按钮的 JavaScript 操作：注入思源接口（见 scriptApi.ts）、捕获 console 输出与返回值，
+ * 连同错误一起显示在结果弹窗里（见 scriptOutput.ts）。
  */
 export const runScript = async (context: IContext, options: {
     blockID: string;
@@ -58,15 +59,24 @@ export const runScript = async (context: IContext, options: {
     code: string;
 }) => {
     const entries: IScriptEntry[] = [];
-    log.info("开始执行 JavaScript 操作", {blockID: options.blockID, chars: options.code.length});
+    const scope = createScriptScope({
+        plugin: context.plugin,
+        app: context.app,
+        i18n: context.i18n,
+        isMobile: context.isMobile,
+        blockID: options.blockID,
+        blockElement: options.blockElement,
+    });
+    log.info("开始执行 JavaScript 操作", {blockID: options.blockID, chars: options.code.length, api: scope.names.length});
     const restoreConsole = captureConsole(entries);
     const startedAt = Date.now();
     let result: unknown;
     let failure: unknown;
     try {
-        // 用 async 包装，代码里既可以直接 return，也可以使用 await
-        const runner = new Function(`return (async () => {\n${options.code}\n})()`);
-        result = await runner();
+        // 用 async 包装，代码里既可以直接 return，也可以使用 await；
+        // 思源接口作为形参注入，脚本里直接写 fetchPost(...)、protyle.insert(...) 即可
+        const runner = new Function(...scope.names, `return (async () => {\n${options.code}\n})()`);
+        result = await runner(...scope.values);
     } catch (error) {
         failure = error;
     } finally {
