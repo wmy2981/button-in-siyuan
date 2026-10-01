@@ -121,18 +121,29 @@ const createTheme = (base: ITextStyle, background: string) => EditorView.theme({
         color: base.color,
         backgroundColor: background,
         fontFamily: "var(--b3-font-family-code)",
-        fontSize: "var(--b3-font-size-editor, var(--b3-font-size))",
+        // 字号与思源的代码片段输入框一致：那边的 .b3-text-field 固定 14px（component/_text-field.scss），
+        // 编辑器字号（--b3-font-size-editor）会明显偏大
+        fontSize: "14px",
         borderRadius: "var(--b3-border-radius)",
+        // 描边、悬浮与聚焦效果照抄 .b3-text-field：代码块底色和对话框底色相同时也能看出输入区边界
+        outline: "1px solid var(--b3-border-color)",
+        outlineOffset: "-1px",
+        // 固定高度 + 纵向可拖拽：与代码片段输入框的 resize: vertical 一致，
+        // CodeMirror 自己监听尺寸变化，拖完会重新测量行高
+        height: "100px",
+        minHeight: "100px",
+        maxHeight: "55vh",
+        resize: "vertical",
+        overflow: "hidden",
     },
     "&.cm-focused": {
-        outline: "none",
+        outlineColor: "var(--b3-theme-primary-light)",
+        boxShadow: "0 0 0 .6px var(--b3-theme-primary-lighter)",
     },
     ".cm-scroller": {
         fontFamily: "inherit",
         lineHeight: "1.625",
-        // 约 4 行代码的高度，再多就在编辑器内部滚动
-        minHeight: "112px",
-        maxHeight: "320px",
+        height: "100%",
         overflow: "auto",
     },
     ".cm-content": {
@@ -142,7 +153,9 @@ const createTheme = (base: ITextStyle, background: string) => EditorView.theme({
         border: "0",
         paddingLeft: "4px",
         color: "var(--b3-theme-on-surface)",
-        backgroundColor: "transparent",
+        // 行号底色必须不透明：.cm-gutters 是 sticky 的，横向滚动时代码会从它下面穿过，
+        // 透明底色会让行号和代码文字叠在一起
+        backgroundColor: background,
     },
     ".cm-lineNumbers .cm-gutterElement": {
         // 行号与代码行同字号同基线（思源代码块的行号是 85% 字号，那样基线会差 2px，这里以对齐为准）
