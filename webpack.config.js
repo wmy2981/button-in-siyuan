@@ -32,7 +32,8 @@ module.exports = (env, argv) => {
                     ...packageImages,
                     {from: "README*.md", to: "./dist/"},
                     // 文档同时打进包里（index.js 里已经内嵌了一份，这里是给用户直接翻阅的原文件）
-                    {from: "docs/", to: "./dist/docs/"},
+                    // docs/development.md 只是仓库内部的开发说明，不随包发布给用户
+                    {from: "docs/", to: "./dist/docs/", globOptions: {ignore: ["**/development.md"]}},
                     {from: "plugin.json", to: "./dist/"},
                     {from: "src/i18n/", to: "./dist/i18n/"},
                 ],
