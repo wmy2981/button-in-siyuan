@@ -18,7 +18,8 @@ npm run dev        # watch 构建，只写仓库根的 index.js / index.css / i1
 * **改完只做静态验证**（`npm run check`，或 `typecheck` + `build`）。真实测试由维护者手动完成：
   不要操作维护者的本机思源与工作区，也不要写端到端测试。
 * 不要为了跑构建而启动 `dev`：它是常驻 watch，产物落在仓库根，会盖住同名产物。
-* 改了图源必须重渲染，否则集市图标与预览图还是旧的：`node scripts/render-icon.mjs`、
+* 集市图标是手绘的 `assets/icon.svg`，界面内的图标来自 `src/buttonIcon.ts`：两边各自独立，改一边不会
+  带动另一边。改了图源必须重渲染，否则集市图标与预览图还是旧的：`node scripts/render-icon.mjs`、
   `node scripts/render-preview.mjs`（首次需 `npx playwright install chromium`）；改动
   `src/codeEditor.ts` 的外观要先跑 `node scripts/snapshot-editor.mjs` 写回 `assets/preview.html`。
 

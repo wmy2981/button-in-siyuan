@@ -12,7 +12,7 @@
 | --- | --- |
 | `src/index.ts` | 插件入口：注册自定义块渲染器、斜杠菜单项、块菜单项，拼装运行上下文 |
 | `src/buttonBlock.ts` | 按钮块配置的解析/序列化、渲染、链接操作、右键/长按入口 |
-| `src/buttonIcon.ts` | 按钮块图标的唯一来源（市集图标与斜杠菜单图标都由它生成） |
+| `src/buttonIcon.ts` | 界面内的按钮块图标（斜杠菜单等）的图形来源；集市图标是手绘的 `assets/icon.svg`，与它各自独立 |
 | `src/editDialog.ts` | 「编辑按钮块」对话框 |
 | `src/codeEditor.ts` | JavaScript 代码编辑器（CodeMirror，配色取自用户的代码高亮主题） |
 | `src/scriptRunner.ts` | 执行脚本：注入接口、接管 console、把结果交给结果弹窗 |
@@ -117,8 +117,11 @@
   `npm run build` 才是打包构建（写 `dist/` 与 `package.zip`，两者覆盖同样的范围）。不要为了构建启动 watch。
 * 集市图片：`assets/icon.svg`、`assets/preview.html` 是图源，改完必须重跑渲染脚本；PNG 提交在
   `assets/`，打包时落到包根。图标是白底方形（不切圆角）加思源蓝 `#3575F0` 的线稿图形。
-  **图形只写在 `src/buttonIcon.ts` 一处**：`render-icon.mjs` 用它生成 `assets/icon.svg` 与 `icon.png`，
-  斜杠菜单里的图标（`createButtonBlockIconHtml()`）用的是同一份图形（改成 `currentColor`、viewBox 收紧）。
+  **集市图标是手绘的图源**：`render-icon.mjs` 只把 `assets/icon.svg` 栅格化成 `icon.png`
+  （160×160、上限 64KiB，越界直接失败），不生成 SVG —— 图形只写在 `assets/icon.svg` 一处。
+  界面里显示的图标（斜杠菜单等，`createButtonBlockIconHtml()`）走的是 `src/buttonIcon.ts` 里的另一份
+  图形（改成 `currentColor`、viewBox 收紧），两者各自独立：改一边不会带动另一边。
+  `src/buttonIcon.ts` 导出的 `BUTTON_ICON_SVG`（160 画布、带磨砂底）目前没有脚本消费，留作备用。
 * 预览图是一个真实的思源主窗口（1024×768）：顶栏、页签栏、面包屑、正文、状态栏，正文取
   「已滚动到文档末尾」的视图（`.protyle-content` 用 flex 贴底），中间是「编辑按钮块」对话框
   （JavaScript 操作 + CodeMirror 编辑器 + 文档入口）。对话框里的编辑器**不是手写 HTML**：
