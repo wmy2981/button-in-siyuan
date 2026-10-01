@@ -4,6 +4,8 @@ import {EditorState, type Extension} from "@codemirror/state";
 import {EditorView, placeholder} from "@codemirror/view";
 import {tags, type Tag} from "@lezer/highlight";
 import {basicSetup} from "codemirror";
+import {Constants} from "siyuan";
+import {getIpcRenderer} from "./electron";
 import {createLogger} from "./logger";
 
 const log = createLogger("codeEditor");
@@ -210,6 +212,46 @@ export interface ICodeEditor {
     focus: () => void;
 }
 
+/**
+ * 代码编辑区的右键菜单用思源自己的原生文本菜单（撤销/重做/复制/剪切/删除/粘贴/粘贴为纯文本/全选）。
+ *
+ * 桌面端思源对 .b3-text-field 就是这么做的：把菜单项发给主进程，由 Electron 弹出系统菜单
+ * （见宿主的 menus/index.ts 与 electron/main.js 的 siyuan-context-menu 通道），
+ * 因此这里的菜单项、文案与快捷键与思源其它输入框完全一致。
+ * 移动端与浏览器前端没有原生菜单，交回系统自己的选择菜单。
+ */
+const openNativeTextMenu = (event: MouseEvent) => {
+    if (event.shiftKey) {
+        // 与宿主一致：shift + 右键交回浏览器
+        return;
+    }
+    const ipcRenderer = getIpcRenderer();
+    if (!ipcRenderer) {
+        return;
+    }
+    const languages = window.siyuan?.languages || {};
+    ipcRenderer.send(Constants.SIYUAN_CONTEXT_MENU, {
+        x: event.clientX,
+        y: event.clientY,
+        requestedAt: Date.now(),
+        items: [
+            {role: "undo", label: languages.undo},
+            {role: "redo", label: languages.redo},
+            {type: "separator"},
+            {role: "copy", label: languages.copy},
+            {role: "cut", label: languages.cut},
+            {role: "delete", label: languages.delete},
+            {role: "paste", label: languages.paste},
+            {role: "pasteAndMatchStyle", label: languages.pasteAsPlainText},
+            {role: "selectAll", label: languages.selectAll},
+        ],
+    });
+    // 宿主 window 上的 contextmenu 监听会给非输入框 preventDefault（浏览器菜单不出来），
+    // 这里已经弹了思源的原生菜单，不再让它继续处理
+    event.stopPropagation();
+    log.debug("弹出代码编辑区的原生右键菜单");
+};
+
 export const createCodeEditor = (options: {
     value?: string;
     placeholder?: string;
@@ -235,6 +277,7 @@ export const createCodeEditor = (options: {
         state: EditorState.create({doc: options.value || "", extensions}),
         parent: element,
     });
+    element.addEventListener("contextmenu", openNativeTextMenu);
     log.debug("创建代码编辑器", {chars: view.state.doc.length, dark, lineWrap, tokens: specs.length});
     return {
         element,

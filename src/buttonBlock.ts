@@ -1,5 +1,6 @@
 import {Constants, fetchPost, getFrontend, openMobileFileById, openTab, platformUtils, showMessage} from "siyuan";
 import type {IContext} from "./context";
+import {getIpcRenderer} from "./electron";
 import {createIconElement} from "./icon";
 import {createLogger} from "./logger";
 import {runScript} from "./scriptRunner";
@@ -116,16 +117,6 @@ const isPreviewableAsset = (path: string) => {
 const hasLocalFileSystem = () => {
     const frontend = getFrontend();
     return frontend === "desktop" || frontend === "desktop-window";
-};
-
-/** 桌面端 Electron 的 ipcRenderer；浏览器前端没有 window.require，返回 undefined。 */
-const getIpcRenderer = () => {
-    const requireFunc = (window as unknown as {require?: (name: string) => unknown}).require;
-    if (typeof requireFunc !== "function") {
-        return;
-    }
-    const electron = requireFunc("electron") as {ipcRenderer?: {send: (channel: string, data: unknown) => void}} | undefined;
-    return electron?.ipcRenderer;
 };
 
 /**

@@ -91,12 +91,17 @@ const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-editor-snapshot-")
 let failure = "";
 
 try {
+    // codeEditor.ts 只用到宿主的 Constants（原生右键菜单的通道名），快照里给个替身，
+    // 免得为了截个图去加载整个宿主模块
+    fs.writeFileSync(path.join(tempDir, "siyuan-stub.mjs"),
+        `export const Constants = {SIYUAN_CONTEXT_MENU: "siyuan-context-menu"};\n`);
     await build({
         stdin: {contents: ENTRY, resolveDir: root, loader: "ts", sourcefile: "snapshot-entry.ts"},
         bundle: true,
         outfile: path.join(tempDir, "editor.js"),
         format: "iife",
         target: "es2019",
+        alias: {siyuan: path.join(tempDir, "siyuan-stub.mjs")},
         logLevel: "warning",
     });
     fs.writeFileSync(path.join(tempDir, "editor.html"), PAGE);
