@@ -86,10 +86,11 @@ node scripts/snapshot-editor.mjs  # 把真实 CodeMirror 的 CSS/DOM 快照写�
   会用 esbuild 打包 `src/codeEditor.ts`、在 Chromium 里真挂载一次，把 CodeMirror 自己注入的 CSS 与渲染出的
   DOM 抓回来，写进 `preview.html` 的 `editor-css` / `editor-dom` 标记之间，保证预览里的行号、缩进、配色
   与插件里逐像素一致；手改这两个标记之间的内容会在下次跑脚本时被覆盖。
-* README 里的预览图是远程链接（RULES 39 要求）：`gcore.jsdelivr.net/...@dev/assets/preview.png`。
-  这个域名缓存较久，换了预览图后它可能还是旧图（浏览器还会再缓存 7 天），可以主动清一次：
-  `https://purge.jsdelivr.net/gh/wmy2981/button-in-siyuan@dev/assets/preview.png`；仍不生效时让读者
-  强刷，或临时改用 `cdn.jsdelivr.net`。集市卡片用的是包里的 `preview.png`，不受影响。
+* README 里的预览图是远程链接（RULES 39 要求）。URL 固定到**提交 SHA** 而不是分支别名：
+  `gcore.jsdelivr.net/gh/wmy2981/button-in-siyuan@<sha>/assets/preview.png`。原因是 jsdelivr 对分支别名
+  的缓存很久（gcore 上实测 12 小时不更新，purge API 只覆盖 CF/FY，清不掉 gcore），浏览器还会再按
+  `max-age=604800` 缓存 7 天，用 `@dev` 换图后读者很久都看不到新图。换了 `preview.png` 就把 SHA
+  更新成包含新图的提交。集市卡片用的是包里的 `preview.png`，不受这套缓存影响。
 * `plugin.json` 与 `package.json` 的 `version` 必须一致，且高于最新 `v*` 标签；`minAppVersion`
   按用到的 API 定（自定义块渲染器需要 3.8.5）。
 * 发布、上架集市都必须先由维护者本人测试并确认；不要自行打标签、建 Release 或改版本号。
