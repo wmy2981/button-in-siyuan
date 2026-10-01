@@ -1,5 +1,6 @@
 import {getFrontend, Plugin} from "siyuan";
 import type {IEventBusMap, Protyle} from "siyuan";
+import {createButtonBlockIconHtml} from "./buttonIcon";
 import {BUTTON_BLOCK_TYPE, parseButtonConfig, renderButtonBlock, serializeButtonConfig} from "./buttonBlock";
 import type {IContext} from "./context";
 import {openButtonBlockEditor} from "./editDialog";
@@ -53,7 +54,8 @@ export default class ButtonInSiYuan extends Plugin {
         this.eventBus.on("click-blockicon", this.blockIconMenu);
         this.protyleSlash = [{
             filter: [context.i18n.insertButtonBlock, "button", "按钮块", "anniu"],
-            html: `<div class="b3-list-item__first"><svg class="b3-list-item__graphic"><use xlink:href="#iconCirclePlay"></use></svg><span class="b3-list-item__text">${context.i18n.insertButtonBlock}</span></div>`,
+            // 斜杠菜单里的图标是本插件自绘的按钮块图形（src/buttonIcon.ts），与市集图标同源
+            html: `<div class="b3-list-item__first">${createButtonBlockIconHtml()}<span class="b3-list-item__text">${context.i18n.insertButtonBlock}</span></div>`,
             id: "insertButtonBlock",
             callback: (protyle) => this.insertButtonBlock(protyle),
         }];
