@@ -18,6 +18,12 @@
     user-select: text;
 }
 
+// 选中的图标保持它自己的配色：b3-button--outline 会把 color 设成主题主色，
+// 而图标里靠 currentColor 上色的部分（例如 iconLiandi 的两条路径）会跟着变蓝，看起来就是错的。
+.bis-icon-button .svg {
+    color: var(--b3-theme-on-background);
+}
+
 .bis-icon-picker {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
@@ -37,14 +43,15 @@
         color: var(--b3-theme-on-surface);
         cursor: pointer;
 
+        // 悬浮与选中都只换底色，不动 color：图标包里不少图标是靠 currentColor 上色的，
+        // 改了 color 它们就显示成别的颜色（与思源表情/图标面板的做法一致）
         &:hover {
-            color: var(--b3-theme-on-background);
             background-color: var(--b3-list-hover);
         }
 
         &--current {
-            color: var(--b3-theme-primary);
             background-color: var(--b3-theme-primary-lightest);
+            box-shadow: inset 0 0 0 1px var(--b3-theme-primary);
         }
     }
 

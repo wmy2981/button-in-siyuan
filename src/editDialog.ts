@@ -35,7 +35,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
     <div class="ft__on-surface">${i18n.buttonIcon}</div>
     <div class="fn__hr--small"></div>
     <div class="fn__flex">
-        <button class="b3-button b3-button--outline" data-bis="icon">${i18n.chooseIcon}</button>
+        <button class="b3-button b3-button--outline bis-icon-button" data-bis="icon">${i18n.chooseIcon}</button>
         <div class="fn__space"></div>
         <button class="b3-button b3-button--outline" data-bis="clear-icon">${i18n.clearIcon}</button>
     </div>
