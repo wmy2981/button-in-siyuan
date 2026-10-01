@@ -239,13 +239,65 @@ export const renderButtonBlock = (context: IContext, options: {
         button.prepend(createIconElement(config.icon));
     }
     const click = () => {
+        if (suppressClick) {
+            // 移动端长按之后浏览器还会补一次 click，这次不该再执行按钮操作
+            suppressClick = false;
+            return;
+        }
         log.debug("点击按钮块", {blockID, text: config.text, action: config.action?.type || "none"});
         runAction(context, {blockID, blockElement: options.element, config});
     };
+    // 右键（桌面）与长按（移动端）都打开「编辑按钮块」，与块菜单里的入口一致
+    const edit = (source: "contextmenu" | "long-press") => {
+        if (!blockID) {
+            log.warn("按钮块没有块 ID，无法打开编辑窗口");
+            return;
+        }
+        log.info("从按钮上打开编辑窗口", {blockID, source});
+        context.openEditor(blockID, config);
+    };
+    const contextMenu = (event: MouseEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        edit("contextmenu");
+    };
+    let pressTimer = 0;
+    let suppressClick = false;
+    const startPress = () => {
+        cancelPress();
+        pressTimer = window.setTimeout(() => {
+            pressTimer = 0;
+            suppressClick = true;
+            // 长按后即使没有补 click，也别让下一次真正的点击被吃掉
+            window.setTimeout(() => {
+                suppressClick = false;
+            }, 800);
+            edit("long-press");
+        }, 500);
+    };
+    const cancelPress = () => {
+        if (pressTimer) {
+            window.clearTimeout(pressTimer);
+            pressTimer = 0;
+        }
+    };
     button.addEventListener("click", click);
+    button.addEventListener("contextmenu", contextMenu);
+    if (context.isMobile) {
+        button.addEventListener("touchstart", startPress, {passive: true});
+        button.addEventListener("touchend", cancelPress);
+        button.addEventListener("touchmove", cancelPress);
+        button.addEventListener("touchcancel", cancelPress);
+    }
     options.element.append(button);
     return () => {
         button.removeEventListener("click", click);
+        button.removeEventListener("contextmenu", contextMenu);
+        button.removeEventListener("touchstart", startPress);
+        button.removeEventListener("touchend", cancelPress);
+        button.removeEventListener("touchmove", cancelPress);
+        button.removeEventListener("touchcancel", cancelPress);
+        cancelPress();
         if (blockID && contentSetters.get(blockID) === options.setContent) {
             contentSetters.delete(blockID);
         }

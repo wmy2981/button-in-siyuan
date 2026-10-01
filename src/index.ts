@@ -41,6 +41,7 @@ export default class ButtonInSiYuan extends Plugin {
             plugin: this,
             i18n: this.i18n as II18n,
             isMobile: this.isMobile,
+            openEditor: (blockID, config) => openButtonBlockEditor(this.context, {blockID, config}),
         };
     }
 
