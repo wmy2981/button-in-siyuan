@@ -160,10 +160,12 @@ return "appended";
 ### 4.5 List unfinished tasks (read-only)
 
 SiYuan stores task list items as blocks with `subtype = 't'`; an open task's markdown looks like `- [ ] text`.
+Note that the surrounding list block (`type = 'l'`) carries `subtype = 't'` as well, so filter on `type = 'i'`
+to get list items only — otherwise every task is counted twice.
 
 ```javascript
 const response = await fetchPost("/api/query/sql", {
-    stmt: "SELECT content, id FROM blocks WHERE subtype = 't' AND markdown LIKE '%- [ ]%' ORDER BY updated DESC LIMIT 10",
+    stmt: "SELECT content, id FROM blocks WHERE type = 'i' AND subtype = 't' AND markdown LIKE '%- [ ]%' ORDER BY updated DESC LIMIT 10",
 });
 if (response.code !== 0) {
     return `query failed: ${response.msg}`;

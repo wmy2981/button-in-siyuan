@@ -155,11 +155,12 @@ return "已追加";
 
 ### 4.5 查全库未完成的待办（只读）
 
-思源把任务列表项存成 `subtype = 't'` 的块，未完成的任务 markdown 形如 `- [ ] 内容`。
+思源把任务列表项存成 `subtype = 't'` 的块，未完成的任务 markdown 形如 `- [ ] 内容`。注意外层列表块
+（`type = 'l'`）的 `subtype` 也是 `'t'`，所以要用 `type = 'i'` 只取列表项，否则同一个待办会被数两次。
 
 ```javascript
 const response = await fetchPost("/api/query/sql", {
-    stmt: "SELECT content, id FROM blocks WHERE subtype = 't' AND markdown LIKE '%- [ ]%' ORDER BY updated DESC LIMIT 10",
+    stmt: "SELECT content, id FROM blocks WHERE type = 'i' AND subtype = 't' AND markdown LIKE '%- [ ]%' ORDER BY updated DESC LIMIT 10",
 });
 if (response.code !== 0) {
     return `查询失败：${response.msg}`;
