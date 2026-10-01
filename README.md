@@ -1,4 +1,4 @@
-[简体中文](https://github.com/wmy2981/button-in-siyuan/blob/main/README.zh-CN.md)
+[简体中文](./README.zh-CN.md)
 
 # Button Block (button-in-siyuan)
 
@@ -11,11 +11,14 @@ edited in a native SiYuan dialog.
 
 * The button is a SiYuan custom block (`;;;button-in-siyuan/button`), so it is saved, synced,
   undone and exported with the document.
-* The button uses the native SiYuan button style (`b3-button`): color, radius and hover shadow
-  follow the current theme.
+* The button uses the very same classes as SiYuan's own settings buttons
+  (`b3-button b3-button--outline fn__size200`): 200px wide, UI font size, and hover/pressed
+  effects all come from SiYuan's own CSS — the plugin does not restyle the button.
 * The icon is picked from the SVG icons available in the current interface (the built-in icon set,
   plus icons provided by icon packages and plugins), with a search box.
 * A button action is optional and is one of: open a link, or run JavaScript.
+* The JavaScript editor is CodeMirror, with line numbers, syntax highlighting, bracket matching and
+  completion; its colors follow SiYuan's code highlighting setting.
 * Every dialog, menu and form control is native SiYuan UI.
 
 ## Install
@@ -53,12 +56,17 @@ The block content itself is plain JSON; the button only renders while the plugin
 | --- | --- |
 | `https://…`, `mailto:…`, other schemes | Handed to the system default handler, exactly like clicking a link in SiYuan. |
 | `siyuan://blocks/<block ID>` | Opens (or zooms to) the block inside SiYuan. |
-| `assets/<asset path>` | Opens the asset in a SiYuan tab. |
+| `assets/<asset path>` | Images, audio, video and PDF open in a SiYuan tab; assets SiYuan has no tab renderer for (for example archives) are handed to the system. |
 
 Any other value is passed to `window.open`, so protocols registered on the system (for example a
 custom app scheme) work as well.
 
 ## JavaScript
+
+The code editor is CodeMirror: line numbers, syntax highlighting, bracket matching and completion.
+Its colors follow the scheme selected in <kbd>Settings</kbd> > <kbd>Appearance</kbd> >
+<kbd>Code highlighting</kbd> (one scheme for light and one for dark mode), and the code block
+line-wrap setting is honored as well.
 
 The code runs in the page context when the button is clicked, with the same capabilities as a
 SiYuan JavaScript snippet (`window.siyuan`, the editor DOM and the kernel HTTP APIs are reachable).
@@ -97,4 +105,4 @@ Icons and the preview image are rendered with `node scripts/render-icon.mjs` and
 
 ## License
 
-[MIT](https://github.com/wmy2981/button-in-siyuan/blob/main/LICENSE)
+[MIT](./LICENSE)

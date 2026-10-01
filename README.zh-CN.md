@@ -1,4 +1,4 @@
-[English](https://github.com/wmy2981/button-in-siyuan/blob/main/README.md)
+[English](./README.md)
 
 # 按钮块（button-in-siyuan）
 
@@ -10,9 +10,12 @@
 
 * 按钮块是思源的自定义块（Markdown 围栏为 `;;;button-in-siyuan/button`），随文档保存、同步、
   撤销和导出。
-* 按钮完全使用思源原生按钮样式（`b3-button`），颜色、圆角、悬停阴影跟随当前主题。
+* 按钮用的就是思源设置面板里那套原生按钮样式
+  （`b3-button b3-button--outline fn__size200`）：宽 200px、界面字号，悬停与按下效果全部由
+  思源自身的 CSS 提供，插件不自定义按钮外观。
 * 图标从当前界面可用的 SVG 图标里选（内置图标集，以及图标包和插件注册的图标），带搜索框。
 * 按钮操作可选，只能是一件事：链接跳转，或运行 JavaScript。
+* JavaScript 代码编辑器是 CodeMirror，带行号、语法高亮、括号匹配与补全，配色跟随思源的代码高亮设置。
 * 所有对话框、菜单与表单控件都是思源原生 UI。
 
 ## 安装
@@ -48,11 +51,15 @@
 | --- | --- |
 | `https://…`、`mailto:…`、其他协议 | 交给系统默认处理，与在思源里点击链接一致。 |
 | `siyuan://blocks/<块 ID>` | 在思源里打开（必要时缩放到）该块。 |
-| `assets/<资源路径>` | 在思源页签里打开该资源。 |
+| `assets/<资源路径>` | 图片、音视频与 PDF 在思源页签里打开；思源没有对应页签渲染器的资源（如压缩包）交给系统处理。 |
 
 其余写法统一交给 `window.open`，因此系统已注册的协议（比如某个应用的自定义协议）同样可用。
 
 ## JavaScript
+
+代码编辑器是 CodeMirror：带行号、语法高亮、括号匹配与补全，配色跟随
+<kbd>设置</kbd> > <kbd>外观</kbd> > <kbd>代码高亮</kbd> 里选中的方案（明暗模式各一套），
+代码块自动折行设置同样生效。
 
 点击按钮时代码在页面上下文里执行，能力与思源的 JavaScript 代码片段一致
 （可以访问 `window.siyuan`、编辑器 DOM 和内核 HTTP 接口）。支持 `await`；`return` 的结果、
@@ -87,4 +94,4 @@ npm run build        # 产出 dist/ 与 package.zip
 
 ## 许可证
 
-[MIT](https://github.com/wmy2981/button-in-siyuan/blob/main/LICENSE)
+[MIT](./LICENSE)

@@ -23,10 +23,11 @@ node scripts/render-preview.mjs   # assets/preview.html → assets/preview.png�
 | `src/index.ts` | 插件入口：注册自定义块渲染器、斜杠菜单项、块菜单项 |
 | `src/buttonBlock.ts` | 按钮块配置的解析/序列化、渲染、两种操作的执行 |
 | `src/editDialog.ts` | 「编辑按钮块」对话框 |
+| `src/codeEditor.ts` | JavaScript 代码编辑器（CodeMirror，配色取自用户的代码高亮主题） |
 | `src/icon.ts` | 图标元素、图标列表收集、图标选择对话框 |
 | `src/context.ts` | 传给各模块的运行上下文（`app` / `i18n` / `isMobile`） |
 | `src/i18nKeys.ts` | 文案键类型，与 `src/i18n/*.json` 一一对应 |
-| `src/index.scss` | 少量自有样式（脚本输出框、图标网格） |
+| `src/index.scss` | 少量自有样式（按钮块按钮的字号/宽度下限、脚本输出框、图标网格） |
 
 ## 实现约定
 
@@ -45,11 +46,23 @@ node scripts/render-preview.mjs   # assets/preview.html → assets/preview.png�
 * **外观**：只用思源样式类（`b3-button`、`b3-text-field`、`b3-select`、`b3-dialog__content`、
   `b3-dialog__action`、`fn__*`、`ft__*`）与 `--b3-*` 变量；自有类统一用 `bis-` 前缀，
   自有对话框里的定位属性统一用 `data-bis`（`data-type` 是思源自己的派发键，不要占用）。
+* **按钮外观**：渲染出的按钮类名与思源设置面板里的原生按钮完全一致 ——
+  `b3-button b3-button--outline fn__size200`，宽度、圆角、悬浮与按下效果全部由思源 CSS 提供。
+  只额外用 `index.scss` 里一条作用域规则把字号对齐到界面字号 `--b3-font-size`（文档里的自定义块
+  字号是编辑器字号），并把 `fn__size200` 的固定 200px 改成 200px 的宽度下限，避免长文案溢出按钮。
+* **代码编辑器**：CodeMirror 6（`codemirror` + `@codemirror/lang-javascript`）提供行号、高亮、
+  括号匹配与补全。配色不写死：`readCodeTheme` 在离屏 `.code-block` / `.hljs-*` 探针上读取思源已加载的
+  代码高亮主题（`#protyleHljsStyle`）的实际颜色，再映射到 CodeMirror 的标记（`@lezer/highlight`）；
+  明暗模式取自 `data-theme-mode`，自动折行跟随 `window.siyuan.config.editor.codeLineWrap`。
 * **图标**：从文档里的 `<symbol id="icon…">` 现取现用（内置图标集 + 图标包 + 插件图标），
   用 `<use>` 引用，元素带思源的 `.svg` 类以跟随 `currentColor`。
 * **操作执行**：`siyuan://blocks/<id>` 与 `assets/<path>` 用原生接口打开（桌面端 `openTab`、
   移动端 `openMobileFileById`），其余链接交给 `window.open`。JavaScript 操作在页面上下文执行，
   执行期间临时接管 `console` 用于收集输出，`finally` 中恢复。
+* **资源链接的坑**：`openTab({asset})` 只在资源是图片/音视频/PDF（宿主的
+  `Constants.SIYUAN_ASSETS_EXTS`）且不带 `download=true` 时才会建页签，其他资源会让宿主的
+  `newTab` 返回 `undefined`，`wnd.addTab(undefined)` 直接把页签布局搞坏（思源整窗报错）。
+  所以打开 `assets/…` 前必须先按同样的条件判断，不满足的交给系统打开。
 * **生命周期**：`onload` 注册 `click-blockicon` 监听，`onunload` 配对注销；插件不写存储，也没有
   设置项、命令、停靠栏。
 
@@ -57,7 +70,11 @@ node scripts/render-preview.mjs   # assets/preview.html → assets/preview.png�
 
 * `dist/`、`package.zip`、仓库根的 `index.js` / `index.css` / `i18n/` 都是产物，不提交、不手改。
 * 集市图片：`assets/icon.svg`、`assets/preview.html` 是图源，改完必须重跑渲染脚本；PNG 提交在
-  `assets/`，打包时落到包根。
+  `assets/`，打包时落到包根。图标是白底方形（不切圆角）加思源蓝 `#3575F0` 的线稿图形。
+* 预览图是一个真实的思源主窗口（1024×768）：顶栏、页签栏、面包屑、正文、状态栏，正文取
+  「已滚动到文档末尾」的视图（`.protyle-content` 用 flex 贴底），中间是「编辑按钮块」对话框
+  （JavaScript 操作 + CodeMirror 编辑器）。对话框里的 CodeMirror 是手写的 DOM 副本，`.cm-content`
+  里不能有换行/缩进 —— 它有 `white-space: pre`，标签之间的空白会渲染成多余的空行。
 * `plugin.json` 与 `package.json` 的 `version` 必须一致，且高于最新 `v*` 标签；`minAppVersion`
   按用到的 API 定（自定义块渲染器需要 3.8.5）。
 * 发布、上架集市都必须先由维护者本人测试并确认；不要自行打标签、建 Release 或改版本号。
