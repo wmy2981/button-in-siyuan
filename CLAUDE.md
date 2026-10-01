@@ -12,9 +12,12 @@ npm run typecheck
 npm run check    # typecheck + build
 node scripts/render-icon.mjs      # assets/icon.svg    → assets/icon.png（160×160，≤64 KiB）
 node scripts/render-preview.mjs   # assets/preview.html → assets/preview.png（1024×768，≤512 KiB）
+node scripts/snapshot-editor.mjs  # 把真实 CodeMirror 的 CSS/DOM 快照写回 assets/preview.html
 ```
 
 `npm run build` 之外不要启动 watch：`dev` 只用于本机联调，产物会盖住仓库根的 index.js / index.css。
+改了 `src/codeEditor.ts` 的外观后，先跑 `snapshot-editor.mjs` 再跑 `render-preview.mjs`，否则预览图
+里的编辑器还是旧样式。
 
 ## 模块划分
 
@@ -25,6 +28,7 @@ node scripts/render-preview.mjs   # assets/preview.html → assets/preview.png�
 | `src/editDialog.ts` | 「编辑按钮块」对话框 |
 | `src/codeEditor.ts` | JavaScript 代码编辑器（CodeMirror，配色取自用户的代码高亮主题） |
 | `src/icon.ts` | 图标元素、图标列表收集、图标选择对话框 |
+| `src/logger.ts` | 分级日志（`console.debug/info/warn/error`，统一 `[button-in-siyuan][模块]` 前缀） |
 | `src/context.ts` | 传给各模块的运行上下文（`app` / `i18n` / `isMobile`） |
 | `src/i18nKeys.ts` | 文案键类型，与 `src/i18n/*.json` 一一对应 |
 | `src/index.scss` | 少量自有样式（按钮块按钮的字号/宽度下限、脚本输出框、图标网格） |
@@ -63,6 +67,11 @@ node scripts/render-preview.mjs   # assets/preview.html → assets/preview.png�
   `Constants.SIYUAN_ASSETS_EXTS`）且不带 `download=true` 时才会建页签，其他资源会让宿主的
   `newTab` 返回 `undefined`，`wnd.addTab(undefined)` 直接把页签布局搞坏（思源整窗报错）。
   所以打开 `assets/…` 前必须先按同样的条件判断，不满足的交给系统打开。
+* **日志**：每个模块 `createLogger("<模块名>")` 建一个 logger，前缀形如 `[button-in-siyuan][buttonBlock]`，
+  第二个参数传结构化细节对象。分级约定：`debug` 走 `console.debug`（浏览器默认归到 Verbose，不打扰用户）
+  记渲染、菜单命中、主题探针等过程细节；`info` 记加载/卸载、打开对话框、保存、执行操作等用户可见动作；
+  `warn` 记能继续跑但不符合预期的情况（内容认不出、资源没有页签、保存被拒绝）；`error` 记真正出错
+  （JavaScript 抛异常、写回失败）。不要用 `console.log` 直接打日志。
 * **生命周期**：`onload` 注册 `click-blockicon` 监听，`onunload` 配对注销；插件不写存储，也没有
   设置项、命令、停靠栏。
 
@@ -73,8 +82,14 @@ node scripts/render-preview.mjs   # assets/preview.html → assets/preview.png�
   `assets/`，打包时落到包根。图标是白底方形（不切圆角）加思源蓝 `#3575F0` 的线稿图形。
 * 预览图是一个真实的思源主窗口（1024×768）：顶栏、页签栏、面包屑、正文、状态栏，正文取
   「已滚动到文档末尾」的视图（`.protyle-content` 用 flex 贴底），中间是「编辑按钮块」对话框
-  （JavaScript 操作 + CodeMirror 编辑器）。对话框里的 CodeMirror 是手写的 DOM 副本，`.cm-content`
-  里不能有换行/缩进 —— 它有 `white-space: pre`，标签之间的空白会渲染成多余的空行。
+  （JavaScript 操作 + CodeMirror 编辑器）。对话框里的编辑器**不是手写 HTML**：`scripts/snapshot-editor.mjs`
+  会用 esbuild 打包 `src/codeEditor.ts`、在 Chromium 里真挂载一次，把 CodeMirror 自己注入的 CSS 与渲染出的
+  DOM 抓回来，写进 `preview.html` 的 `editor-css` / `editor-dom` 标记之间，保证预览里的行号、缩进、配色
+  与插件里逐像素一致；手改这两个标记之间的内容会在下次跑脚本时被覆盖。
+* README 里的预览图是远程链接（RULES 39 要求）：`gcore.jsdelivr.net/...@dev/assets/preview.png`。
+  这个域名缓存较久，换了预览图后它可能还是旧图（浏览器还会再缓存 7 天），可以主动清一次：
+  `https://purge.jsdelivr.net/gh/wmy2981/button-in-siyuan@dev/assets/preview.png`；仍不生效时让读者
+  强刷，或临时改用 `cdn.jsdelivr.net`。集市卡片用的是包里的 `preview.png`，不受影响。
 * `plugin.json` 与 `package.json` 的 `version` 必须一致，且高于最新 `v*` 标签；`minAppVersion`
   按用到的 API 定（自定义块渲染器需要 3.8.5）。
 * 发布、上架集市都必须先由维护者本人测试并确认；不要自行打标签、建 Release 或改版本号。

@@ -90,7 +90,8 @@ npm run build        # 产出 dist/ 与 package.zip
 `npm run dev` 是 watch 构建，只写仓库根的 `index.js`、`index.css`、`i18n/`，供本机
 `data/plugins/button-in-siyuan` 符号链接直接加载；`npm run build` 才是打包构建。
 图标与预览图分别由 `node scripts/render-icon.mjs`、`node scripts/render-preview.mjs` 生成
-（后者首次需要执行一次 `npx playwright install chromium`）。
+（后者首次需要执行一次 `npx playwright install chromium`）；改了代码编辑器的外观后，先跑
+`node scripts/snapshot-editor.mjs` 把真实 CodeMirror 的样式与 DOM 快照写回 `assets/preview.html`。
 
 ## 许可证
 

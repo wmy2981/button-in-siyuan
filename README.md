@@ -102,6 +102,8 @@ npm run build        # dist/ + package.zip
 local `data/plugins/button-in-siyuan` symlink; `npm run build` is the packaging build.
 Icons and the preview image are rendered with `node scripts/render-icon.mjs` and
 `node scripts/render-preview.mjs` (the latter needs `npx playwright install chromium` once).
+After changing the look of the code editor, run `node scripts/snapshot-editor.mjs` first: it writes the
+real CodeMirror CSS and DOM back into `assets/preview.html`.
 
 ## License
 
