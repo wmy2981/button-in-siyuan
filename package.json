@@ -6,7 +6,7 @@
     "dev": "webpack --mode development",
     "build": "webpack --mode production",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm run build"
+    "check": "node scripts/check-i18n.mjs && npm run typecheck && npm run build"
   },
   "keywords": [
     "siyuan",
