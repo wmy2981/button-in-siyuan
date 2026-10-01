@@ -53,5 +53,8 @@ npm run dev        # watch 构建，只写仓库根的 index.js / index.css / i1
   会直接弄坏页签布局。
 * 块内容认不出是本插件配置（没有合法 `text` / `icon` / `action`）时**不渲染按钮、原样 `<pre>` 兜底**，
   绝不覆盖用户数据。
+* 斜杠菜单项 html 必须带 `bis-slash-item` 标记，`index.scss` 靠它在移动端斜杠菜单里补 flex：思源把
+  插件项 html 塞进 `.keyboard__slash-text`（插件项没有图标槽），去掉标记或那条规则，移动端图标与文字
+  会叠成两行（细节见 `docs/development.md` 的「插入块」）。
 * 脚本既没有 `return`、没有 console 输出、也没有报错时**不弹结果弹窗**（静默执行），别改成每次都弹。
 * README 里的预览图 URL 固定到提交 SHA（jsdelivr 对分支别名缓存 12 小时以上），换图要更新 SHA。

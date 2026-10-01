@@ -50,6 +50,17 @@
     color: var(--b3-theme-on-background);
 }
 
+// 移动端的斜杠菜单是底部键盘工具栏里的一块面板（思源 mobile/util/keyboardToolbar.ts）：
+// 它把插件项 html 整个塞进 .keyboard__slash-text，而插件项没有图标槽 —— 桌面端那套
+// .b3-list-item__first 的 flex 上下文在那里不存在，.b3-list-item__text（display: flow-root）会退化成
+// 块级盒子，自绘图标与文字上下叠成两行（内置项的图标槽是思源自己填的，所以它们是一行）。
+// 这里只针对本插件标记的项把 flex 补回来，图标与文字恢复成内置项那样的一行。
+.keyboard__slash-text > .bis-slash-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
 .bis-icon-picker {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));

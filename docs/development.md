@@ -42,6 +42,11 @@
 * **插入块**：斜杠菜单回调里用 `protyle.insert(protyle.protyle.lute.Md2BlockDOM(markdown), true)`，
   markdown 为 `;;;button-in-siyuan/button\n{JSON}\n;;;`；新建的块默认带 `iconCirclePlay`
   （`DEFAULT_BUTTON_ICON`）。斜杠菜单的图标是本插件自绘的图形（`createButtonBlockIconHtml()`）。
+  移动端的斜杠菜单是底部键盘工具栏里的一块面板，思源会把插件项 html **整个塞进 `.keyboard__slash-text`**
+  （插件项没有图标槽，见 `mobile/util/keyboardToolbar.ts` 的 `getSlashItem` 调用），那里没有
+  `.b3-list-item__first` 的 flex 上下文，`.b3-list-item__text`（`display: flow-root`）会退化成块级盒子，
+  自绘图标与文字上下叠成两行；所以斜杠项 html 带 `bis-slash-item` 标记，`index.scss` 在那个槽位里把
+  flex 补回来（只作用于该槽位，桌面端不受影响）。
 * **编辑入口**：块菜单 > 插件 > 编辑按钮块、按钮上右键（桌面端）、按钮上长按 500ms（移动端，之后补发的
   click 要吞掉，别把操作也执行了）。三条路都走 `context.openEditor(blockID, config)` —— 由插件入口注入，
   这样渲染器不必直接依赖对话框模块（对话框要写回块内容，互相引用会成环）。
