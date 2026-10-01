@@ -1,7 +1,8 @@
-import {Constants, Dialog, fetchPost, getFrontend, openMobileFileById, openTab, platformUtils, showMessage} from "siyuan";
+import {Constants, fetchPost, getFrontend, openMobileFileById, openTab, platformUtils, showMessage} from "siyuan";
 import type {IContext} from "./context";
 import {createIconElement} from "./icon";
 import {createLogger} from "./logger";
+import {runScript} from "./scriptRunner";
 
 const log = createLogger("buttonBlock");
 
@@ -79,23 +80,6 @@ export const updateButtonContent = (blockID: string, config: IButtonConfig) => {
     const written = setContent(content);
     log.debug("写回按钮块", {blockID, written, content});
     return written;
-};
-
-const formatValue = (value: unknown): string => {
-    if (typeof value === "string") {
-        return value;
-    }
-    if (value instanceof Error) {
-        return value.stack || `${value.name}: ${value.message}`;
-    }
-    if (typeof value === "undefined") {
-        return "undefined";
-    }
-    try {
-        return JSON.stringify(value) || String(value);
-    } catch (error) {
-        return String(value);
-    }
 };
 
 /** 取资源扩展名：去掉查询串与锚点后的小写后缀。 */
@@ -208,70 +192,12 @@ const openLink = (context: IContext, link: string) => {
     window.open(address);
 };
 
-const showScriptOutput = (context: IContext, output: string[], result: unknown, failure: unknown) => {
-    const lines = output.slice();
-    if (typeof result !== "undefined") {
-        lines.push(`${context.i18n.returnValue}: ${formatValue(result)}`);
-    }
-    if (typeof failure !== "undefined") {
-        lines.push(`${context.i18n.errorValue}: ${formatValue(failure)}`);
-    }
-    log.debug("打开运行结果弹窗", {consoleLines: output.length, totalLines: lines.length});
-    // 弹窗结构照抄思源的「运行信息」弹窗（config/tabs/aboutTab.ts）
-    const dialog = new Dialog({
-        title: context.i18n.scriptOutput,
-        width: "min(720px, 92vw)",
-        content: `<div class="b3-dialog__content">
-    <pre class="bis-script-output" tabindex="0" data-bis="output"></pre>
-</div>
-<div class="b3-dialog__action">
-    <button type="button" class="b3-button b3-button--text" data-bis="close">${context.i18n.close}</button>
-</div>`,
-    });
-    const outputElement = dialog.element.querySelector<HTMLElement>('[data-bis="output"]');
-    if (outputElement) {
-        outputElement.textContent = lines.join("\n") || context.i18n.noOutput;
-    }
-    dialog.element.querySelector('[data-bis="close"]')?.addEventListener("click", () => dialog.destroy());
-};
-
-/** 执行 JavaScript 操作：捕获 console 输出与返回值，连同错误一起显示在原生弹窗里。 */
-const runScript = async (context: IContext, code: string) => {
-    const output: string[] = [];
-    const originals = {log: console.log, info: console.info, warn: console.warn, error: console.error};
-    const capture = (level: string) => (...args: unknown[]) => {
-        output.push(`${level}: ${args.map(formatValue).join(" ")}`);
-    };
-    log.info("开始执行 JavaScript 操作", {chars: code.length});
-    console.log = capture("log");
-    console.info = capture("info");
-    console.warn = capture("warn");
-    console.error = capture("error");
-    const startedAt = Date.now();
-    let result: unknown;
-    let failure: unknown;
-    try {
-        // 用 async 包装，代码里既可以直接 return，也可以使用 await
-        result = await new Function(`return (async () => {\n${code}\n})()`)();
-    } catch (error) {
-        failure = error;
-    } finally {
-        console.log = originals.log;
-        console.info = originals.info;
-        console.warn = originals.warn;
-        console.error = originals.error;
-    }
-    const detail = {ms: Date.now() - startedAt, consoleLines: output.length, hasResult: typeof result !== "undefined"};
-    if (typeof failure === "undefined") {
-        log.info("JavaScript 操作执行完成", detail);
-    } else {
-        log.error("JavaScript 操作执行出错", {failure, ...detail});
-    }
-    showScriptOutput(context, output, result, failure);
-};
-
-const runAction = (context: IContext, config: IButtonConfig) => {
-    const action = config.action;
+const runAction = (context: IContext, options: {
+    blockID: string;
+    blockElement?: HTMLElement;
+    config: IButtonConfig;
+}) => {
+    const action = options.config.action;
     if (!action) {
         log.debug("按钮没有配置操作，忽略这次点击");
         return;
@@ -280,7 +206,11 @@ const runAction = (context: IContext, config: IButtonConfig) => {
         openLink(context, action.link);
         return;
     }
-    void runScript(context, action.script);
+    void runScript(context, {
+        blockID: options.blockID,
+        blockElement: options.blockElement,
+        code: action.script,
+    });
 };
 
 /** 自定义块渲染器：内容变化时思源会重新调用，返回值用于清理事件监听器。 */
@@ -319,7 +249,7 @@ export const renderButtonBlock = (context: IContext, options: {
     }
     const click = () => {
         log.debug("点击按钮块", {blockID, text: config.text, action: config.action?.type || "none"});
-        runAction(context, config);
+        runAction(context, {blockID, blockElement: options.element, config});
     };
     button.addEventListener("click", click);
     options.element.append(button);

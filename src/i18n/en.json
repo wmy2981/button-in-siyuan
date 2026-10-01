@@ -25,6 +25,8 @@
   "returnValue": "Return value",
   "errorValue": "Error",
   "noOutput": "(no output)",
+  "copy": "Copy",
+  "copied": "Copied",
   "blockNotEditable": "The button block cannot be edited right now",
   "save": "OK",
   "cancel": "Cancel",

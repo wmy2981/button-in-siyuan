@@ -30,6 +30,8 @@ export type II18n = {
     returnValue: string;
     errorValue: string;
     noOutput: string;
+    copy: string;
+    copied: string;
     blockNotEditable: string;
     save: string;
     cancel: string;

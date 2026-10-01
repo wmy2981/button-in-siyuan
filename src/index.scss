@@ -8,11 +8,13 @@
     width: auto;
     min-width: 200px;
 }
-// JavaScript 输出弹窗里的 pre 与思源「运行信息」弹窗保持一致。
+// JavaScript 输出弹窗与思源「运行信息」弹窗保持一致：等宽字体、可滚动、可选中。
+// 每行是一个 div（行内按 ANSI 转义分段上色），行前缀的颜色由脚本输出模块用思源变量设置。
 .bis-script-output {
     margin: 0;
     max-height: 55vh;
     overflow: auto;
+    font-family: var(--b3-font-family-code);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     user-select: text;

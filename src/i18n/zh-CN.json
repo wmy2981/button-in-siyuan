@@ -25,6 +25,8 @@
   "returnValue": "返回值",
   "errorValue": "错误",
   "noOutput": "（无输出）",
+  "copy": "复制",
+  "copied": "已复制",
   "blockNotEditable": "按钮块当前不可编辑",
   "save": "确定",
   "cancel": "取消",
