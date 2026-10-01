@@ -15,7 +15,8 @@ which APIs are available, and gives examples you can paste as-is.
   opens the edit dialog instead, which does not run the script.
 - **Wrapped in async**: the code is placed inside an async function, so `await` works and `return` ends it.
 - **Return value**: the returned value is shown as the "Return value" line of the result dialog (objects are
-  JSON-serialised).
+  JSON-serialised). With **no `return`, no `console` output and no error the dialog does not open at all**
+  (silent run, see 4.15).
 - **Calling the kernel**: `const response = await fetchPost("/api/…", {…})` gives you the kernel response directly
   (`code === 0` means success). The `fetchPost` SiYuan hands to plugins is callback-style; this plugin makes the
   no-callback form awaitable and leaves the callback form exactly as SiYuan behaves. Same for `fetchSyncPost`
@@ -317,6 +318,18 @@ openInputDialog({
     },
 });
 return "waiting for input";
+```
+
+### 4.15 Silent run: no return value, no dialog
+
+When the script returns nothing and produces no `console` output and no error, clicking the button opens
+**no dialog at all** — a "do one thing" button should not be covered by an empty window every time. Use
+`showMessage` if the user should still get a hint; `console` output or a thrown error still opens the dialog,
+so failures never disappear silently.
+
+```javascript
+showMessage("done, no dialog");
+// no return: the result dialog stays closed
 ```
 
 ## 5. Caveats

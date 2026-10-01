@@ -93,6 +93,12 @@ export const runScript = async (context: IContext, options: {
     } else {
         log.error("JavaScript 操作执行出错", {failure, ...detail});
     }
+    // 没有 return、没有 console 输出、也没有报错时保持静默：这种「点一下做件事」的按钮不该每次都被
+    // 一个空弹窗挡住。有输出或出错仍然弹窗，免得错误被吞掉。
+    if (typeof result === "undefined" && typeof failure === "undefined" && entries.length === 0) {
+        log.debug("没有返回值也没有输出，不弹结果弹窗", detail);
+        return;
+    }
     showScriptOutput(context, {
         entries,
         result: typeof result === "undefined" ? undefined : formatValue(result),
