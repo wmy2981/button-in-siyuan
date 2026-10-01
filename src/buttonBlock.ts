@@ -1,4 +1,4 @@
-import {Dialog, openMobileFileById, openTab} from "siyuan";
+import {Constants, Dialog, openMobileFileById, openTab} from "siyuan";
 import type {IContext} from "./context";
 import {createIconElement} from "./icon";
 
@@ -88,6 +88,26 @@ const formatValue = (value: unknown): string => {
     }
 };
 
+/** 取资源扩展名：去掉查询串与锚点后的小写后缀。 */
+const getAssetExtension = (path: string) => {
+    const clean = path.split("#", 1)[0].split("?", 1)[0];
+    const index = clean.lastIndexOf(".");
+    return index === -1 ? "" : clean.substring(index).toLowerCase();
+};
+
+/**
+ * 判断资源能否交给思源的资源页签渲染。宿主的资源页签只支持图片、音视频与 PDF
+ * （HEIF 还要求地址不带 download=true）；不满足前置条件时 openTab 会创建出空页签把布局搞坏，
+ * 所以这里先按同样的条件判断，不满足的改由系统处理。
+ */
+const isAssetTabOpenable = (path: string) => {
+    if (!Constants.SIYUAN_ASSETS_EXTS.includes(getAssetExtension(path))) {
+        return false;
+    }
+    const query = path.split("#", 1)[0].split("?", 2)[1] || "";
+    return !new URLSearchParams(query).getAll("download").some((value) => value.toLowerCase() === "true");
+};
+
 /** 思源内部链接用原生接口打开，其余链接交给系统默认处理（与思源打开链接的行为一致）。 */
 const openLink = (context: IContext, link: string) => {
     const address = link.trim();
@@ -104,11 +124,12 @@ const openLink = (context: IContext, link: string) => {
         return;
     }
     if (address.startsWith("assets/")) {
-        if (context.isMobile) {
-            // 移动端没有资源页签接口，与宿主 iOS 的处理一致，用绝对地址交给外部打开
-            window.open(new URL(address, location.origin).href);
-        } else {
+        if (!context.isMobile && isAssetTabOpenable(address)) {
             openTab({app: context.app, asset: {path: address}});
+        } else {
+            // 移动端没有资源页签接口，思源也打不开的资源（如压缩包）同样交给系统，
+            // 与宿主 iOS 分支一致，用绝对地址交给外部打开
+            window.open(new URL(address, location.origin).href);
         }
         return;
     }
@@ -123,14 +144,15 @@ const showScriptOutput = (context: IContext, output: string[], result: unknown, 
     if (typeof failure !== "undefined") {
         lines.push(`${context.i18n.errorValue}: ${formatValue(failure)}`);
     }
+    // 弹窗结构照抄思源的「运行信息」弹窗（config/tabs/aboutTab.ts）
     const dialog = new Dialog({
         title: context.i18n.scriptOutput,
-        width: context.isMobile ? "92vw" : "560px",
+        width: "min(720px, 92vw)",
         content: `<div class="b3-dialog__content">
-    <pre class="fn__code bis-script-output" data-bis="output"></pre>
+    <pre class="bis-script-output" tabindex="0" data-bis="output"></pre>
 </div>
 <div class="b3-dialog__action">
-    <button class="b3-button b3-button--text" data-bis="close">${context.i18n.close}</button>
+    <button type="button" class="b3-button b3-button--text" data-bis="close">${context.i18n.close}</button>
 </div>`,
     });
     const outputElement = dialog.element.querySelector<HTMLElement>('[data-bis="output"]');
@@ -198,7 +220,9 @@ export const renderButtonBlock = (context: IContext, options: {
     }
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "b3-button";
+    // 与思源原生按钮完全一致的类名（设置面板里的 b3-button b3-button--outline fn__size200）：
+    // 宽度、字号、悬浮与按下效果全部由思源自己的 CSS 提供，插件不再自定义按钮外观
+    button.className = "b3-button b3-button--outline fn__size200";
     button.textContent = config.text || context.i18n.defaultButtonText;
     if (config.icon) {
         button.prepend(createIconElement(config.icon));

@@ -17,7 +17,7 @@
   },
   "description": {
     "default": "Insert native SiYuan buttons into documents, with text, a built-in icon and a link or JavaScript action.",
-    "zh-CN": "在文档中插入思源原生样式的按钮块，可设置文本、内置图标，以及链接跳转或 JavaScript 操作。"
+    "zh-CN": "在文档中插入思源原生样式的按钮块，可设置文本、内置图标，支持链接跳转或 JavaScript 操作。"
   },
   "readme": {
     "default": "README.md",

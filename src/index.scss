@@ -1,12 +1,21 @@
 // 按钮块的自有样式；颜色、字体、圆角一律沿用思源变量，其余只做布局。
-.bis-script-output {
-    max-height: 320px;
-    overflow: auto;
-}
 
-.bis-script-input {
-    min-height: 120px;
-    resize: vertical;
+// 原生按钮（如设置面板里的 <button class="b3-button b3-button--outline fn__size200">）在 14px 的界面字号下渲染。
+// 文档里的自定义块字号是编辑器字号，这里显式对齐界面字号，按钮的宽度、边框、悬浮/按下效果都来自思源自身样式。
+// fn__size200 是固定 200px，长文案会溢出按钮；改成 200px 的宽度下限，短文案与原生按钮像素一致，长文案让按钮变宽。
+.protyle-wysiwyg [data-type="NodeCustomBlock"][data-info^="button-in-siyuan"] .b3-button {
+    font-size: var(--b3-font-size);
+    width: auto;
+    min-width: 200px;
+}
+// JavaScript 输出弹窗里的 pre 与思源「运行信息」弹窗保持一致。
+.bis-script-output {
+    margin: 0;
+    max-height: 55vh;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    user-select: text;
 }
 
 .bis-icon-picker {

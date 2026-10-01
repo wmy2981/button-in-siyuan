@@ -1,6 +1,7 @@
 import {Dialog, showMessage} from "siyuan";
 import type {IButtonConfig, TButtonAction} from "./buttonBlock";
 import {updateButtonContent} from "./buttonBlock";
+import {createCodeEditor} from "./codeEditor";
 import type {IContext} from "./context";
 import {createIconElement, openIconPicker} from "./icon";
 
@@ -15,7 +16,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
     let icon = config.icon;
     const dialog = new Dialog({
         title: i18n.editButtonBlock,
-        width: context.isMobile ? "92vw" : "560px",
+        width: context.isMobile ? "92vw" : "640px",
         content: `<div class="b3-dialog__content">
     <div class="ft__on-surface">${i18n.buttonText}</div>
     <div class="fn__hr--small"></div>
@@ -48,7 +49,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
         <div class="fn__hr"></div>
         <div class="ft__on-surface">${i18n.scriptCode}</div>
         <div class="fn__hr--small"></div>
-        <textarea class="b3-text-field fn__block bis-script-input" data-bis="script" spellcheck="false" placeholder="${i18n.scriptCodePlaceholder}"></textarea>
+        <div data-bis="script-editor"></div>
         <div class="fn__hr--small"></div>
         <div class="ft__on-surface ft__smaller">${i18n.scriptCodeTip}</div>
     </div>
@@ -73,7 +74,11 @@ export const openButtonBlockEditor = (context: IContext, options: {
     const linkFieldElement = field<HTMLElement>("link-field");
     const linkElement = field<HTMLInputElement>("link");
     const scriptFieldElement = field<HTMLElement>("script-field");
-    const scriptElement = field<HTMLTextAreaElement>("script");
+    const scriptEditor = createCodeEditor({
+        value: config.action?.type === "script" ? config.action.script : "",
+        placeholder: i18n.scriptCodePlaceholder,
+    });
+    field<HTMLElement>("script-editor").append(scriptEditor.element);
 
     const updateIconElement = () => {
         iconElement.replaceChildren();
@@ -91,7 +96,6 @@ export const openButtonBlockEditor = (context: IContext, options: {
     textElement.value = config.text;
     actionElement.value = config.action?.type || "";
     linkElement.value = config.action?.type === "link" ? config.action.link : "";
-    scriptElement.value = config.action?.type === "script" ? config.action.script : "";
     updateIconElement();
     updateActionFields();
     actionElement.addEventListener("change", updateActionFields);
@@ -120,10 +124,10 @@ export const openButtonBlockEditor = (context: IContext, options: {
             }
             action = {type: "link", link};
         } else if (actionElement.value === "script") {
-            const script = scriptElement.value;
+            const script = scriptEditor.getValue();
             if (!script.trim()) {
                 showMessage(i18n.actionContentRequired);
-                scriptElement.focus();
+                scriptEditor.focus();
                 return;
             }
             action = {type: "script", script};
