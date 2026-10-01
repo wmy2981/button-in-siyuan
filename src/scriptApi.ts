@@ -49,6 +49,37 @@ import {createLogger} from "./logger";
 
 const log = createLogger("scriptApi");
 
+/** 内核响应：`fetchPost` / `fetchSyncPost` / `fetchGet` 拿到的结构。 */
+type TKernelResponse = {code?: number; msg?: string; data?: any};
+
+/**
+ * 宿主的 `fetchPost` 是回调式的：响应只从第三个参数的回调里出去，函数本身返回的 Promise
+ * 解析成 `undefined`（`app/src/util/fetch.ts` 里最后一个 then 没有返回值）。脚本里写
+ * `const response = await fetchPost(...)` 会拿到 `undefined`，接着 `response.code` 就报
+ * 「Cannot read properties of undefined」。
+ *
+ * 所以注入给脚本的是这一层包装：给了回调就完全走宿主的实现（保持原语义），
+ * 没给回调就改用同样可 await 的 `fetchSyncPost` 拿响应。
+ */
+const scriptFetchPost = (url: string, data?: unknown, cb?: (response: TKernelResponse) => void,
+                         headers?: Record<string, string>) => {
+    if (typeof cb === "function") {
+        return fetchPost(url, data, cb, headers);
+    }
+    return fetchSyncPost(url, data, headers);
+};
+
+/** `fetchGet` 同样是回调式的（返回 `void`），这里做与 `fetchPost` 一致的补全。 */
+const scriptFetchGet = (url: string, cb?: (response: TKernelResponse | string) => void) => {
+    if (typeof cb === "function") {
+        return fetchGet(url, cb);
+    }
+    return fetch(url, {cache: "no-store"}).then((response) =>
+        (response.headers.get("content-type") || "").indexOf("application/json") > -1
+            ? response.json()
+            : response.text());
+};
+
 /**
  * 按钮的 JavaScript 操作能直接调用的思源接口。
  *
@@ -89,9 +120,9 @@ export const createScriptScope = (options: {
         Menu,
         Setting,
         Plugin,
-        fetchPost,
+        fetchPost: scriptFetchPost,
         fetchSyncPost,
-        fetchGet,
+        fetchGet: scriptFetchGet,
         // 界面与页签
         showMessage,
         hideMessage,

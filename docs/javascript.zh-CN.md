@@ -13,6 +13,9 @@
 - **触发时机**：点击按钮时执行。按钮上右键（桌面端）或长按（移动端）打开的是编辑窗口，不会执行脚本。
 - **async 包装**：整段代码被包进一个 async 函数，所以可以直接用 `await`，也可以用 `return` 结束。
 - **返回值**：`return` 的值会显示在结果弹窗的「返回值」一行（对象会被 JSON 序列化）。
+- **调用内核接口**：`const response = await fetchPost("/api/…", {…})` 直接拿到内核响应（`code` 为 `0` 才算成功）。
+  思源给插件的 `fetchPost` 原本是回调式的，本插件把「不传回调」的写法补成可 `await`；传了回调就仍按思源
+  原本的回调方式走，`fetchSyncPost` / `fetchGet` 同理。
 - **console 输出**：`console.log / info / debug / warn / error / table / dir` 会被收集，按级别显示在弹窗里。
 - **错误**：脚本里抛出的异常会显示在弹窗的「错误」一行，不会影响思源运行。
 - **颜色**：输出支持 ANSI 颜色转义（见第 3 节）。
@@ -31,7 +34,7 @@
 | `Lute` | Lute 解析器（`Lute.New().Md2BlockDOM(md)` 之类） |
 | `Constants` | 思源的常量表（扩展名列表、通道名等） |
 | `platformUtils` | 平台工具：`copyPlainText`、`readText`、`isMac`、`openByMobile` 等 |
-| `fetchPost` / `fetchSyncPost` / `fetchGet` | 内核 HTTP 接口，最常用的一个 |
+| `fetchPost` / `fetchSyncPost` / `fetchGet` | 内核 HTTP 接口，最常用的一个；不传回调时可以直接 `await` 到响应 |
 | `showMessage` / `hideMessage` | 右下角提示 |
 | `confirm` | 确认对话框 |
 | `openInputDialog` | 让用户输入一段文本的对话框 |
@@ -311,6 +314,9 @@ return "等待输入";
 ## 5. 注意事项
 
 - **写操作要幂等**：按钮每次点击都会执行，追加内容、新建文档之类的操作最好带上时间戳或先判断。
+- **`fetchPost` 的两种写法**：`await fetchPost(url, data)` 拿响应；`fetchPost(url, data, cb)` 与思源原生一致，
+  走回调。回调只在 `code >= 0` 时才会被调用（思源内部对 `code < 0` 只弹个提示就结束），想自己处理错误响应
+  就用 `await` 的写法。
 - **只读状态**：发布服务、只读模式的文档里，写接口会被内核拒绝（`code` 非 0，提示「只读」）；
   可以先看 `window.siyuan.config.readonly` 或 `protyle.disabled`。
 - **移动端差异**：`getActiveTab`、`getAllModels`、`getAllTabs` 只在桌面端存在（移动端为 `undefined`）；
@@ -322,7 +328,7 @@ return "等待输入";
 
 ## 6. 相关源码
 
-- 本插件：`src/scriptApi.ts`（注入清单）、`src/scriptRunner.ts`（执行与 console 捕获）、
+- 本插件：`src/scriptApi.ts`（注入清单，含可 `await` 的 `fetchPost` / `fetchGet`）、`src/scriptRunner.ts`（执行与 console 捕获）、
   `src/scriptOutput.ts`（结果弹窗、ANSI 颜色、复制）。
 - 思源：`app/src/plugin/API.ts`（插件 API 全集，本插件按它注入）、`app/src/util/fetch.ts`（`fetchPost`）、
   `kernel/api/`（各 HTTP 接口的实现）、`app/src/menus/index.ts`（输入框的原生右键菜单）。

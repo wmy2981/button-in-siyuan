@@ -16,6 +16,10 @@ which APIs are available, and gives examples you can paste as-is.
 - **Wrapped in async**: the code is placed inside an async function, so `await` works and `return` ends it.
 - **Return value**: the returned value is shown as the "Return value" line of the result dialog (objects are
   JSON-serialised).
+- **Calling the kernel**: `const response = await fetchPost("/api/…", {…})` gives you the kernel response directly
+  (`code === 0` means success). The `fetchPost` SiYuan hands to plugins is callback-style; this plugin makes the
+  no-callback form awaitable and leaves the callback form exactly as SiYuan behaves. Same for `fetchSyncPost`
+  and `fetchGet`.
 - **console output**: `console.log / info / debug / warn / error / table / dir` is collected and listed per level.
 - **Errors**: a thrown exception is shown as the "Error" line; it never breaks SiYuan.
 - **Colour**: the output understands ANSI colour escapes (see section 3).
@@ -34,7 +38,7 @@ which APIs are available, and gives examples you can paste as-is.
 | `Lute` | The Lute parser (`Lute.New().Md2BlockDOM(md)` and so on) |
 | `Constants` | SiYuan constants (asset extensions, channel names) |
 | `platformUtils` | Platform helpers: `copyPlainText`, `readText`, `isMac`, `openByMobile`, … |
-| `fetchPost` / `fetchSyncPost` / `fetchGet` | Kernel HTTP API — the one you will use most |
+| `fetchPost` / `fetchSyncPost` / `fetchGet` | Kernel HTTP API — the one you will use most; without a callback you can `await` the response |
 | `showMessage` / `hideMessage` | The bottom-right toast |
 | `confirm` | Confirmation dialog |
 | `openInputDialog` | A dialog that asks the user for a piece of text |
@@ -317,6 +321,9 @@ return "waiting for input";
 
 - **Keep writes idempotent**: the script runs on every click, so appending or creating should be guarded by a
   timestamp or a check.
+- **Two ways to call `fetchPost`**: `await fetchPost(url, data)` resolves with the response; `fetchPost(url, data, cb)`
+  behaves exactly like SiYuan's own and uses the callback. The callback only fires when `code >= 0` (SiYuan itself
+  just shows a toast for `code < 0`), so use the `await` form when you want to handle error responses yourself.
 - **Read-only state**: in publish mode or a read-only document, write APIs are rejected by the kernel
   (`code` is not 0). You can check `window.siyuan.config.readonly` or `protyle.disabled` first.
 - **Mobile differences**: `getActiveTab`, `getAllModels` and `getAllTabs` only exist on desktop (`undefined` on
@@ -328,7 +335,8 @@ return "waiting for input";
 
 ## 6. Related sources
 
-- This plugin: `src/scriptApi.ts` (the injected list), `src/scriptRunner.ts` (execution and console capture),
+- This plugin: `src/scriptApi.ts` (the injected list, including the awaitable `fetchPost` / `fetchGet`),
+  `src/scriptRunner.ts` (execution and console capture),
   `src/scriptOutput.ts` (result dialog, ANSI colours, copy).
 - SiYuan: `app/src/plugin/API.ts` (the full plugin API that this plugin mirrors), `app/src/util/fetch.ts`
   (`fetchPost`), `kernel/api/` (the HTTP handlers), `app/src/menus/index.ts` (native context menu for inputs).
