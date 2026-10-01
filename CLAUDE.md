@@ -92,6 +92,8 @@ node scripts/snapshot-editor.mjs  # 把真实 CodeMirror 的 CSS/DOM 快照写�
   `response.code` 直接报错，所以 `src/scriptApi.ts` 里做了补全 —— 传了回调走宿主原实现，没传回调改用
   `fetchSyncPost` / 原生 `fetch` 拿响应。改这里时别把包装去掉。
   结果弹窗按级别给前缀配色，正文支持 ANSI 转义（16 色/256 色/真彩/加粗下划线等），复制时去掉转义。
+  **没有 `return`、没有 console 输出、也没有报错时不弹结果弹窗**（静默执行，「点一下做件事」的按钮不该
+  每次都被空弹窗挡住）；有输出或报错照常弹窗，别把错误吞掉。改动这条要同步 `docs/javascript*.md` 的 4.15。
 * **资源链接的坑**：`openTab({asset})` 只在资源是图片/音视频/PDF（宿主的
   `Constants.SIYUAN_ASSETS_EXTS`）且不带 `download=true` 时才会建页签，其他资源会让宿主的
   `newTab` 返回 `undefined`，`wnd.addTab(undefined)` 直接把页签布局搞坏（思源整窗报错）。
