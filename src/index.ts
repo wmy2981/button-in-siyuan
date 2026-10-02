@@ -1,11 +1,14 @@
 import {getFrontend, Plugin} from "siyuan";
 import type {IEventBusMap, Protyle} from "siyuan";
+import {installAgentSkill, removeAgentSkill} from "./agentSkill";
 import {createButtonBlockIconHtml} from "./buttonIcon";
 import {BUTTON_BLOCK_TYPE, DEFAULT_BUTTON_ICON, parseButtonConfig, renderButtonBlock, serializeButtonConfig} from "./buttonBlock";
 import type {IContext} from "./context";
 import {openButtonBlockEditor} from "./editDialog";
 import type {II18n} from "./i18nKeys";
 import {createLogger} from "./logger";
+import type {ISettings} from "./settings";
+import {DEFAULT_SETTINGS, loadSettings} from "./settings";
 import "./index.scss";
 
 const log = createLogger("plugin");
@@ -45,6 +48,7 @@ const parseBlockInfo = (info: string) => {
 
 export default class ButtonInSiYuan extends Plugin {
     private isMobile = false;
+    private settings: ISettings = {...DEFAULT_SETTINGS};
 
     /** 每次取值都反映当前的 app 与 i18n，避免在生命周期之外持有宿主对象。 */
     private get context(): IContext {
@@ -83,11 +87,28 @@ export default class ButtonInSiYuan extends Plugin {
             blockInfo: encodeBlockInfo(this.name, BUTTON_BLOCK_TYPE),
             slashFilter: this.protyleSlash[0].filter,
         });
+        // 设置与技能都要读盘/走内核，放到注册之后再跑：渲染器与菜单项必须第一时间就位
+        void this.initSettings();
     }
 
     onunload() {
         this.eventBus.off("click-blockicon", this.blockIconMenu);
         log.info("plugin unloaded");
+    }
+
+    /**
+     * 从工作空间移除插件时把写给 Agent 的技能删掉，别留下一个指向已卸载插件的技能。
+     * 只禁用/重载不会走到这里（见 siyuan 的 plugin/lifecycle.ts），那种情况下技能会留在原处。
+     */
+    uninstall() {
+        return removeAgentSkill();
+    }
+
+    private async initSettings() {
+        this.settings = await loadSettings(this);
+        if (this.settings.agentSkill) {
+            await installAgentSkill();
+        }
     }
 
     /**

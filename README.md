@@ -105,6 +105,21 @@ JavaScript), <kbd>Copy</kbd> copies it to the clipboard.
 * The icon list comes from the icons loaded in the current interface, so a third-party icon package
   changes what you can pick.
 
+## For agents
+
+The plugin writes a skill for SiYuan's agent: `siyuan-button-block`, installed at
+`data/storage/ai/agent/skills/siyuan-button-block/SKILL.md`. It explains what a button block is, how the
+block payload (`{"text","icon","color","action"}`) is filled in, how to create and change one through
+SiYuan's block APIs, and it points at the two documents shipped with the plugin:
+
+* [docs/javascript.md](./docs/javascript.md) — the SiYuan APIs a script may call, how output and errors
+  are shown, and ready-to-run examples;
+* [docs/icons.md](./docs/icons.md) — every built-in SiYuan icon id, plus a table for picking one by intent.
+
+The skill is written by default; switching it off in the plugin settings removes it, and removing the
+plugin from the workspace removes it too. When SiYuan's AI features are unavailable the plugin only
+logs a line and carries on.
+
 ## Development
 
 ```bash

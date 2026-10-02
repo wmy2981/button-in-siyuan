@@ -19,6 +19,8 @@
 | `src/scriptApi.ts` | 脚本能直接调用的思源接口清单（注入进 `new Function` 的形参） |
 | `src/scriptFile.ts` | 「JavaScript 文件」操作的读写：assets/ 脚本的读写/改名/删除、云端脚本的下载与取名规则 |
 | `src/scriptFileDialog.ts` | 编辑 assets/ 下脚本文件的对话框（与内联脚本同一个 CodeMirror 编辑器） |
+| `src/agentSkill.ts` | 把「操作按钮块」的技能写给 Agent（写入/更新/删除工作区技能目录） |
+| `src/settings.ts` | 插件设置的读取、校验（`mergeSettings`）与回写校验 |
 | `src/scriptOutput.ts` | 结果弹窗：分级前缀、ANSI 彩色输出、复制纯文本 |
 | `src/scriptDocs.ts` | 内置 JavaScript 文档的弹窗（按界面语言选文档，用 Lute 渲染） |
 | `src/icon.ts` | 图标元素、图标列表收集、图标选择对话框 |
@@ -123,6 +125,16 @@
 * **i18n**：所有面向用户的文案都走 `src/i18n/*.json`（键类型在 `src/i18nKeys.ts`）；思源自带的文案
   直接取 `window.siyuan.languages`（原生右键菜单就是这么做的）。`npm run check` 会跑
   `scripts/check-i18n.mjs`，两份文案必须同键、非空，加键时别忘了另一份。
+* **Agent 技能**：`src/agentSkill.ts` 把 `docs/skill.md`（构建时作为字符串内嵌）通过
+  `/api/ai/agent/saveSkill` 写成 `data/storage/ai/agent/skills/siyuan-button-block/SKILL.md`
+  （`SaveSkill` 自己建目录；技能目录与 frontmatter 里的 name 都由 `AGENT_SKILL_NAME` 决定）。
+  技能正文要求 Agent 去读工作区相对路径 `data/plugins/button-in-siyuan/docs/javascript.md` 与
+  `docs/icons.md` —— 这两个文件随包发布，路径写死在技能里，所以包内 docs/ 的位置不能改。
+  写入前先 `getSkill` 比对，内容一致时一个字节都不写（用户改过的文件也不会被无声覆盖）；
+  设置里关掉开关或**从工作空间移除插件**时 `removeSkill`；只禁用/重载不会调用 `uninstall`
+  （见宿主的 `plugin/lifecycle.ts`），那种情况下技能留在原处。AI 功能被关掉时这几个接口直接失败，
+  只记日志、不弹提示。改技能内容或图标清单时，`docs/skill.md` 与 `docs/icons.md` 是唯一来源，
+  没有生成脚本（图标清单按思源版本手工维护，见该文件抬头）。
 * **内置文档**：`docs/*.md` 由 webpack 的 `asset/source` 内嵌进 index.js，编辑窗口里的入口用
   `Lute.New().ProtylePreviewStr("", markdown)`（思源的富文本预览渲染器）转成 HTML，放进
   `.b3-typography` 容器，再调 `ProtyleMethod.highlightRender` 让代码块按 `data-language` 上色

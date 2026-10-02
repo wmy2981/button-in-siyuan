@@ -89,6 +89,19 @@
 * JavaScript 操作没有沙箱，权限与用户自己的代码片段相同，只运行可信代码。
 * 图标列表来自当前界面已加载的图标，使用第三方图标包时可选图标会随之变化。
 
+## 给 Agent 用
+
+插件会把一份技能（Skill）写给思源的 Agent：`siyuan-button-block`，落在工作空间的
+`data/storage/ai/agent/skills/siyuan-button-block/SKILL.md`。技能里说明按钮块是什么、块内容
+（`{"text","icon","color","action"}`）怎么填、怎么用思源的块接口创建与修改，并指向插件自带的
+两份文档：
+
+* [docs/javascript.md](./docs/javascript.md)：JavaScript 操作能直接调用的思源接口、输出与错误规则、可直接运行的示例；
+* [docs/icons.md](./docs/icons.md)：思源内置图标的全部 id，以及按用途挑图标的对照表。
+
+技能默认写入；在插件设置里关掉后会把这个技能删掉，从工作空间移除插件时也会一起删掉。
+AI 功能未启用时这几个接口不可用，插件只在控制台记一条日志。
+
 ## 开发
 
 ```bash
