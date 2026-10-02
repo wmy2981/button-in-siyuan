@@ -17,6 +17,8 @@
 | `src/codeEditor.ts` | JavaScript 代码编辑器（CodeMirror，配色取自用户的代码高亮主题） |
 | `src/scriptRunner.ts` | 执行脚本：注入接口、接管 console、把结果交给结果弹窗 |
 | `src/scriptApi.ts` | 脚本能直接调用的思源接口清单（注入进 `new Function` 的形参） |
+| `src/scriptFile.ts` | 「JavaScript 文件」操作的读写：assets/ 脚本的读写/改名/删除、云端脚本的下载与取名规则 |
+| `src/scriptFileDialog.ts` | 编辑 assets/ 下脚本文件的对话框（与内联脚本同一个 CodeMirror 编辑器） |
 | `src/scriptOutput.ts` | 结果弹窗：分级前缀、ANSI 彩色输出、复制纯文本 |
 | `src/scriptDocs.ts` | 内置 JavaScript 文档的弹窗（按界面语言选文档，用 Lute 渲染） |
 | `src/icon.ts` | 图标元素、图标列表收集、图标选择对话框 |
@@ -34,9 +36,9 @@
   `data-info` 能解析出相同包名与块类型时出现。
 * **块内容**：`data-content` 里是单行 JSON（`{"text","icon","color","action"}`，`color` 是思源内置
   正文颜色（`--b3-font-colorN`）的序号 1..12、缺省表示不覆写，`action` 为
-  `{"type":"link","link"}` 或 `{"type":"script","script"}`）。内容为空按默认配置渲染；内容不是本插件
-  配置（认不出 `text`/`icon`/`color`/合法 `action`）时不渲染按钮、原样 `<pre>` 兜底，块菜单也不提供编辑入口，
-  绝不覆盖用户自己的数据。
+  `{"type":"link","link"}`、`{"type":"script","script"}` 或 `{"type":"file","file"}`）。内容为空按默认
+  配置渲染；内容不是本插件配置（认不出 `text`/`icon`/`color`/合法 `action`）时不渲染按钮、原样 `<pre>`
+  兜底，块菜单也不提供编辑入口，绝不覆盖用户自己的数据。
 * **写回块**：只能通过宿主传给渲染器的 `setContent`（渲染器按块 ID 记下它，见 `updateButtonContent`）：
   宿主会做兜底、写回 `data-content`、提交事务并**强制重新渲染**。自己改 `data-content` 再提交事务
   不会刷新界面 —— `updateTransaction` 打的 `data-editing` 标记会让事务保留本地 DOM，渲染器不会被重跑。
@@ -100,6 +102,17 @@
   结果弹窗按级别给前缀配色，正文支持 ANSI 转义（16 色/256 色/真彩/加粗下划线等），复制时去掉转义。
   **没有 `return`、没有 console 输出、也没有报错时不弹结果弹窗**（静默执行，「点一下做件事」的按钮不该
   每次都被空弹窗挡住）；有输出或报错照常弹窗，别把错误吞掉。改动这条要同步 `docs/javascript*.md` 的 4.15。
+* **JavaScript 文件操作**（`{"type":"file","file"}`）：点按钮时先把代码取回来 —— `assets/` 下的本地文件
+  走 `/api/file/getFile`，http(s) 地址用 `fetch` 现下载（每次点击都重新下）—— 再交给与内联脚本同一个
+  `runScript`，所以 `console`、返回值、错误、静默规则完全一致。文件取不到时只提示、不执行任何代码。
+  **这几个内核文件接口没有用宿主的 `fetchPost`**：`getFile` 成功时回裸字节、出错才是 JSON 信封
+  （HTTP 202，契约里 `GetFile.ErrorStatus`），而宿主对 `code < 0` 的响应只弹提示、不调回调，
+  403/404 拿不到 —— 「文件不存在」正是新建脚本前要判断的；写接口用 `fetchSyncPost` 并把它第四个参数
+  置 false 关掉 `processMessage`，自己按 `code` 决定提示。新建/重命名只接受能通过内核
+  `FilterUploadFileName` 的文件名（先在本地拦一遍，见 `scriptFile.ts` 的正则），都用 `.js` 结尾。
+  **云端脚本必须二次确认**（`editDialog.ts` 的 `askAboutRemoteScript`）：警告窗口里可以放弃、直接使用，
+  或下载到 `assets/<NodeID>.js` 之后与云端再无关系；只有本地 assets 文件才提供编辑/改名/删除。
+  脚本文件的读写一律不走 `plugin.loadData` —— 那是插件私有数据，位置与 assets 无关。
 * **资源链接的坑**：`openTab({asset})` 只在资源是图片/音视频/PDF（宿主的
   `Constants.SIYUAN_ASSETS_EXTS`）且不带 `download=true` 时才会建页签，其他资源会让宿主的
   `newTab` 返回 `undefined`，`wnd.addTab(undefined)` 直接把页签布局搞坏（思源整窗报错）。

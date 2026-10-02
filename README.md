@@ -18,9 +18,11 @@ edited in a native SiYuan dialog.
   plus icons provided by icon packages and plugins), with a search box.
 * The button colour is optional: the frame, the text and the icon share one colour taken from
   SiYuan's built-in palette; the default stays SiYuan's native blue.
-* A button action is optional and is one of: open a link, or run JavaScript.
+* A button action is optional and is one of: open a link, run JavaScript, or run a JavaScript file
+  (a local file under `assets/`, or an http(s) address).
 * The JavaScript editor is CodeMirror, with line numbers, syntax highlighting, bracket matching and
-  completion; its colors follow SiYuan's code highlighting setting.
+  completion; its colors follow SiYuan's code highlighting setting. Editing a script file under
+  `assets/` uses the very same editor.
 * Every dialog, menu and form control is native SiYuan UI.
 
 ## Install
@@ -49,9 +51,17 @@ Requires SiYuan 3.8.6 or later.
 | Button text | Button label, plain text. Empty input falls back to the default text. |
 | Button icon | One SVG icon of the current interface; can also be unset. |
 | Button colour | Colours the frame, the text and the icon together, picked from SiYuan's built-in palette; the default is SiYuan's native blue. |
-| Button action | `None`, `Open link` or `JavaScript`. Only one action is used. |
+| Button action | `None`, `Open link`, `JavaScript` or `JavaScript file`. Only one action is used. |
 | Link address | Shown for `Open link`; required for that action. |
 | JavaScript code | Shown for `JavaScript`; required for that action. |
+| JavaScript file path | Shown for `JavaScript file`; required for that action. It can be a local `.js` file under `assets/` or an http(s) address. The four icon buttons next to it create, edit, rename and delete the file, and they only apply to local files. |
+
+Once the `JavaScript file` path is set, every click reads that file again (an http(s) address is
+downloaded again), so changing the file does not require editing the button. Confirming a remote
+address first opens a warning dialog: the file may change without you noticing while the script can
+read and write your notes. You can give up, use it as is, or download it into `assets/` (with a
+random name) first — after that the button has nothing to do with the web file any more. Deleting a
+script file under `assets/` asks for confirmation and then clears the path input.
 
 ## Link addresses
 

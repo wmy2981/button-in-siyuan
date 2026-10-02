@@ -1,13 +1,90 @@
-import {Dialog, showMessage} from "siyuan";
+import {confirm, Dialog, openInputDialog, showMessage} from "siyuan";
 import type {IButtonConfig, TButtonAction} from "./buttonBlock";
 import {BUTTON_COLOR_INDEXES, updateButtonContent} from "./buttonBlock";
 import {createCodeEditor} from "./codeEditor";
 import type {IContext} from "./context";
 import {createIconElement, openIconPicker} from "./icon";
 import {createLogger} from "./logger";
+import {
+    ASSET_PREFIX,
+    downloadScriptToAssets,
+    isLocalScript,
+    isRemoteScript,
+    removeWorkspaceFile,
+    renameWorkspaceFile,
+    toAssetScriptPath,
+    workspaceFileExists,
+    writeWorkspaceFile,
+} from "./scriptFile";
+import {openScriptFileEditor} from "./scriptFileDialog";
 import {openScriptDocs} from "./scriptDocs";
 
 const log = createLogger("editDialog");
+
+/**
+ * 云端脚本的二次确认（issue #2）：强调引入云端文件可能不安全，给出三条路 —— 放弃、直接使用，
+ * 或者下载到 assets/（随机文件名）之后与云端再无关系。
+ *
+ * 返回要继续使用的脚本路径（「直接使用」就是原地址，「下载到本地」是下载后的本地路径），
+ * 放弃或直接关掉窗口时返回 undefined。
+ */
+const askAboutRemoteScript = (context: IContext, url: string) => new Promise<string | undefined>((resolve) => {
+    const {i18n} = context;
+    let settled = false;
+    const finish = (path: string | undefined) => {
+        if (!settled) {
+            settled = true;
+            resolve(path);
+        }
+    };
+    const dialog = new Dialog({
+        title: i18n.cloudWarningTitle,
+        width: context.isMobile ? "92vw" : "560px",
+        content: `<div class="b3-dialog__content">
+    <div class="ft__breakword">${i18n.cloudWarningTip}</div>
+    <div class="fn__hr"></div>
+    <div class="ft__on-surface ft__breakword" data-bis="url"></div>
+</div>
+<div class="b3-dialog__action">
+    <button class="b3-button b3-button--cancel" data-bis="cancel">${i18n.cancel}</button>
+    <div class="fn__space"></div>
+    <button class="b3-button b3-button--outline" data-bis="remote">${i18n.cloudUseAnyway}</button>
+    <div class="fn__space"></div>
+    <button class="b3-button b3-button--text" data-bis="local">${i18n.cloudDownloadLocal}</button>
+</div>`,
+        destroyCallback: () => finish(undefined),
+    });
+    // 地址是用户填的，走 textContent 而不是拼进 HTML
+    const urlElement = dialog.element.querySelector<HTMLElement>('[data-bis="url"]');
+    if (urlElement) {
+        urlElement.textContent = url;
+    }
+    dialog.element.querySelector('[data-bis="cancel"]')?.addEventListener("click", () => {
+        log.info("the remote script was rejected");
+        finish(undefined);
+        dialog.destroy();
+    });
+    dialog.element.querySelector('[data-bis="remote"]')?.addEventListener("click", () => {
+        log.info("the remote script is used as is", {url});
+        finish(url);
+        dialog.destroy();
+    });
+    const localElement = dialog.element.querySelector<HTMLButtonElement>('[data-bis="local"]');
+    localElement?.addEventListener("click", async () => {
+        // 下载期间禁用按钮，避免点两次下出两份文件
+        localElement.disabled = true;
+        try {
+            const path = await downloadScriptToAssets(url);
+            showMessage(`${i18n.cloudDownloaded} ${path}`);
+            finish(path);
+            dialog.destroy();
+        } catch (error) {
+            log.error("failed to download the remote script", {url, error});
+            showMessage(i18n.cloudDownloadFailed);
+            localElement.disabled = false;
+        }
+    });
+});
 
 /** 打开「编辑按钮块」对话框，确定后由宿主的自定义块渲染器写回并重新渲染。 */
 export const openButtonBlockEditor = (context: IContext, options: {
@@ -54,6 +131,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
         <option value="">${i18n.actionNone}</option>
         <option value="link">${i18n.actionLink}</option>
         <option value="script">${i18n.actionScript}</option>
+        <option value="file">${i18n.actionFile}</option>
     </select>
     <div data-bis="link-field">
         <div class="fn__hr"></div>
@@ -72,6 +150,24 @@ export const openButtonBlockEditor = (context: IContext, options: {
         <div class="ft__on-surface ft__smaller">${i18n.scriptCodeTip}</div>
         <div class="fn__hr--small"></div>
         <button type="button" class="bis-docs-link" data-bis="docs">${i18n.scriptDocs}</button>
+    </div>
+    <div data-bis="file-field">
+        <div class="fn__hr"></div>
+        <div class="ft__on-surface">${i18n.scriptFile}</div>
+        <div class="fn__hr--small"></div>
+        <div class="fn__flex">
+            <input class="b3-text-field fn__flex-1" data-bis="file" spellcheck="false" placeholder="${i18n.scriptFilePlaceholder}">
+            <div class="fn__space"></div>
+            <button type="button" class="b3-button b3-button--outline b3-button--icon b3-tooltips b3-tooltips__n" data-bis="file-create" aria-label="${i18n.scriptFileCreate}"><svg class="svg"><use xlink:href="#iconAdd"></use></svg></button>
+            <div class="fn__space"></div>
+            <button type="button" class="b3-button b3-button--outline b3-button--icon b3-tooltips b3-tooltips__n" data-bis="file-edit" aria-label="${i18n.scriptFileEdit}"><svg class="svg"><use xlink:href="#iconCode"></use></svg></button>
+            <div class="fn__space"></div>
+            <button type="button" class="b3-button b3-button--outline b3-button--icon b3-tooltips b3-tooltips__n" data-bis="file-rename" aria-label="${i18n.scriptFileRename}"><svg class="svg"><use xlink:href="#iconEdit"></use></svg></button>
+            <div class="fn__space"></div>
+            <button type="button" class="b3-button b3-button--outline b3-button--icon b3-tooltips b3-tooltips__n" data-bis="file-remove" aria-label="${i18n.scriptFileRemove}"><svg class="svg"><use xlink:href="#iconTrashcan"></use></svg></button>
+        </div>
+        <div class="fn__hr--small"></div>
+        <div class="ft__on-surface ft__smaller">${i18n.scriptFileTip}</div>
     </div>
 </div>
 <div class="b3-dialog__action">
@@ -95,6 +191,8 @@ export const openButtonBlockEditor = (context: IContext, options: {
     const linkFieldElement = field<HTMLElement>("link-field");
     const linkElement = field<HTMLInputElement>("link");
     const scriptFieldElement = field<HTMLElement>("script-field");
+    const fileFieldElement = field<HTMLElement>("file-field");
+    const fileElement = field<HTMLInputElement>("file");
     const scriptEditor = createCodeEditor({
         value: config.action?.type === "script" ? config.action.script : "",
         placeholder: i18n.scriptCodePlaceholder,
@@ -136,11 +234,13 @@ export const openButtonBlockEditor = (context: IContext, options: {
     const updateActionFields = () => {
         linkFieldElement.classList.toggle("fn__none", actionElement.value !== "link");
         scriptFieldElement.classList.toggle("fn__none", actionElement.value !== "script");
+        fileFieldElement.classList.toggle("fn__none", actionElement.value !== "file");
     };
 
     textElement.value = config.text;
     actionElement.value = config.action?.type || "";
     linkElement.value = config.action?.type === "link" ? config.action.link : "";
+    fileElement.value = config.action?.type === "file" ? config.action.file : "";
     updateIconElement();
     updateColorElement();
     updateActionFields();
@@ -160,6 +260,107 @@ export const openButtonBlockEditor = (context: IContext, options: {
         updateIconElement();
         log.debug("cleared the button icon");
     });
+    /**
+     * 取输入框里的本地脚本路径。云端地址与空值都只提示不动作：编辑、重命名、删除只对
+     * assets/ 下的 .js 文件开放（云端文件插件没有权限也不该改）。
+     */
+    const localScriptPath = () => {
+        const path = fileElement.value.trim();
+        if (!isLocalScript(path)) {
+            log.warn("the script file action needs a local assets/ script", {path});
+            showMessage(i18n.scriptFileNeeded);
+            fileElement.focus();
+            return;
+        }
+        return path;
+    };
+    const reportScriptFailure = (error: unknown, detail: Record<string, unknown>) => {
+        log.error("script file operation failed", {...detail, error});
+        showMessage(error instanceof Error && error.message ? error.message : i18n.scriptFileFailed);
+    };
+    field<HTMLButtonElement>("file-create").addEventListener("click", () => {
+        openInputDialog({
+            title: i18n.scriptFileCreate,
+            label: i18n.scriptFileName,
+            value: "button-action.js",
+            onConfirm: async (value, inputDialog) => {
+                const path = toAssetScriptPath(value);
+                if (!path) {
+                    showMessage(i18n.scriptFileInvalidName);
+                    return;
+                }
+                try {
+                    if (await workspaceFileExists(path)) {
+                        showMessage(i18n.scriptFileExists);
+                        return;
+                    }
+                    await writeWorkspaceFile(path, "");
+                } catch (error) {
+                    reportScriptFailure(error, {path, action: "create"});
+                    return;
+                }
+                fileElement.value = path;
+                log.info("created a script file", {path});
+                inputDialog.destroy();
+            },
+        });
+    });
+    field<HTMLButtonElement>("file-edit").addEventListener("click", () => {
+        const path = localScriptPath();
+        if (path) {
+            void openScriptFileEditor(context, {path});
+        }
+    });
+    field<HTMLButtonElement>("file-rename").addEventListener("click", () => {
+        const path = localScriptPath();
+        if (!path) {
+            return;
+        }
+        openInputDialog({
+            title: i18n.scriptFileRename,
+            label: i18n.scriptFileName,
+            value: path.substring(ASSET_PREFIX.length),
+            onConfirm: async (value, inputDialog) => {
+                const next = toAssetScriptPath(value);
+                if (!next) {
+                    showMessage(i18n.scriptFileInvalidName);
+                    return;
+                }
+                if (next === path) {
+                    inputDialog.destroy();
+                    return;
+                }
+                try {
+                    if (await workspaceFileExists(next)) {
+                        showMessage(i18n.scriptFileExists);
+                        return;
+                    }
+                    await renameWorkspaceFile(path, next);
+                } catch (error) {
+                    reportScriptFailure(error, {path, next, action: "rename"});
+                    return;
+                }
+                fileElement.value = next;
+                log.info("renamed a script file", {path, next});
+                inputDialog.destroy();
+            },
+        });
+    });
+    field<HTMLButtonElement>("file-remove").addEventListener("click", () => {
+        const path = localScriptPath();
+        if (!path) {
+            return;
+        }
+        confirm(i18n.scriptFileRemove, path, () => {
+            void removeWorkspaceFile(path).then(() => {
+                // 文件已经不在，输入框里留着旧路径只会让保存后的按钮点不动
+                if (fileElement.value.trim() === path) {
+                    fileElement.value = "";
+                }
+                log.info("removed a script file", {path});
+            }).catch((error) => reportScriptFailure(error, {path, action: "remove"}));
+        });
+    });
     field<HTMLButtonElement>("cancel").addEventListener("click", () => {
         log.debug("cancelled the button block editor", {blockID});
         dialog.destroy();
@@ -173,7 +374,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
             scriptEditor.focus();
         },
     }));
-    field<HTMLButtonElement>("save").addEventListener("click", () => {
+    field<HTMLButtonElement>("save").addEventListener("click", async () => {
         let action: TButtonAction | undefined;
         if (actionElement.value === "link") {
             const link = linkElement.value.trim();
@@ -193,6 +394,26 @@ export const openButtonBlockEditor = (context: IContext, options: {
                 return;
             }
             action = {type: "script", script};
+        } else if (actionElement.value === "file") {
+            const path = fileElement.value.trim();
+            if (!path) {
+                log.warn("save rejected: the script file path is empty", {blockID});
+                showMessage(i18n.scriptFileNeeded);
+                fileElement.focus();
+                return;
+            }
+            if (isRemoteScript(path)) {
+                const accepted = await askAboutRemoteScript(context, path);
+                if (!accepted) {
+                    // 放弃（或直接关掉警告窗口）：留在编辑窗口里继续改
+                    return;
+                }
+                if (accepted !== path) {
+                    // 选了「下载到本地」：输入框换成下载后的本地路径，从此与云端无关
+                    fileElement.value = accepted;
+                }
+            }
+            action = {type: "file", file: fileElement.value.trim()};
         }
         const next: IButtonConfig = {
             text: textElement.value.trim() || i18n.defaultButtonText,
@@ -211,6 +432,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
             icon: icon || "none",
             color: color || "default",
             action: action?.type || "none",
+            file: action?.type === "file" ? action.file : "none",
         });
         dialog.destroy();
     });

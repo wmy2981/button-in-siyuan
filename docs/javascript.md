@@ -13,6 +13,9 @@ which APIs are available, and gives examples you can paste as-is.
 
 - **Trigger**: it runs when the button is clicked. Right-clicking (desktop) or long-pressing (mobile) the button
   opens the edit dialog instead, which does not run the script.
+- **Where the code comes from**: everything below holds whether the button carries the code inline or its action is
+  "JavaScript file" — then the code is read from an `assets/` file (or downloaded from an http(s) URL) again on
+  every click, so editing that file is enough to change what the button does.
 - **Wrapped in async**: the code is placed inside an async function, so `await` works and `return` ends it.
 - **Return value**: the returned value is shown as the "Return value" line of the result dialog (objects are
   JSON-serialised). With **no `return`, no `console` output and no error the dialog does not open at all**

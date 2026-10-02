@@ -3,6 +3,7 @@ import type {IContext} from "./context";
 import {getIpcRenderer} from "./electron";
 import {createIconElement} from "./icon";
 import {createLogger} from "./logger";
+import {isRemoteScript, loadActionScript} from "./scriptFile";
 import {runScript} from "./scriptRunner";
 
 const log = createLogger("buttonBlock");
@@ -26,8 +27,11 @@ export const MAX_BUTTON_COLOR = 12;
  */
 export const BUTTON_COLOR_INDEXES = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12];
 
-/** 按钮操作，当前支持链接跳转与运行 JavaScript。 */
-export type TButtonAction = {type: "link", link: string} | {type: "script", script: string};
+/** 按钮操作：链接跳转、内联 JavaScript，或执行 assets/ 下（或云端）的一个 JavaScript 文件。 */
+export type TButtonAction =
+    | {type: "link", link: string}
+    | {type: "script", script: string}
+    | {type: "file", file: string};
 
 /** 按钮块配置，序列化后存放在自定义块内容里。 */
 export interface IButtonConfig {
@@ -47,6 +51,9 @@ const parseButtonAction = (value: TButtonAction | undefined): TButtonAction | un
     }
     if (value?.type === "script" && typeof value.script === "string") {
         return {type: "script", script: value.script};
+    }
+    if (value?.type === "file" && typeof value.file === "string") {
+        return {type: "file", file: value.file};
     }
     return;
 };
@@ -209,6 +216,35 @@ const openLink = (context: IContext, link: string) => {
     window.open(address);
 };
 
+/**
+ * JavaScript 文件操作：先把文件取回来（本地文件读内核、云端地址现下载），再交给与内联脚本
+ * 完全同一条执行与展示路径。文件取不到时不执行任何代码，只给一条提示。
+ */
+const runScriptFile = async (context: IContext, options: {
+    blockID: string;
+    blockElement?: HTMLElement;
+    path: string;
+}) => {
+    log.info("running the JavaScript file action", {
+        blockID: options.blockID,
+        path: options.path,
+        remote: isRemoteScript(options.path),
+    });
+    let code: string;
+    try {
+        code = await loadActionScript(options.path);
+    } catch (error) {
+        log.error("failed to load the JavaScript file", {path: options.path, error});
+        showMessage(error instanceof Error && error.message ? error.message : context.i18n.scriptFileFailed);
+        return;
+    }
+    await runScript(context, {
+        blockID: options.blockID,
+        blockElement: options.blockElement,
+        code,
+    });
+};
+
 const runAction = (context: IContext, options: {
     blockID: string;
     blockElement?: HTMLElement;
@@ -221,6 +257,14 @@ const runAction = (context: IContext, options: {
     }
     if (action.type === "link") {
         openLink(context, action.link);
+        return;
+    }
+    if (action.type === "file") {
+        void runScriptFile(context, {
+            blockID: options.blockID,
+            blockElement: options.blockElement,
+            path: action.file,
+        });
         return;
     }
     void runScript(context, {
