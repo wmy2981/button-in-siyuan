@@ -424,10 +424,11 @@ export const openButtonBlockEditor = (context: IContext, options: {
         if (!path) {
             return;
         }
-        openInputDialog({
+        const dialog = openInputDialog({
             title: i18n.scriptFileRenameTitle,
             label: i18n.scriptFileName,
-            value: path.substring(ASSET_PREFIX.length),
+            // 与新建窗口一致：只填名字，扩展名由输入框后面的固定后缀给出
+            value: path.substring(ASSET_PREFIX.length).replace(/\.js$/i, ""),
             onConfirm: async (value, inputDialog) => {
                 const next = newScriptPath(value);
                 if (!next) {
@@ -452,6 +453,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
                 inputDialog.destroy();
             },
         });
+        appendScriptFileSuffix(dialog);
     });
     field<HTMLButtonElement>("file-remove").addEventListener("click", () => {
         const path = localScriptPath();
