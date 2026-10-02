@@ -122,7 +122,7 @@ export default class ButtonInSiYuan extends Plugin {
     private async initSettings() {
         this.settings = await loadSettings(this);
         if (this.settings.agentSkill) {
-            await installAgentSkill();
+            await installAgentSkill(this.name);
         }
         // 补齐按钮块上的资源引用属性：脚本文件不该出现在「未引用的资源文件」里被清理掉
         await syncAssetReferences(this.context);
@@ -193,7 +193,7 @@ export default class ButtonInSiYuan extends Plugin {
     private async downloadSkill(button: HTMLButtonElement) {
         button.disabled = true;
         try {
-            await downloadAgentSkill();
+            await downloadAgentSkill(this.name);
         } catch (error) {
             log.error("failed to download the agent skill", {error});
             showMessage((this.i18n as II18n).downloadSkillFailed);
@@ -222,7 +222,7 @@ export default class ButtonInSiYuan extends Plugin {
             return;
         }
         if (next.agentSkill) {
-            await installAgentSkill();
+            await installAgentSkill(this.name);
         } else {
             await removeAgentSkill();
         }

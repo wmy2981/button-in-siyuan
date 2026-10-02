@@ -72,7 +72,10 @@
   `window.siyuan.languages`；`scripts/check-i18n.mjs` 要求两份文案同键、非空，加键别忘另一份。
 * **Agent 技能**：`src/agentSkill.ts` 把 `docs/skill.md`（构建时内嵌）写成
   `data/storage/ai/agent/skills/button-block/SKILL.md`。技能正文要求 Agent 去读包内的
-  `docs/javascript.md` 与 `docs/icons.md`，所以包内 `docs/` 的位置不能改。每次加载都**无条件覆盖写入**
+  `docs/javascript.md` 与 `docs/icons.md`，所以包内 `docs/` 的位置不能改。写入与下载时都会在正文的
+  frontmatter 里补一段 `metadata.skill_version`，版本现读安装目录的 `data/plugins/<插件名>/plugin.json`，
+  不写死在代码里（思源只从 frontmatter 取 `name` / `description`，多这一段不影响索引）。
+  每次加载都**无条件覆盖写入**
   （技能由插件维护，目录里的副本可能是旧版本或被手改过）。删除只写在 `onunload` 一处：禁用、重载与卸载
   都会先跑它，只有卸载才接着补跑 `uninstall`。AI 功能被关掉时接口直接失败，只记日志、不弹提示。
   设置面板里的「下载 SKILL.md」走宿主的 `saveExportFile`，而它只肯复制 `<工作空间>/temp/export/` 下的
