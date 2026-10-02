@@ -280,7 +280,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
     };
     field<HTMLButtonElement>("file-create").addEventListener("click", () => {
         openInputDialog({
-            title: i18n.scriptFileCreate,
+            title: i18n.scriptFileCreateTitle,
             label: i18n.scriptFileName,
             value: "button-action.js",
             onConfirm: async (value, inputDialog) => {
@@ -317,7 +317,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
             return;
         }
         openInputDialog({
-            title: i18n.scriptFileRename,
+            title: i18n.scriptFileRenameTitle,
             label: i18n.scriptFileName,
             value: path.substring(ASSET_PREFIX.length),
             onConfirm: async (value, inputDialog) => {
@@ -351,7 +351,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
         if (!path) {
             return;
         }
-        confirm(i18n.scriptFileRemove, path, () => {
+        confirm(i18n.scriptFileRemoveConfirm, path, () => {
             void removeWorkspaceFile(path).then(() => {
                 // 文件已经不在，输入框里留着旧路径只会让保存后的按钮点不动
                 if (fileElement.value.trim() === path) {
