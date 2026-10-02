@@ -33,7 +33,7 @@ which APIs are available, and gives examples you can paste as-is.
 | Name | Purpose |
 | --- | --- |
 | `app` | The SiYuan app object (needed by `openTab` and friends) |
-| `plugin` | This plugin instance: `loadData / saveData / removeData` for plugin-private data |
+| `plugin` | This plugin instance: `loadData / saveData / removeData` for plugin-private data, `getSecret(name)` / `getVariable(name)` for SiYuan's secrets and variables (see 4.16) |
 | `siyuan` | `window.siyuan`: config, notebooks, current language |
 | `Lute` | The Lute parser (`Lute.New().Md2BlockDOM(md)` and so on) |
 | `Constants` | SiYuan constants (asset extensions, channel names) |
@@ -332,6 +332,24 @@ change whether the dialog opens, never whether the script runs.
 ```javascript
 showMessage("done, no dialog");
 // no return: the result dialog stays closed
+```
+
+### 4.16 Read a SiYuan secret or variable
+
+The entries of <kbd>Settings</kbd> > <kbd>Secrets and Variables</kbd> are readable from a script:
+`plugin.getSecret(name)` and `plugin.getVariable(name)` return the value, or an empty string when the name is
+not configured or the current role is not an administrator. SiYuan stores secrets encrypted, but the frontend
+receives them as plain text, so a script that reads one can send it anywhere — the per-secret allow-list only
+limits the kernel's own HTTP requests.
+
+```javascript
+const token = plugin.getSecret("api_token");
+const host = plugin.getVariable("api_host");
+if (!token || !host) {
+    return "configure api_token and api_host in Settings - Secrets and Variables";
+}
+const response = await fetch(`https://${host}/ping`, {headers: {Authorization: `Bearer ${token}`}});
+return response.status;
 ```
 
 ## 5. Caveats

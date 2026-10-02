@@ -31,7 +31,7 @@
 | 名字 | 说明 |
 | --- | --- |
 | `app` | 思源应用对象（`openTab` 等接口需要它） |
-| `plugin` | 本插件实例，`loadData / saveData / removeData` 可以存插件私有数据 |
+| `plugin` | 本插件实例，`loadData / saveData / removeData` 可以存插件私有数据，`getSecret(name)` / `getVariable(name)` 可以读思源的密钥与变量（见 4.16） |
 | `siyuan` | `window.siyuan`，配置、笔记本列表、当前语言等 |
 | `Lute` | Lute 解析器（`Lute.New().Md2BlockDOM(md)` 之类） |
 | `Constants` | 思源的常量表（扩展名列表、通道名等） |
@@ -326,6 +326,23 @@ return "等待输入";
 ```javascript
 showMessage("已执行，没有弹窗");
 // 没有 return：结果弹窗不会出现
+```
+
+### 4.16 读取思源的密钥与变量
+
+<kbd>设置</kbd> > <kbd>密钥和变量</kbd> 里的条目可以直接读：`plugin.getSecret(name)` 与
+`plugin.getVariable(name)` 返回对应值，名字没配置、或者当前不是管理员角色时返回空字符串。密钥在内核侧
+加密存储，但前端收到的是明文，所以脚本拿到后可以发往任意地址 —— 密钥的「允许主机」只约束内核自己
+发出的 HTTP 请求。
+
+```javascript
+const token = plugin.getSecret("api_token");
+const host = plugin.getVariable("api_host");
+if (!token || !host) {
+    return "请先在 设置 - 密钥和变量 里配置 api_token 与 api_host";
+}
+const response = await fetch(`https://${host}/ping`, {headers: {Authorization: `Bearer ${token}`}});
+return response.status;
 ```
 
 ## 5. 注意事项
