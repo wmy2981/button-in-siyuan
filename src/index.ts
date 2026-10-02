@@ -112,13 +112,9 @@ export default class ButtonInSiYuan extends Plugin {
     onunload() {
         this.eventBus.off("click-blockicon", this.blockIconMenu);
         log.info("plugin unloaded");
-    }
-
-    /**
-     * 从工作空间移除插件时把写给 Agent 的技能删掉，别留下一个指向已卸载插件的技能。
-     * 只禁用/重载不会走到这里（见 siyuan 的 plugin/lifecycle.ts），那种情况下技能会留在原处。
-     */
-    uninstall() {
+        // 禁用、重载与卸载都会走到这里：宿主的 teardown 一定先跑 onunload，只有卸载时才接着补跑
+        // uninstall（siyuan 的 app/src/plugin/lifecycle.ts）。所以技能在这里删一次就覆盖了「禁用」
+        // 与「卸载」两种情况，不会留下一个指向已停用插件的技能让 Agent 白调一趟。
         return removeAgentSkill();
     }
 

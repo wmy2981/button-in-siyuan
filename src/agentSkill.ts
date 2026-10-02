@@ -55,7 +55,7 @@ export const installAgentSkill = async () => {
     }
 };
 
-/** 关闭开关或卸载插件时把技能删掉；没装过（或已经是用户自己的技能）时什么也不做。 */
+/** 关闭开关、禁用或卸载插件时把技能删掉；没装过（或同名的是用户自己的技能）时什么也不做。 */
 export const removeAgentSkill = async () => {
     try {
         const response = await fetchSyncPost("/api/ai/agent/removeSkill", {name: AGENT_SKILL_NAME}, undefined, false);

@@ -138,8 +138,9 @@
   `docs/icons.md` —— 这两个文件随包发布，路径写死在技能里，所以包内 docs/ 的位置不能改。
   写入前先 `getSkill` 比对，内容一致时一个字节都不写；不一致（插件升级，或用户/Agent 改过这个
   文件）时以插件内嵌的版本覆盖 —— 技能由插件维护，不是用户数据。
-  设置里关掉开关或**从工作空间移除插件**时 `removeSkill`；只禁用/重载不会调用 `uninstall`
-  （见宿主的 `plugin/lifecycle.ts`），那种情况下技能留在原处。AI 功能被关掉时这几个接口直接失败，
+  设置里关掉开关、禁用插件或从工作空间移除插件时都删掉技能。禁用、重载与卸载都会先跑 `onunload`，
+  只有卸载才接着补跑 `uninstall`（宿主的 teardown 顺序见 `app/src/plugin/lifecycle.ts`），所以删除只写在
+  `onunload` 一处，不再单独实现 `uninstall`。AI 功能被关掉时这几个接口直接失败，
   只记日志、不弹提示。改技能内容或图标清单时，`docs/skill.md` 与 `docs/icons.md` 是唯一来源，
   没有生成脚本（图标清单按思源版本手工维护，见该文件抬头）。
 * **内置文档**：`docs/*.md` 由 webpack 的 `asset/source` 内嵌进 index.js，编辑窗口里的入口用
@@ -161,9 +162,9 @@
   记渲染、菜单命中、主题探针等过程细节；`info` 记加载/卸载、打开对话框、保存、执行操作等用户可见动作；
   `warn` 记能继续跑但不符合预期的情况（内容认不出、资源没有页签、保存被拒绝）；`error` 记真正出错
   （JavaScript 抛异常、写回失败）。不要用 `console.log` 直接打日志。
-* **生命周期**：`onload` 注册 `click-blockicon` 监听与斜杠菜单项、注册设置面板，`onunload` 配对注销；
-  设置与技能都是异步的，放在 `initSettings()` 里后跑，免得拖慢文档渲染。`uninstall`（只在从工作空间
-  移除插件时调用）删掉写给 Agent 的技能。插件不注册命令与停靠栏；写盘只有两处：插件设置
+* **生命周期**：`onload` 注册 `click-blockicon` 监听与斜杠菜单项、注册设置面板，`onunload` 配对注销
+  并删掉写给 Agent 的技能（禁用与卸载都会走到这里，见上一条）。设置与技能都是异步的，放在
+  `initSettings()` 里后跑，免得拖慢文档渲染。插件不注册命令与停靠栏；写盘只有两处：插件设置
   （`data/storage/petal/button-in-siyuan/settings`，见 `settings.ts`）与技能目录。
 * **设置**：`ISettings` 的两个字段都要过 `mergeSettings`（缺字段/非法值回落默认，`OUTPUT_MODES` 之外
   的值不算），`saveSettings` 写完读回校验（宿主的 `saveData` 在落盘前就可能 resolve，也不看

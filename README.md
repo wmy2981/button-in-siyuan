@@ -133,9 +133,9 @@ SiYuan's block APIs, and it points at the two documents shipped with the plugin:
   are shown, and ready-to-run examples;
 * [docs/icons.md](./docs/icons.md) — every built-in SiYuan icon id, plus a table for picking one by intent.
 
-The skill is written by default; switching it off in the plugin settings removes it, and removing the
-plugin from the workspace removes it too. When SiYuan's AI features are unavailable the plugin only
-logs a line and carries on.
+The skill is written by default; switching it off in the plugin settings removes it again, and so does
+disabling the plugin or removing it from the workspace — an agent never picks up a skill whose plugin is
+not running. When SiYuan's AI features are unavailable the plugin only logs a line and carries on.
 
 ## Development
 
