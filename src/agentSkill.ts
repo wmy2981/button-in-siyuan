@@ -6,9 +6,9 @@ const log = createLogger("agentSkill");
 
 /**
  * 技能名（也就是 `data/storage/ai/agent/skills/<name>/SKILL.md` 里的目录名）。
- * 思源按技能目录名与 frontmatter 的 name 建立索引，这里的名字只属于本插件。
+ * 思源按技能目录名与 frontmatter 的 name 建立索引，这里的名字只属于本插件；两者必须写同一个名字。
  */
-export const AGENT_SKILL_NAME = "siyuan-button-block";
+export const AGENT_SKILL_NAME = "button-block";
 
 /**
  * 技能正文：webpack 把 docs/skill.md 作为字符串内嵌进 index.js（与内置文档同一套做法），

@@ -132,7 +132,7 @@
   直接取 `window.siyuan.languages`（原生右键菜单就是这么做的）。`npm run check` 会跑
   `scripts/check-i18n.mjs`，两份文案必须同键、非空，加键时别忘了另一份。
 * **Agent 技能**：`src/agentSkill.ts` 把 `docs/skill.md`（构建时作为字符串内嵌）通过
-  `/api/ai/agent/saveSkill` 写成 `data/storage/ai/agent/skills/siyuan-button-block/SKILL.md`
+  `/api/ai/agent/saveSkill` 写成 `data/storage/ai/agent/skills/button-block/SKILL.md`
   （`SaveSkill` 自己建目录；技能目录与 frontmatter 里的 name 都由 `AGENT_SKILL_NAME` 决定）。
   技能正文要求 Agent 去读工作区相对路径 `data/plugins/button-in-siyuan/docs/javascript.md` 与
   `docs/icons.md` —— 这两个文件随包发布，路径写死在技能里，所以包内 docs/ 的位置不能改。

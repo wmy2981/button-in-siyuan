@@ -1,5 +1,5 @@
 ---
-name: siyuan-button-block
+name: button-block
 description: Create, edit and debug SiYuan button blocks - the custom block whose info string is button-in-siyuan/button, rendered by the button-in-siyuan plugin. Use this whenever a note needs a clickable button, or an existing button has to be changed or explained: inserting a button, setting its text, icon or colour, attaching a link, an inline script or a script file, or working out why a button does nothing. Covers the block payload, the block APIs that create and update it, and where the two bundled reference documents live.
 ---
 

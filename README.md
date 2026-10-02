@@ -124,8 +124,8 @@ JavaScript), <kbd>Copy</kbd> copies it to the clipboard.
 
 ## For agents
 
-The plugin writes a skill for SiYuan's agent: `siyuan-button-block`, installed at
-`data/storage/ai/agent/skills/siyuan-button-block/SKILL.md`. It explains what a button block is, how the
+The plugin writes a skill for SiYuan's agent: `button-block`, installed at
+`data/storage/ai/agent/skills/button-block/SKILL.md`. It explains what a button block is, how the
 block payload (`{"text","icon","color","action"}`) is filled in, how to create and change one through
 SiYuan's block APIs, and it points at the two documents shipped with the plugin:
 

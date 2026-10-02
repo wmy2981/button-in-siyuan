@@ -107,8 +107,8 @@
 
 ## 给 Agent 用
 
-插件会把一份技能（Skill）写给思源的 Agent：`siyuan-button-block`，落在工作空间的
-`data/storage/ai/agent/skills/siyuan-button-block/SKILL.md`。技能里说明按钮块是什么、块内容
+插件会把一份技能（Skill）写给思源的 Agent：`button-block`，落在工作空间的
+`data/storage/ai/agent/skills/button-block/SKILL.md`。技能里说明按钮块是什么、块内容
 （`{"text","icon","color","action"}`）怎么填、怎么用思源的块接口创建与修改，并指向插件自带的
 两份文档：
 
