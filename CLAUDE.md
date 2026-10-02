@@ -1,10 +1,10 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to ANY AGENT when working with code in this repository.
 
 思源笔记插件：把**按钮块**（思源自定义块 `button-in-siyuan/button`）插入文档，文本、图标与点击操作
-都在思源原生对话框里编辑。本文件只写「不说就会做错」的约定；模块划分、实现细节、发布与集市图片
-的说明在 [docs/development.md](./docs/development.md)，改动相关模块前读它。
+都在思源原生对话框里编辑。本文件只写「不说就会做错」的约定；完整开发文档
+在 [docs/development.md](./docs/development.md)，改动代码前先读它。
 
 ## 命令
 

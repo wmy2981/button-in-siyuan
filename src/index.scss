@@ -8,6 +8,31 @@
     width: auto;
     min-width: 200px;
 }
+// 按钮块的自定义颜色：线框（思源用 box-shadow 而不是 border 画描边）、文本与图标共用
+// 同一个颜色变量。没有 .bis-button-color 类时不写任何样式，保持原生蓝的 .b3-button--outline；
+// 悬浮底色用 color-mix 取该颜色的淡色，与原生 outline 的 --b3-theme-primary-lightest 同一个观感。
+.protyle-wysiwyg [data-type="NodeCustomBlock"][data-info^="button-in-siyuan"] .b3-button.bis-button-color {
+    color: var(--bis-button-color);
+    box-shadow: inset 0 0 0 .6px var(--bis-button-color);
+
+    &:hover,
+    &:focus {
+        background-color: color-mix(in srgb, var(--bis-button-color) 12%, transparent);
+        box-shadow: inset 0 0 0 1px var(--bis-button-color);
+    }
+
+    &:active {
+        background-color: color-mix(in srgb, var(--bis-button-color) 22%, transparent);
+        box-shadow: inset 0 0 0 1px var(--bis-button-color);
+    }
+}
+
+// 编辑窗口里的色板：直接复用思源正文颜色面板的 .color__square（自带 26px 方块与 4px 间距）。
+.bis-button-colors {
+    display: flex;
+    flex-wrap: wrap;
+}
+
 // 编辑窗口里指向 JavaScript 文档的入口。思源没有单独的链接样式类，这里做成链接的样子：
 // 主色文字、悬浮加下划线，点击开的是插件内置的文档弹窗而不是网址。
 .bis-docs-link {
@@ -22,6 +47,73 @@
 
     &:hover {
         text-decoration: underline;
+    }
+}
+
+// 代码编辑区的拖动抓手（src/codeEditor.ts）。尺寸与配色照思源自己的块把手
+// （business/protyle/_block-resize.scss）：命中条足够宽，装饰线只占中间一小段，
+// 触屏上再把命中区加高，手指才好落点。
+.bis-code {
+    &__resize {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 16px;
+        cursor: ns-resize;
+        touch-action: none;
+        user-select: none;
+        color: var(--b3-theme-on-surface-light);
+
+        &::after {
+            content: "";
+            width: 40px;
+            height: 3px;
+            border-radius: 2px;
+            background-color: currentColor;
+        }
+
+        &:hover,
+        &--active {
+            color: var(--b3-theme-primary);
+        }
+    }
+}
+
+@media (any-pointer: coarse) {
+    .bis-code__resize {
+        height: 24px;
+    }
+}
+
+// 文档弹窗里每个 javascript 示例右上角的「载入 / 复制」（src/scriptDocs.ts）。
+// 按钮悬浮或键盘聚焦时才出现，免得压在代码上；触屏没有悬浮，常显。
+// 按钮自身的样式完全来自思源（b3-button b3-button--text b3-button--small），这里只管定位与底板。
+.bis-docs-code {
+    position: relative;
+
+    &__actions {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        display: flex;
+        gap: 4px;
+        padding: 0 2px;
+        border-radius: var(--b3-border-radius);
+        background-color: var(--b3-theme-surface);
+        box-shadow: inset 0 0 0 1px var(--b3-border-color);
+        opacity: 0;
+        transition: var(--b3-transition);
+    }
+
+    &:hover &__actions,
+    &:focus-within &__actions {
+        opacity: 1;
+    }
+}
+
+@media (hover: none) {
+    .bis-docs-code__actions {
+        opacity: 1;
     }
 }
 

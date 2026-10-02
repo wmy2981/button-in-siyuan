@@ -102,9 +102,9 @@ const readCodeTheme = () => {
     });
     holder.remove();
     if (specs.length === 0) {
-        log.warn("没读到代码高亮主题的标记配色，编辑器只有基础配色", {background, color: base.color});
+        log.warn("no token colours found in the code highlight theme, the editor only has the base colours", {background, color: base.color});
     } else {
-        log.debug("读取代码高亮主题", {background, color: base.color, tokens: specs.length});
+        log.debug("read the code highlight theme", {background, color: base.color, tokens: specs.length});
     }
     return {base, background, specs};
 };
@@ -130,12 +130,12 @@ const createTheme = (base: ITextStyle, background: string) => EditorView.theme({
         // 描边、悬浮与聚焦效果照抄 .b3-text-field：代码块底色和对话框底色相同时也能看出输入区边界
         outline: "1px solid var(--b3-border-color)",
         outlineOffset: "-1px",
-        // 固定高度 + 纵向可拖拽：与代码片段输入框的 resize: vertical 一致，
-        // CodeMirror 自己监听尺寸变化，拖完会重新测量行高
+        // 高度由 createCodeEditor 里的拖动抓手改：起手 100px、上限 55vh，与思源的代码片段
+        // 输入框一致。不用 CSS 的 resize: vertical —— 它的命中区只有右下角几个像素，
+        // 触屏上几乎抓不住（issue #5）
         height: "100px",
-        minHeight: "100px",
+        minHeight: "80px",
         maxHeight: "55vh",
-        resize: "vertical",
         overflow: "hidden",
     },
     "&.cm-focused": {
@@ -209,6 +209,8 @@ export interface ICodeEditor {
     /** 挂载到对话框里的容器。 */
     element: HTMLElement;
     getValue: () => string;
+    /** 整段替换正文（文档弹窗里的「载入」用它把示例放进编辑器）。 */
+    setValue: (value: string) => void;
     focus: () => void;
 }
 
@@ -249,7 +251,67 @@ const openNativeTextMenu = (event: MouseEvent) => {
     // 宿主 window 上的 contextmenu 监听会给非输入框 preventDefault（浏览器菜单不出来），
     // 这里已经弹了思源的原生菜单，不再让它继续处理
     event.stopPropagation();
-    log.debug("弹出代码编辑区的原生右键菜单");
+    log.debug("opened the native context menu of the code editor");
+};
+
+/** 抓手拖动的高度区间：与 createTheme 里的 min-height / max-height 保持一致。 */
+const MIN_EDITOR_HEIGHT = 80;
+const MAX_EDITOR_HEIGHT_RATIO = 0.55;
+
+const clampEditorHeight = (height: number) => Math.min(
+    Math.round(window.innerHeight * MAX_EDITOR_HEIGHT_RATIO),
+    Math.max(MIN_EDITOR_HEIGHT, Math.round(height)),
+);
+
+/**
+ * 编辑区下方的拖动抓手。CSS 的 `resize: vertical` 只在元素右下角留几个像素的命中区，
+ * 鼠标要正好压在那几条斜线上，手指则完全抓不住；这里照思源自己块把手（.protyle-block-resize）
+ * 的做法：命中条做宽（触屏再加宽），装饰线只占中间一小段，鼠标与手指共用同一套指针事件。
+ */
+const createResizeGrip = (view: EditorView) => {
+    const grip = document.createElement("div");
+    grip.className = "bis-code__resize";
+    // 纯拖拽把手（原生 resize 同样不可聚焦），不进无障碍树
+    grip.setAttribute("aria-hidden", "true");
+    let dragging = false;
+    let startY = 0;
+    let startHeight = 0;
+    const onPointerDown = (event: PointerEvent) => {
+        if (event.pointerType === "mouse" && event.button !== 0) {
+            return;
+        }
+        dragging = true;
+        startY = event.clientY;
+        startHeight = view.dom.getBoundingClientRect().height;
+        // 捕获指针：手指/鼠标移出抓手范围也继续收到 move，拖拽不会中途丢
+        grip.setPointerCapture(event.pointerId);
+        grip.classList.add("bis-code__resize--active");
+        // 触屏上别把这次拖动当成滚动
+        event.preventDefault();
+    };
+    const onPointerMove = (event: PointerEvent) => {
+        if (!dragging) {
+            return;
+        }
+        view.dom.style.height = `${clampEditorHeight(startHeight + event.clientY - startY)}px`;
+        // 高度写在行内样式上，CodeMirror 要重新测量才知道行高与滚动条变了
+        view.requestMeasure();
+    };
+    const onPointerUp = (event: PointerEvent) => {
+        if (!dragging) {
+            return;
+        }
+        dragging = false;
+        grip.classList.remove("bis-code__resize--active");
+        if (grip.hasPointerCapture(event.pointerId)) {
+            grip.releasePointerCapture(event.pointerId);
+        }
+    };
+    grip.addEventListener("pointerdown", onPointerDown);
+    grip.addEventListener("pointermove", onPointerMove);
+    grip.addEventListener("pointerup", onPointerUp);
+    grip.addEventListener("pointercancel", onPointerUp);
+    return grip;
 };
 
 export const createCodeEditor = (options: {
@@ -278,10 +340,18 @@ export const createCodeEditor = (options: {
         parent: element,
     });
     element.addEventListener("contextmenu", openNativeTextMenu);
-    log.debug("创建代码编辑器", {chars: view.state.doc.length, dark, lineWrap, tokens: specs.length});
+    element.append(createResizeGrip(view));
+    log.debug("created the code editor", {chars: view.state.doc.length, dark, lineWrap, tokens: specs.length});
     return {
         element,
         getValue: () => view.state.doc.toString(),
+        setValue: (value) => {
+            // 整段替换后再把光标放到末尾：载入示例后接着敲代码，落点是自然的
+            view.dispatch({
+                changes: {from: 0, to: view.state.doc.length, insert: value},
+                selection: {anchor: value.length},
+            });
+        },
         focus: () => view.focus(),
     };
 };

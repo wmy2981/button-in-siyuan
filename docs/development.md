@@ -1,146 +1,118 @@
 # 开发说明（button-in-siyuan）
 
-面向本插件的维护与二次开发。用户文档见 [../README.zh-CN.md](../README.zh-CN.md)，
-脚本接口文档见 [javascript.zh-CN.md](./javascript.zh-CN.md)。
-
-> 本文件随 `package.zip` 一起发布（`docs/` 会整目录打进包里），
-> 因此只写实现约定，不写本机路径与个人环境。
-
-## 模块划分
-
-| 文件 | 职责 |
-| --- | --- |
-| `src/index.ts` | 插件入口：注册自定义块渲染器、斜杠菜单项、块菜单项，拼装运行上下文 |
-| `src/buttonBlock.ts` | 按钮块配置的解析/序列化、渲染、链接操作、右键/长按入口 |
-| `src/buttonIcon.ts` | 界面内的按钮块图标（斜杠菜单等）的图形来源；集市图标是手绘的 `assets/icon.svg`，与它各自独立 |
-| `src/editDialog.ts` | 「编辑按钮块」对话框 |
-| `src/codeEditor.ts` | JavaScript 代码编辑器（CodeMirror，配色取自用户的代码高亮主题） |
-| `src/scriptRunner.ts` | 执行脚本：注入接口、接管 console、把结果交给结果弹窗 |
-| `src/scriptApi.ts` | 脚本能直接调用的思源接口清单（注入进 `new Function` 的形参） |
-| `src/scriptOutput.ts` | 结果弹窗：分级前缀、ANSI 彩色输出、复制纯文本 |
-| `src/scriptDocs.ts` | 内置 JavaScript 文档的弹窗（按界面语言选文档，用 Lute 渲染） |
-| `src/icon.ts` | 图标元素、图标列表收集、图标选择对话框 |
-| `src/logger.ts` | 分级日志（`console.debug/info/warn/error`，统一 `[button-in-siyuan][模块]` 前缀） |
-| `src/electron.ts` | 桌面端 Electron 能力的取用口（`getIpcRenderer`） |
-| `src/context.ts` | 传给各模块的运行上下文（`app` / `plugin` / `i18n` / `isMobile` / `openEditor`） |
-| `src/i18nKeys.ts` | 文案键类型，与 `src/i18n/*.json` 一一对应 |
-| `src/index.scss` | 少量自有样式（按钮块按钮的字号/宽度下限、文档入口、文档弹窗、脚本输出框、图标网格） |
-| `docs/*.md` | 面向用户的 JavaScript 文档，构建时内嵌进 index.js，也随包发布 |
+面向本插件的维护与二次开发。这里只写「不说就会做错」的约定：从代码里一眼能看出来的实现细节不重复。
 
 ## 实现约定
 
-* **块标识**：块信息的格式是 `<插件包名>/<块类型>`，两段都经 `encodeURIComponent`。本插件用
-  `button-in-siyuan/button`，块类型常量是 `BUTTON_BLOCK_TYPE`；块菜单只在
-  `data-info` 能解析出相同包名与块类型时出现。
-* **块内容**：`data-content` 里是单行 JSON（`{"text","icon","action"}`，`action` 为
-  `{"type":"link","link"}` 或 `{"type":"script","script"}`）。内容为空按默认配置渲染；内容不是本插件
-  配置（认不出 `text`/`icon`/合法 `action`）时不渲染按钮、原样 `<pre>` 兜底，块菜单也不提供编辑入口，
-  绝不覆盖用户自己的数据。
-* **写回块**：只能通过宿主传给渲染器的 `setContent`（渲染器按块 ID 记下它，见 `updateButtonContent`）：
-  宿主会做兜底、写回 `data-content`、提交事务并**强制重新渲染**。自己改 `data-content` 再提交事务
-  不会刷新界面 —— `updateTransaction` 打的 `data-editing` 标记会让事务保留本地 DOM，渲染器不会被重跑。
-* **插入块**：斜杠菜单回调里用 `protyle.insert(protyle.protyle.lute.Md2BlockDOM(markdown), true)`，
-  markdown 为 `;;;button-in-siyuan/button\n{JSON}\n;;;`；新建的块默认带 `iconCirclePlay`
-  （`DEFAULT_BUTTON_ICON`）。斜杠菜单的图标是本插件自绘的图形（`createButtonBlockIconHtml()`）。
-  移动端的斜杠菜单是底部键盘工具栏里的一块面板，思源会把插件项 html **整个塞进 `.keyboard__slash-text`**
-  （插件项没有图标槽，见 `mobile/util/keyboardToolbar.ts` 的 `getSlashItem` 调用），那里没有
-  `.b3-list-item__first` 的 flex 上下文，`.b3-list-item__text`（`display: flow-root`）会退化成块级盒子，
-  自绘图标与文字上下叠成两行；所以斜杠项 html 带 `bis-slash-item` 标记，`index.scss` 在那个槽位里把
-  flex 补回来（只作用于该槽位，桌面端不受影响）。
-* **编辑入口**：块菜单 > 插件 > 编辑按钮块、按钮上右键（桌面端）、按钮上长按 500ms（移动端，之后补发的
-  click 要吞掉，别把操作也执行了）。三条路都走 `context.openEditor(blockID, config)` —— 由插件入口注入，
-  这样渲染器不必直接依赖对话框模块（对话框要写回块内容，互相引用会成环）。
-* **外观**：只用思源样式类（`b3-button`、`b3-text-field`、`b3-select`、`b3-dialog__content`、
-  `b3-dialog__action`、`fn__*`、`ft__*`）与 `--b3-*` 变量；自有类统一用 `bis-` 前缀，
-  自有对话框里的定位属性统一用 `data-bis`（`data-type` 是思源自己的派发键，不要占用）。
-* **按钮外观**：渲染出的按钮类名与思源设置面板里的原生按钮完全一致 ——
-  `b3-button b3-button--outline fn__size200`，宽度、圆角、悬浮与按下效果全部由思源 CSS 提供。
-  只额外用 `index.scss` 里一条作用域规则把字号对齐到界面字号 `--b3-font-size`（文档里的自定义块
-  字号是编辑器字号），并把 `fn__size200` 的固定 200px 改成 200px 的宽度下限，避免长文案溢出按钮。
-* **代码编辑器**：CodeMirror 6（`codemirror` + `@codemirror/lang-javascript`）提供行号、高亮、
-  括号匹配与补全。配色不写死：`readCodeTheme` 在离屏 `.code-block` / `.hljs-*` 探针上读取思源已加载的
-  代码高亮主题（`#protyleHljsStyle`）的实际颜色，再映射到 CodeMirror 的标记（`@lezer/highlight`）；
-  明暗模式取自 `data-theme-mode`，自动折行跟随 `window.siyuan.config.editor.codeLineWrap`。
-  外观对齐思源的代码片段输入框（`.b3-text-field`）：字号固定 14px、同样的描边与聚焦效果、
-  `resize: vertical` 可纵向拖拽、初始高 100px。行号栏底色必须**不透明**（等于代码块底色）：
-  `.cm-gutters` 是 sticky 的，透明底色时横向滚动的代码会从行号下面透出来。
-  右键菜单走思源的原生文本菜单：把菜单项发到 `Constants.SIYUAN_CONTEXT_MENU` 通道
-  （与宿主 `menus/index.ts` 对 `.b3-text-field` 的做法一致），菜单文案取 `window.siyuan.languages`。
-* **图标**：从文档里的 `<symbol id="icon…">` 现取现用（内置图标集 + 图标包 + 插件图标），
-  用 `<use>` 引用，元素带思源的 `.svg` 类以跟随 `currentColor`。选择器里**不要改 `color`**：
-  悬浮与选中只换底色/描边（与思源表情面板一致），否则靠 `currentColor` 上色的图标（如 `iconLiandi`）
-  会显示成主色；编辑窗口里已选中的图标用 `.bis-icon-button` 把它拉回正文色。
-* **操作执行**：`siyuan://blocks/<id>` 用原生接口打开（桌面端 `openTab`、移动端 `openMobileFileById`）；
-  `assets/<path>` 先按宿主的 `isPreviewableAsset` 判断（图片/音视频/PDF 且满足 HEIF 的 `download` 条件）
-  才建资源页签，其余用系统默认程序打开；其他链接交给 `window.open`。
-* **JavaScript 操作**：在页面上下文执行，整段包成 async 函数（可用 `await` / `return`）。执行期间接管
-  `console`（`log/info/debug/warn/error/table/dir`）收集输出，`finally` 里恢复。思源接口作为形参注入
-  （清单在 `src/scriptApi.ts`，注入的是宿主 `plugin/API.ts` 里除 `exitSiYuan`/`lockScreen` 之外的全部能力，
-  外加 `siyuan`/`Lute`/`protyle`/`blockID`/`i18n` 等上下文）；新增注入项要同步 `docs/javascript*.md` 的接口表。
-  **`fetchPost` / `fetchGet` 注入的是包装过的版本**：宿主的这两个是回调式的（不给回调时返回的 Promise
-  解析成 `undefined`，见 `app/src/util/fetch.ts`），脚本里 `await fetchPost(...)` 会拿到 `undefined` 再
-  `response.code` 直接报错，所以 `src/scriptApi.ts` 里做了补全 —— 传了回调走宿主原实现，没传回调改用
-  `fetchSyncPost` / 原生 `fetch` 拿响应。改这里时别把包装去掉。
-  结果弹窗按级别给前缀配色，正文支持 ANSI 转义（16 色/256 色/真彩/加粗下划线等），复制时去掉转义。
-  **没有 `return`、没有 console 输出、也没有报错时不弹结果弹窗**（静默执行，「点一下做件事」的按钮不该
-  每次都被空弹窗挡住）；有输出或报错照常弹窗，别把错误吞掉。改动这条要同步 `docs/javascript*.md` 的 4.15。
-* **资源链接的坑**：`openTab({asset})` 只在资源是图片/音视频/PDF（宿主的
-  `Constants.SIYUAN_ASSETS_EXTS`）且不带 `download=true` 时才会建页签，其他资源会让宿主的
-  `newTab` 返回 `undefined`，`wnd.addTab(undefined)` 直接把页签布局搞坏（思源整窗报错）。
-  所以打开 `assets/…` 前必须先按同样的条件判断；不能建页签的用宿主自己的路子交给系统：
-  `fetchPost("/api/asset/resolveAssetPath")` 拿绝对路径，再经 `Constants.SIYUAN_CMD` 的 `openPath`
-  通道（与宿主 `useShell` 一致）。**不要**用 `window.open` 打开资源地址 —— 会被浏览器类插件接管，
-  而且思源本身也打不开这类资源。
-* **i18n**：所有面向用户的文案都走 `src/i18n/*.json`（键类型在 `src/i18nKeys.ts`）；思源自带的文案
-  直接取 `window.siyuan.languages`（原生右键菜单就是这么做的）。`npm run check` 会跑
-  `scripts/check-i18n.mjs`，两份文案必须同键、非空，加键时别忘了另一份。
-* **内置文档**：`docs/*.md` 由 webpack 的 `asset/source` 内嵌进 index.js，编辑窗口里的入口用
-  `Lute.New().ProtylePreviewStr("", markdown)`（思源的富文本预览渲染器）转成 HTML，放进
-  `.b3-typography` 容器，再调 `ProtyleMethod.highlightRender` 让代码块按 `data-language` 上色
-  （思源对 `.b3-typography` 走的就是这条「预览」分支，`app/src/protyle/render/highlightRender.ts`）；
-  按 `window.siyuan.config.lang` 选中文或英文文档。文档同时随包发布到
-  `docs/`。**代码块语言统一写 `javascript`**（`js` 之类会被 hljs 当别名，但不与思源代码块的语言名一致）。
-  改了文档跑 `node scripts/check-docs.mjs`：代码块语言（统一 `javascript`，不用缩写 `js`）、
-  示例语法、接口表与注入清单都在那里校验。
-* **日志**：每个模块 `createLogger("<模块名>")` 建一个 logger，前缀形如 `[button-in-siyuan][buttonBlock]`，
-  第二个参数传结构化细节对象。分级约定：`debug` 走 `console.debug`（浏览器默认归到 Verbose，不打扰用户）
-  记渲染、菜单命中、主题探针等过程细节；`info` 记加载/卸载、打开对话框、保存、执行操作等用户可见动作；
-  `warn` 记能继续跑但不符合预期的情况（内容认不出、资源没有页签、保存被拒绝）；`error` 记真正出错
-  （JavaScript 抛异常、写回失败）。不要用 `console.log` 直接打日志。
-* **生命周期**：`onload` 注册 `click-blockicon` 监听，`onunload` 配对注销；插件不写存储，也没有
-  设置项、命令、停靠栏。
+* **块标识**：块信息是 `<插件包名>/<块类型>`（两段都 `encodeURIComponent`），本插件为
+  `button-in-siyuan/button`；块菜单只在包名与块类型都匹配时出现。
+* **块内容**：`data-content` 是单行 JSON。内容认不出是本插件配置时**不渲染按钮、原样 `<pre>` 兜底**，
+  块菜单也不提供编辑入口，绝不覆盖用户数据。
+* **写回块**：只能用宿主传给渲染器的 `setContent`。自己改 `data-content` 再提交事务不会刷新界面：
+  `updateTransaction` 打的 `data-editing` 标记会让事务保留本地 DOM，渲染器不会被重跑。
+* **插入块**：斜杠项的 id 借用思源放行清单里的 `code`（`SLASH_ITEM_ID`），否则主编辑器的斜杠菜单会按
+  id 过滤掉插件项。**即便如此，桌面端单元格里仍然没有按钮块入口**：思源 3.8.6 起单元格挂的富文本编辑器
+  关掉了 `pluginExtensions` 并用自己的 `safeSlash`，插件项根本不会被构造（宿主限制）。移动端思源把插件项
+  html 整个塞进 `.keyboard__slash-text`，那里没有 flex 上下文，图标与文字会叠成两行 —— 所以斜杠项 html
+  带 `bis-slash-item` 标记，`index.scss` 在该槽位把 flex 补回来。
+* **编辑入口**：块菜单 > 插件 > 编辑按钮块、按钮上右键（桌面端）、按钮上长按（移动端）。三条路都走
+  `context.openEditor(blockID, config)`（插件入口注入），免得渲染器直接依赖对话框模块而成环。
+* **外观**：只用思源样式类与 `--b3-*` 变量；自有类统一 `bis-` 前缀，自有对话框的定位属性用 `data-bis`
+  （`data-type` 是思源自己的派发键，不要占用）。
+* **按钮外观**：类名与思源设置面板的原生按钮一致，只额外用一条作用域规则把字号对齐界面字号、把
+  `fn__size200` 的固定宽度改成宽度下限（文档里的自定义块字号是编辑器字号）。
+* **按钮颜色**：存了颜色才加 `bis-button-color` 类并设 `--bis-button-color`，不存就与原生
+  `.b3-button--outline` 逐像素一致。色板全部走主题变量，明暗主题与换主题都会跟着变，因此不提供任意取色的
+  取色器；编号跳过 13（daylight 下等于页面底色）与 6（与默认的原生蓝同色）。
+* **关窗前的「放弃修改」确认**：不是逐条拦取消 / × / `Esc` / 点遮罩，而是把实例上的 `dialog.destroy`
+  换成自己的函数（宿主的四条路最后都调它）。**`disableClose` 只挡遮罩与 ×，挡不住 `Esc`**；判断
+  「有没有改过」与保存必须共用同一个 `currentConfig()` 口径，否则会出现「什么都没改也弹确认」。
+* **代码编辑器**：CodeMirror 6，配色从思源已加载的代码高亮主题上实测后映射，不写死。**没用 CSS 的
+  `resize: vertical`**：命中区只在右下角几个像素，触摸屏抓不住，改高由编辑区下方的抓手负责。行号栏底色
+  必须**不透明**：`.cm-gutters` 是 sticky 的，否则横向滚动时代码会从行号下面透出来。右键菜单把菜单项发到
+  `Constants.SIYUAN_CONTEXT_MENU` 通道，与宿主对 `.b3-text-field` 的做法一致。
+* **图标**：从文档里的 `<symbol id="icon…">` 现取现用，元素带思源的 `.svg` 类以跟随 `currentColor`。
+  选择器里**不要改 `color`**：悬浮与选中只换底色 / 描边，否则靠 `currentColor` 上色的图标会显示成主色。
+* **JavaScript 操作**：在页面上下文执行，整段包成 async 函数；执行期间接管 `console` 收集输出。接口以
+  形参注入（清单在 `src/scriptApi.ts`），新增注入项要同步 `docs/javascript*.md` 的接口表。**注入的
+  `fetchPost` / `fetchGet` 是包装过的**：宿主的实现是回调式的，不给回调时 Promise 解析成 `undefined`，
+  脚本里 `await fetchPost(...)` 会直接报错 —— 别把包装去掉。**没有 `return`、没有 console 输出、也没有
+  报错时不弹结果弹窗**（默认策略），改动要同步 `docs/javascript*.md` 的 4.15。
+* **JavaScript 文件操作**：每次点击都重新取代码（本地走 `/api/file/getFile`，云端用 `fetch` 重新下载），
+  再交给与内联脚本同一个 `runScript`；取不到只提示、不执行。**这几个内核文件接口没有用宿主的
+  `fetchPost`**：`getFile` 成功时回裸字节、出错才是 JSON 信封，而宿主对 `code < 0` 只弹提示、不调回调，
+  403/404 拿不到 —— 那正是判断「文件不存在」要用的。写接口用 `fetchSyncPost` 并关掉 `processMessage`。
+  文件名先在本地按内核 `FilterUploadFileName` 的规则拦一遍；新建 / 重命名窗口的输入框只填名字，后缀由
+  `toAssetScriptPath` 补（宿主的 `openInputDialog` 没有后缀槽位，是把输入框挪进 `fn__flex` 行里挂的，
+  挪动会失焦，最后要重新 focus）。**云端脚本必须二次确认**：可放弃、直接使用，或下载到 `assets/` 之后与
+  云端再无关系；只有本地文件才提供编辑 / 改名 / 删除。脚本文件读写一律不走 `plugin.loadData`（那是插件
+  私有数据）。**按钮里存的 `assets/xxx.js` 不能直接喂给 `/api/file/*`**：`assets/…` 相对的是数据目录，
+  而文件接口的 path 相对工作空间根，所以统一用 `toWorkspacePath()` 补 `data/` 前缀；少了它文件会落到
+  工作空间根下另建的 `assets/`，插件自己读写正常，但那个目录不在数据目录里，不进资源索引、也不会被同步。
+* **链接操作**（`src/openLink.ts`）：效果要与文档里点 `[]()` 链接一致，即对齐宿主的
+  `app/src/editor/openLink.ts`。非本地地址一律交给 `platformUtils.openByMobile`（宿主 `openLink` 用的
+  同一个函数，`siyuan://` 与插件事件也在里面处理）；本地路径按 `window.siyuan.config.editor.assetOpen`
+  算动作（`assetOpen.ts` 是宿主同名模块的移植），修饰键来自点击事件，所以渲染器要把 MouseEvent 一路传到
+  `openLink()`；移动端与宿主一致，不认配置。**打开之前必须先把 `open-asset` / `open-link` 发给其他插件**
+  （`emitToPlugins`，宿主没暴露，只能照它的做法遍历 `app.plugins` 的 eventBus）：这两个是可取消事件，接管
+  资源打开的插件（如 editor-siyuan）靠 `preventDefault()` 顶掉默认行为；漏掉这一步的表现是「文档里点链接
+  会被接管、从按钮点却不会」。两个已知差距：`new-window` 回落成当前页签（宿主的实现走 Electron 专用通道，
+  插件 API 没有入口）；远端内核（`--remote`）下宿主认为不是本地文件系统，插件仍按前端判断。
+* **资源页签的坑**：`openTab({asset})` 只在资源是图片 / 音视频 / PDF 且不带 `download=true` 时建页签，
+  其他资源会让宿主的 `newTab` 返回 `undefined`，`wnd.addTab(undefined)` 直接把页签布局搞坏。所以交给
+  `openTab` 前先按同样的条件判断（`openLink.ts` 的 `isPreviewableAsset`）；不能建页签的经
+  `Constants.SIYUAN_CMD` 的 `openPath` 交给系统。**不要用 `window.open`**：会被浏览器类插件接管，思源
+  本身也打不开这类资源。
+* **脚本文件别被当成未引用资源**：按钮的引用关系写在块内容里，思源的引用扫描只看文档链接与块属性，看不到
+  它，用户一「清理未引用资源」按钮就点不动了。所以把脚本路径写成块属性
+  `custom-data-assets-button-in-siyuan`（思源把所有 `custom-data-assets` 开头的属性算作资源引用，用自己的
+  名字是为了不覆盖用户自己写的）。三条路都要写：编辑窗口保存时立刻写、渲染按钮块时对齐一次（Agent 用块接口
+  建的块、别的设备同步过来的文档都不经过编辑窗口，只有渲染器当场看得见它们）、插件加载时再整库补一次
+  （`syncAssetReferences()`，与 `ial` 比对、只在不一致时写回，稳定状态下没有写操作）。补写那条 SQL 必须带
+  显式 `LIMIT`：内核给 `/api/query/sql` 套了用户设置的搜索条数上限（默认 64），不写会被静默截断。属性值以
+  块内容为准。
+* **i18n**：面向用户的文案都走 `src/i18n/*.json`（键类型在 `src/i18nKeys.ts`），思源自带的取
+  `window.siyuan.languages`；`scripts/check-i18n.mjs` 要求两份文案同键、非空，加键别忘另一份。
+* **Agent 技能**：`src/agentSkill.ts` 把 `docs/skill.md`（构建时内嵌）写成
+  `data/storage/ai/agent/skills/button-block/SKILL.md`。技能正文要求 Agent 去读包内的
+  `docs/javascript.md` 与 `docs/icons.md`，所以包内 `docs/` 的位置不能改。写入与下载时都会在正文的
+  frontmatter 里补一段 `metadata.skill_version`，版本现读安装目录的 `data/plugins/<插件名>/plugin.json`，
+  不写死在代码里（思源只从 frontmatter 取 `name` / `description`，多这一段不影响索引）。
+  每次加载都**无条件覆盖写入**
+  （技能由插件维护，目录里的副本可能是旧版本或被手改过）。删除只写在 `onunload` 一处：禁用、重载与卸载
+  都会先跑它，只有卸载才接着补跑 `uninstall`。AI 功能被关掉时接口直接失败，只记日志、不弹提示。
+  设置面板里的「下载 SKILL.md」走宿主的 `saveExportFile`，而它只肯复制 `<工作空间>/temp/export/` 下的
+  文件，所以先把正文 `putFile` 到那里再交给它 —— 保存对话框里的默认文件名就是那个文件名。
+* **内置文档**：`docs/*.md` 由 webpack 的 `asset/source` 内嵌进 index.js，入口用 Lute 的富文本预览渲染器
+  转成 HTML（代码块靠 `ProtyleMethod.highlightRender` 上色），按界面语言选文档。**代码块语言统一写
+  `javascript`**；预览输出的代码块结构是 `<pre class="code-block" data-language="javascript">`，
+  `scriptDocs.ts` 按这个结构给每个示例套一层并加「载入 / 复制」按钮。改了文档跑
+  `node scripts/check-docs.mjs`（代码块语言、示例语法、接口表都在那里校验）。
+* **日志**：每个模块 `createLogger("<模块名>")`，**日志文案一律英文**（面向排查，不参与 i18n），源码注释
+  仍用中文。`debug` 记过程细节、`info` 记用户可见动作、`warn` 记能继续跑但不符合预期的情况、`error` 记
+  真正出错；不要直接用 `console.log` 打日志。
+* **生命周期**：`onload` 注册块图标菜单、斜杠菜单项与设置面板，`onunload` 配对注销并删掉写给 Agent 的
+  技能。异步的设置与技能放到 `initSettings()` 里后跑，免得拖慢文档渲染。写盘只有插件设置
+  （`data/storage/petal/button-in-siyuan/settings`）与技能目录两处。
+* **设置**：字段都要过 `mergeSettings`（缺字段 / 非法值回落默认），`saveSettings` 写完读回校验（宿主的
+  `saveData` 在落盘前就可能 resolve，也不看 `response.code`），失败提示用户重试。面板**不传
+  `openInWindow`**（当前窗口里的面板）；`addItem` 没有 `type` 字段，控件自己造 —— 输出策略是
+  `direction: "row"` 的 `<select class="b3-select">`（row 模式占满整行，长选项不会被切掉），技能开关是
+  `b3-switch`。`confirmCallback` 不等异步逻辑就关窗，保存与副作用都在 `saveSetting()` 里自己处理。输出
+  策略在 `shouldShowOutput` 里生效，设置每次现取、不持有快照（渲染器与菜单项是加载时注册的）。**设置必须
+  存成对象**：插件存储文件没有扩展名，内核按内容嗅探 Content-Type，只有 `{…}` / `[…]` 才解析回对象，
+  裸数字会变成字符串。
 
 ## 构建产物与发布
 
-* `dist/`、`package.zip`、仓库根的 `index.js` / `index.css` / `i18n/` 都是产物，不提交、不手改。
-* `npm run dev` 是 watch 构建（只写仓库根的 `index.js` / `index.css` / `i18n/`，供本机插件目录直接加载）；
-  `npm run build` 才是打包构建（写 `dist/` 与 `package.zip`，两者覆盖同样的范围）。不要为了构建启动 watch。
-* 集市图片：`assets/icon.svg`、`assets/preview.html` 是图源，改完必须重跑渲染脚本；PNG 提交在
-  `assets/`，打包时落到包根。图标是白底方形（不切圆角）加思源蓝 `#3575F0` 的线稿图形。
-  **集市图标是手绘的图源**：`render-icon.mjs` 只把 `assets/icon.svg` 栅格化成 `icon.png`
-  （160×160、上限 64KiB，越界直接失败），不生成 SVG —— 图形只写在 `assets/icon.svg` 一处。
-  界面里显示的图标（斜杠菜单等，`createButtonBlockIconHtml()`）走的是 `src/buttonIcon.ts` 里的另一份
-  图形（改成 `currentColor`、viewBox 收紧），两者各自独立：改一边不会带动另一边。
-  `src/buttonIcon.ts` 导出的 `BUTTON_ICON_SVG`（160 画布、带磨砂底）目前没有脚本消费，留作备用。
-* 预览图是一个真实的思源主窗口（1024×768）：顶栏、页签栏、面包屑、正文、状态栏，正文取
-  「已滚动到文档末尾」的视图（`.protyle-content` 用 flex 贴底），中间是「编辑按钮块」对话框
-  （JavaScript 操作 + CodeMirror 编辑器 + 文档入口）。对话框里的编辑器**不是手写 HTML**：
-  `scripts/snapshot-editor.mjs` 会用 esbuild 打包 `src/codeEditor.ts`（`siyuan` 换成临时替身）、
-  在 Chromium 里真挂载一次，把 CodeMirror 自己注入的 CSS 与渲染出的 DOM 抓回来，写进 `preview.html`
-  的 `editor-css` / `editor-dom` 标记之间，保证预览里的行号、缩进、配色与插件里逐像素一致；
-  手改这两个标记之间的内容会在下次跑脚本时被覆盖。对话框其余部分（图标按钮、文档入口）是手写的，
-  改了 `editDialog.ts` 的结构或 `index.scss` 里对话框用到的规则要同步改。
-* README 里的预览图是远程链接：URL 固定到**提交 SHA** 而不是分支别名，
-  `gcore.jsdelivr.net/gh/wmy2981/button-in-siyuan@<sha>/assets/preview.png`。原因是 jsdelivr 对分支别名
-  的缓存很久（gcore 上实测 12 小时不更新，purge API 只覆盖 CF/FY，清不掉 gcore），浏览器还会再按
-  `max-age=604800` 缓存 7 天，用 `@dev` 换图后读者很久都看不到新图。换了 `preview.png` 就把 SHA
-  更新成包含新图的提交。集市卡片用的是包里的 `preview.png`，不受这套缓存影响。
-* `plugin.json` 与 `package.json` 的 `version` 必须一致，且高于最新 `v*` 标签；`minAppVersion`
-  当前是 3.8.6（自定义块渲染器需要 3.8.5，之后为用到的更新 API 抬过一次）。
-  注意 `semver.Compare`：`3.8.6` 比 `3.8.6-alpha.5` **大**，写错了会拦住安装。
-* 包里除 `index.js` / `index.css` / `icon.png` / `preview.png` / `plugin.json` / `i18n/` / README
-  之外还带 `docs/`：文档虽然已内嵌进 index.js，但原文件一并给用户翻。本文件（`docs/development.md`）
-  在 webpack 里被排除，不进包。
-* 发布、上架集市都必须先由维护者本人测试并确认；不要自行打标签、建 Release 或改版本号。
-* `.github/workflows/` 与 `scripts/` 里的 workflow、发行说明与图片脚本是多个插件仓库共用的资产；
-  改动前先确认问题是否出在资产本身。
+* `npm run dev` 是 watch 构建（只写仓库根的 `index.js` / `index.css` / `i18n/`）；`npm run build` 才是
+  打包构建（写 `dist/` 与 `package.zip`）。不要为了构建启动 watch。
+* 集市图片的图源是手绘的 `assets/icon.svg` 与 `assets/preview.html`，改完必须重跑渲染脚本：`icon.png`
+  由 `render-icon.mjs` 栅格化，`preview.html` 的编辑器部分由 `snapshot-editor.mjs` 真挂载一次 CodeMirror
+  抓回 CSS 与 DOM，写进 `editor-css` / `editor-dom` 标记之间 —— 手改这两个标记之间的内容会被覆盖。
+  界面里显示的图标来自 `src/buttonIcon.ts` 里的另一份图形，与集市图标各自独立。
+* README 的预览图 URL 固定到**提交 SHA** 而不是分支别名（jsdelivr 对分支别名缓存很久），换图要更新 SHA。
+* `plugin.json` 与 `package.json` 的 `version` 必须一致且高于最新 `v*` 标签。注意 `semver.Compare`：
+  `3.8.6` 比 `3.8.6-alpha.5` **大**，写错了会拦住安装。
+* 发布、上架集市必须先由维护者本人测试并确认；不要自行打标签、建 Release 或改版本号。
+* `.github/workflows/` 与 `scripts/` 里的 workflow、发行说明与图片脚本是多个插件仓库共用的资产。

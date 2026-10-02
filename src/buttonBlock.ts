@@ -1,8 +1,9 @@
-import {Constants, fetchPost, getFrontend, openMobileFileById, openTab, platformUtils, showMessage} from "siyuan";
+import {showMessage} from "siyuan";
 import type {IContext} from "./context";
-import {getIpcRenderer} from "./electron";
 import {createIconElement} from "./icon";
 import {createLogger} from "./logger";
+import {openLink} from "./openLink";
+import {isRemoteScript, loadActionScript} from "./scriptFile";
 import {runScript} from "./scriptRunner";
 
 const log = createLogger("buttonBlock");
@@ -13,13 +14,31 @@ export const BUTTON_BLOCK_TYPE = "button";
 /** 新建按钮块时默认使用的思源内置图标。 */
 export const DEFAULT_BUTTON_ICON = "iconCirclePlay";
 
-/** 按钮操作，当前支持链接跳转与运行 JavaScript。 */
-export type TButtonAction = {type: "link", link: string} | {type: "script", script: string};
+/**
+ * 按钮颜色：思源内置正文颜色（`--b3-font-colorN`）的序号，1..12。颜色值全部来自主题变量，
+ * 明暗主题与用户换主题都会跟着变；没有这个字段时完全不覆写，保持 `.b3-button--outline` 的原生蓝。
+ */
+export const MIN_BUTTON_COLOR = 1;
+export const MAX_BUTTON_COLOR = 12;
+
+/**
+ * 编辑窗口里给出的色板。跳过 13（daylight 下它等于页面底色，选中的按钮会看不见）；
+ * 6 就是主题主色、与默认的原生蓝是同一个颜色，所以留给「默认」那一格。
+ */
+export const BUTTON_COLOR_INDEXES = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12];
+
+/** 按钮操作：链接跳转、内联 JavaScript，或执行 assets/ 下（或云端）的一个 JavaScript 文件。 */
+export type TButtonAction =
+    | {type: "link", link: string}
+    | {type: "script", script: string}
+    | {type: "file", file: string};
 
 /** 按钮块配置，序列化后存放在自定义块内容里。 */
 export interface IButtonConfig {
     text: string;
     icon: string;
+    /** 线框、文本与图标共用的颜色，见 MIN_BUTTON_COLOR；缺省表示思源原生蓝 */
+    color?: number;
     action?: TButtonAction;
 }
 
@@ -33,8 +52,17 @@ const parseButtonAction = (value: TButtonAction | undefined): TButtonAction | un
     if (value?.type === "script" && typeof value.script === "string") {
         return {type: "script", script: value.script};
     }
+    if (value?.type === "file" && typeof value.file === "string") {
+        return {type: "file", file: value.file};
+    }
     return;
 };
+
+/** 解析按钮颜色；越界或不是整数时当作没有设置颜色。 */
+export const parseButtonColor = (value: unknown): number | undefined =>
+    typeof value === "number" && Number.isInteger(value) && value >= MIN_BUTTON_COLOR && value <= MAX_BUTTON_COLOR
+        ? value
+        : undefined;
 
 /**
  * 解析自定义块内容：空内容按默认配置处理；内容不是本插件写入的配置时返回 undefined，
@@ -48,7 +76,7 @@ export const parseButtonConfig = (content: string, defaultText: string): IButton
     try {
         parsed = JSON.parse(content);
     } catch (error) {
-        log.warn("块内容不是合法 JSON，按原始内容显示", {content, error});
+        log.warn("the block content is not valid JSON, showing it as is", {content, error});
         return undefined;
     }
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
@@ -56,13 +84,15 @@ export const parseButtonConfig = (content: string, defaultText: string): IButton
     }
     const source = parsed as Partial<IButtonConfig>;
     const action = parseButtonAction(source.action);
+    const color = parseButtonColor(source.color);
     // 至少要有一个本插件认识的字段，才当成按钮配置
-    if (typeof source.text !== "string" && typeof source.icon !== "string" && !action) {
+    if (typeof source.text !== "string" && typeof source.icon !== "string" && typeof color === "undefined" && !action) {
         return undefined;
     }
     return {
         text: typeof source.text === "string" ? source.text : defaultText,
         icon: typeof source.icon === "string" ? source.icon : "",
+        color,
         action,
     };
 };
@@ -77,127 +107,66 @@ const contentSetters = new Map<string, (content: string) => boolean>();
 export const updateButtonContent = (blockID: string, config: IButtonConfig) => {
     const setContent = contentSetters.get(blockID);
     if (!setContent) {
-        log.warn("按钮块当前不在渲染状态，无法写回", {blockID, rendered: contentSetters.size});
+        log.warn("the button block is not rendered right now, cannot write it back", {blockID, rendered: contentSetters.size});
         return false;
     }
     const content = serializeButtonConfig(config);
     const written = setContent(content);
-    log.debug("写回按钮块", {blockID, written, content});
+    log.debug("wrote the button block back", {blockID, written, content});
     return written;
 };
 
-/** 取资源扩展名：去掉查询串与锚点后的小写后缀。 */
-const getAssetExtension = (path: string) => {
-    const clean = path.split("#", 1)[0].split("?", 1)[0];
-    const index = clean.lastIndexOf(".");
-    return index === -1 ? "" : clean.substring(index).toLowerCase();
-};
-
-/** 地址里的查询串（不含锚点）。 */
-const getAssetQuery = (path: string) => path.split("#", 1)[0].split("?", 2)[1] || "";
-
-const HEIF_EXTENSIONS = [".heic", ".heif"];
-
 /**
- * 判断资源能否交给思源的资源页签渲染，条件与宿主的 editor/openLink.ts 完全一致：
- * 扩展名在 Constants.SIYUAN_ASSETS_EXTS 里、HEIF 不带 download=true（宿主的
- * isBrowserRenderableImagePath）、PDF 必须是库内资源。不满足时 openTab 会让宿主的 newTab
- * 返回 undefined，wnd.addTab(undefined) 直接把页签布局搞坏（思源整窗报错），所以必须先判断。
+ * JavaScript 文件操作：先把文件取回来（本地文件读内核、云端地址现下载），再交给与内联脚本
+ * 完全同一条执行与展示路径。文件取不到时不执行任何代码，只给一条提示。
  */
-const isPreviewableAsset = (path: string) => {
-    const extension = getAssetExtension(path);
-    if (!Constants.SIYUAN_ASSETS_EXTS.includes(extension)) {
-        return false;
-    }
-    if (HEIF_EXTENSIONS.includes(extension) &&
-        new URLSearchParams(getAssetQuery(path)).getAll("download").some((value) => value.toLowerCase() === "true")) {
-        return false;
-    }
-    return extension !== ".pdf" || path.startsWith("assets/");
-};
-
-/** 只有桌面端（含桌面端新窗口）有本地文件系统；浏览器前端没有，交给宿主的移动端逻辑。 */
-const hasLocalFileSystem = () => {
-    const frontend = getFrontend();
-    return frontend === "desktop" || frontend === "desktop-window";
-};
-
-/**
- * 用系统默认程序打开资源，步骤与宿主的 openBy(url, "app") 一致：
- * 先向内核要资源的绝对路径，再通过宿主的 openPath 通道交给 Electron 的 shell.openPath。
- * 之前这里用 window.open 打开资源地址，结果被浏览器类插件接管，非图片类资源在浏览器里也打不开。
- */
-const openAssetWithSystem = (context: IContext, address: string) => {
-    fetchPost("/api/asset/resolveAssetPath", {path: address}, (response) => {
-        const filePath = typeof response.data === "string" ? response.data : "";
-        if (response.code !== 0 || !filePath) {
-            log.error("解析资源路径失败，无法交给系统打开", {address, code: response.code, msg: response.msg});
-            showMessage(response.msg || context.i18n.assetOpenFailed);
-            return;
-        }
-        const ipcRenderer = getIpcRenderer();
-        if (!ipcRenderer) {
-            log.error("当前环境没有 Electron 的 ipcRenderer，无法交给系统打开", {address, filePath});
-            showMessage(context.i18n.assetOpenFailed);
-            return;
-        }
-        log.info("交给系统默认程序打开资源", {address, filePath});
-        ipcRenderer.send(Constants.SIYUAN_CMD, {cmd: "openPath", filePath});
+const runScriptFile = async (context: IContext, options: {
+    blockID: string;
+    blockElement?: HTMLElement;
+    path: string;
+}) => {
+    log.info("running the JavaScript file action", {
+        blockID: options.blockID,
+        path: options.path,
+        remote: isRemoteScript(options.path),
     });
-};
-
-/** 思源内部链接用原生接口打开，其余链接交给系统默认处理（与思源打开链接的行为一致）。 */
-const openLink = (context: IContext, link: string) => {
-    const address = link.trim();
-    if (!address) {
-        log.warn("链接地址为空，忽略这次点击");
+    let code: string;
+    try {
+        code = await loadActionScript(options.path);
+    } catch (error) {
+        log.error("failed to load the JavaScript file", {path: options.path, error});
+        showMessage(error instanceof Error && error.message ? error.message : context.i18n.scriptFileFailed);
         return;
     }
-    const blockID = /^siyuan:\/\/blocks\/([^/?#]+)/.exec(address)?.[1];
-    if (blockID) {
-        log.info("打开思源块", {blockID, isMobile: context.isMobile});
-        if (context.isMobile) {
-            openMobileFileById(context.app, blockID);
-        } else {
-            openTab({app: context.app, doc: {id: blockID}});
-        }
-        return;
-    }
-    if (address.startsWith("assets/")) {
-        if (!context.isMobile && isPreviewableAsset(address)) {
-            log.info("在思源页签里打开资源", {address});
-            openTab({app: context.app, asset: {path: address}});
-        } else if (hasLocalFileSystem()) {
-            // 图片/音视频/PDF 之外的资源（txt、zip、docx…）思源没有对应的页签，
-            // 与宿主的 openLink 一样按「外部应用」处理
-            openAssetWithSystem(context, address);
-        } else {
-            // 浏览器前端与移动端没有本地文件系统，交给宿主自己的打开逻辑（宿主在浏览器前端同样打不开这类资源）
-            log.warn("当前环境没有本地文件系统，交给宿主打开资源", {
-                address,
-                extension: getAssetExtension(address),
-                frontend: getFrontend(),
-            });
-            platformUtils.openByMobile(address);
-        }
-        return;
-    }
-    log.info("交给系统打开链接", {address});
-    window.open(address);
+    await runScript(context, {
+        blockID: options.blockID,
+        blockElement: options.blockElement,
+        code,
+    });
 };
 
 const runAction = (context: IContext, options: {
     blockID: string;
     blockElement?: HTMLElement;
     config: IButtonConfig;
+    /** 本次点击事件：链接跳转要按修饰键决定资源的打开方式（与点文档里的链接一致）。 */
+    event?: MouseEvent;
 }) => {
     const action = options.config.action;
     if (!action) {
-        log.debug("按钮没有配置操作，忽略这次点击");
+        log.debug("the button has no action configured, ignoring this click");
         return;
     }
     if (action.type === "link") {
-        openLink(context, action.link);
+        openLink(context, action.link, options.event);
+        return;
+    }
+    if (action.type === "file") {
+        void runScriptFile(context, {
+            blockID: options.blockID,
+            blockElement: options.blockElement,
+            path: action.file,
+        });
         return;
     }
     void runScript(context, {
@@ -213,10 +182,11 @@ export const renderButtonBlock = (context: IContext, options: {
     content: string,
     setContent: (content: string) => boolean,
 }) => {
-    const blockID = options.element.closest<HTMLElement>('[data-type="NodeCustomBlock"]')?.getAttribute("data-node-id") || "";
+    const blockElement = options.element.closest<HTMLElement>('[data-type="NodeCustomBlock"]');
+    const blockID = blockElement?.getAttribute("data-node-id") || "";
     const config = parseButtonConfig(options.content, context.i18n.defaultButtonText);
     if (!config) {
-        log.warn("块内容不是本插件配置，按原始内容显示", {blockID, content: options.content});
+        log.warn("the block content is not this plugin config, showing it as is", {blockID, content: options.content});
         const preElement = document.createElement("pre");
         preElement.textContent = options.content;
         options.element.append(preElement);
@@ -225,10 +195,16 @@ export const renderButtonBlock = (context: IContext, options: {
     if (blockID) {
         contentSetters.set(blockID, options.setContent);
     }
-    log.debug("渲染按钮块", {
+    // 资源引用属性也在这里对齐：Agent 用块接口建的块、同步过来的文档都不经过编辑窗口，
+    // 只在插件加载时整库补一次的话，用户可能在补上之前就在「未引用的资源文件」里把它清理掉了
+    if (blockElement && blockID) {
+        context.syncAssetReference(blockElement, blockID, config);
+    }
+    log.debug("rendering the button block", {
         blockID,
         text: config.text,
         icon: config.icon || "none",
+        color: config.color || "default",
         action: config.action?.type || "none",
         hasSetter: Boolean(blockID),
     });
@@ -237,26 +213,39 @@ export const renderButtonBlock = (context: IContext, options: {
     // 与思源原生按钮完全一致的类名（设置面板里的 b3-button b3-button--outline fn__size200）：
     // 宽度、字号、悬浮与按下效果全部由思源自己的 CSS 提供，插件不再自定义按钮外观
     button.className = "b3-button b3-button--outline fn__size200";
+    // 自定义颜色：只把颜色变量交给 index.scss 里的规则去覆写线框、文本与图标；
+    // 没有设置颜色时连类名都不加，保证默认与思源原生按钮逐像素一致
+    if (config.color) {
+        button.classList.add("bis-button-color");
+        button.style.setProperty("--bis-button-color", `var(--b3-font-color${config.color})`);
+    }
     button.textContent = config.text || context.i18n.defaultButtonText;
     if (config.icon) {
         button.prepend(createIconElement(config.icon));
     }
-    const click = () => {
+    const click = (event: MouseEvent) => {
         if (suppressClick) {
             // 移动端长按之后浏览器还会补一次 click，这次不该再执行按钮操作
             suppressClick = false;
             return;
         }
-        log.debug("点击按钮块", {blockID, text: config.text, action: config.action?.type || "none"});
-        runAction(context, {blockID, blockElement: options.element, config});
+        log.debug("button block clicked", {
+            blockID,
+            text: config.text,
+            action: config.action?.type || "none",
+            ctrlKey: event.ctrlKey,
+            altKey: event.altKey,
+            shiftKey: event.shiftKey,
+        });
+        runAction(context, {blockID, blockElement: options.element, config, event});
     };
     // 右键（桌面）与长按（移动端）都打开「编辑按钮块」，与块菜单里的入口一致
     const edit = (source: "contextmenu" | "long-press") => {
         if (!blockID) {
-            log.warn("按钮块没有块 ID，无法打开编辑窗口");
+            log.warn("the button block has no block ID, cannot open the editor");
             return;
         }
-        log.info("从按钮上打开编辑窗口", {blockID, source});
+        log.info("opening the editor from the button", {blockID, source});
         context.openEditor(blockID, config);
     };
     const contextMenu = (event: MouseEvent) => {
@@ -304,6 +293,6 @@ export const renderButtonBlock = (context: IContext, options: {
         if (blockID && contentSetters.get(blockID) === options.setContent) {
             contentSetters.delete(blockID);
         }
-        log.debug("清理按钮块渲染", {blockID});
+        log.debug("cleaned up the button block rendering", {blockID});
     };
 };

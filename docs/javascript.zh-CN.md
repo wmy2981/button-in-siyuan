@@ -1,25 +1,27 @@
 # 按钮块的 JavaScript 操作
 
-按钮块可以把「点一下」变成一段 JavaScript：脚本在思源前端页面里执行，能直接调用思源给插件开放的全部接口，
+按钮块运行一段 JavaScript：脚本在思源前端页面里执行，能直接调用思源给插件开放的全部接口，
 也能读写内核数据。本文说明它怎么执行、能用哪些接口，并给出可以直接粘贴运行的例子。
-
-> 对应插件版本 0.1.0；文中的接口都按思源 3.8.x 的源码核对过（`app/src/plugin/API.ts`、`kernel/api/`）。
 
 ---
 
 ## 1. 脚本是怎么执行的
 
-- **触发时机**：点击按钮时执行。按钮上右键（桌面端）或长按（移动端）打开的是编辑窗口，不会执行脚本。
+- **触发时机**：点击按钮时执行。
+- **代码从哪来**：下面说的都同时适用于两种情况 —— 代码直接写在按钮里，或按钮操作选的是
+  「JavaScript 文件」（`assets/` 下的本地文件，或 http(s) 地址）。后一种每次点击都会重新读文件
+  （云端地址则重新下载），所以改文件就等于改按钮的行为。
 - **async 包装**：整段代码被包进一个 async 函数，所以可以直接用 `await`，也可以用 `return` 结束。
 - **返回值**：`return` 的值会显示在结果弹窗的「返回值」一行（对象会被 JSON 序列化）。**没有 `return`、
-  也没有 `console` 输出和报错时，不弹结果弹窗**（保持静默，见 4.15）。
+  也没有 `console` 输出和报错时，不弹结果弹窗**（保持静默，见 4.15）；什么时候弹由插件设置里的
+  「JavaScript 输出弹窗」决定。
 - **调用内核接口**：`const response = await fetchPost("/api/…", {…})` 直接拿到内核响应（`code` 为 `0` 才算成功）。
   思源给插件的 `fetchPost` 原本是回调式的，本插件把「不传回调」的写法补成可 `await`；传了回调就仍按思源
   原本的回调方式走，`fetchSyncPost` / `fetchGet` 同理。
 - **console 输出**：`console.log / info / debug / warn / error / table / dir` 会被收集，按级别显示在弹窗里。
 - **错误**：脚本里抛出的异常会显示在弹窗的「错误」一行，不会影响思源运行。
 - **颜色**：输出支持 ANSI 颜色转义（见第 3 节）。
-- **复制**：弹窗右下角有「复制」按钮，复制的是去掉颜色转义后的纯文本。
+- **复制**：结果弹窗里的「复制」按钮复制的是去掉颜色转义后的纯文本。
 - **每次都重新执行**：脚本本身不保存状态，需要记住东西时用 `plugin.saveData()` 或写进笔记。
 
 ## 2. 运行环境里有什么
@@ -35,7 +37,7 @@
 | `Constants` | 思源的常量表（扩展名列表、通道名等） |
 | `platformUtils` | 平台工具：`copyPlainText`、`readText`、`isMac`、`openByMobile` 等 |
 | `fetchPost` / `fetchSyncPost` / `fetchGet` | 内核 HTTP 接口，最常用的一个；不传回调时可以直接 `await` 到响应 |
-| `showMessage` / `hideMessage` | 右下角提示 |
+| `showMessage` / `hideMessage` | 思源原生 Toast 提示 |
 | `confirm` | 确认对话框 |
 | `openInputDialog` | 让用户输入一段文本的对话框 |
 | `openSetting` | 打开插件设置（思源「设置 - 集市 - 已下载」里的插件页） |
@@ -269,9 +271,11 @@ try {
 ### 4.12 记住点击次数（插件私有数据）
 
 ```javascript
-const count = (await plugin.loadData("click-count")) || 0;
-const next = count + 1;
-await plugin.saveData("click-count", next);
+// 存成对象：插件存储文件没有扩展名，内核按内容猜 Content-Type，只有 `{…}` / `[…]` 会被当成
+// application/json 解析回对象；存裸数字会被当成文本，loadData 拿回来的是字符串（"1" + 1 = "11"）。
+const saved = (await plugin.loadData("click-count")) || {};
+const next = (Number(saved.count) || 0) + 1;
+await plugin.saveData("click-count", {count: next});
 showMessage(`这个按钮被点了 ${next} 次`);
 return next;
 ```
@@ -314,9 +318,10 @@ return "等待输入";
 
 ### 4.15 静默执行：没有 return 就不弹窗
 
-没有 `return` 返回值、也没有 `console` 输出和报错时，点完按钮**什么窗口都不弹** —— 「点一下做件事」
-的按钮不必每次都被一个空弹窗挡住。想让用户知道执行过了，用 `showMessage` 给个提示；有 `console`
-输出或抛错时仍然会弹窗，免得错误被吞掉。
+这是默认策略，也就是插件设置里「JavaScript 输出弹窗」的 `有输出时显示`
+（<kbd>设置</kbd> > <kbd>集市</kbd> > <kbd>已下载</kbd> 里插件卡片上的齿轮图标）。其余选项是
+`总是显示`、`仅 console 输出时显示`、`警告时显示（也包含错误）`、`错误时显示`、`始终不显示`；
+它们只决定要不要弹窗，不会影响脚本本身是否执行。
 
 ```javascript
 showMessage("已执行，没有弹窗");
@@ -333,8 +338,13 @@ showMessage("已执行，没有弹窗");
   可以先看 `window.siyuan.config.readonly` 或 `protyle.disabled`。
 - **移动端差异**：`getActiveTab`、`getAllModels`、`getAllTabs` 只在桌面端存在（移动端为 `undefined`）；
   依赖 Electron 的写法在移动端与浏览器前端一律不可用。
-- **不要做破坏性操作**：脚本可以直接调用 `/api/block/deleteBlock`、`/api/filetree/removeDoc` 之类的接口，
-  但一旦点错就无法撤销。本文的例子都只读或只追加。
+- **`plugin.loadData` 拿到的未必是对象**：插件存储文件没有扩展名，内核按内容嗅探 Content-Type
+  （`kernel/api/file.go` 的 `getFile`），只有 `{…}` 或 `[…]` 会被当成 `application/json` 解析回对象/数组；
+  存裸数字、裸字符串、`true` 会被当成文本，`loadData` 回来的是**字符串** —— `"1" + 1` 得到 `"11"`，
+  计数就会变成 1、11、111…。插件私有数据统一存成对象（`{count: next}`），或自己用 `Number()` /
+  `JSON.parse()` 兜底。
+- **破坏性操作**：脚本可以直接调用 `/api/block/deleteBlock`、`/api/filetree/removeDoc` 之类的接口，
+  一旦点错就无法撤销，需谨慎编写。
 - **调试**：脚本里的 `console` 输出会被弹窗收走（不会留在开发者工具里）；想同时看开发者工具，
   可以写 `window.console.log` 之外的通道，例如 `showMessage`，或临时用 `debugger` 断点。
 

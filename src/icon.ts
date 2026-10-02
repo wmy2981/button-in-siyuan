@@ -55,16 +55,16 @@ export const openIconPicker = (context: IContext, options: {
     const emptyElement = dialog.element.querySelector<HTMLElement>('[data-bis="empty"]');
     const cancelElement = dialog.element.querySelector<HTMLElement>('[data-bis="cancel"]');
     if (!searchElement || !listElement || !emptyElement || !cancelElement) {
-        log.error("图标选择对话框的节点缺失，关闭对话框");
+        log.error("the icon picker dialog has missing nodes, closing it");
         dialog.destroy();
         return;
     }
     cancelElement.addEventListener("click", () => dialog.destroy());
 
     const names = collectIconNames();
-    log.debug("打开图标选择对话框", {count: names.length, selected: options.selected || "none"});
+    log.debug("opened the icon picker", {count: names.length, selected: options.selected || "none"});
     if (names.length === 0) {
-        log.warn("当前界面没有可用的 SVG 图标");
+        log.warn("the current UI has no SVG icons available");
     }
     const items = names.map(name => {
         const item = document.createElement("button");
@@ -74,7 +74,7 @@ export const openIconPicker = (context: IContext, options: {
         item.setAttribute("aria-label", name);
         item.append(createIconElement(name));
         item.addEventListener("click", () => {
-            log.debug("选中图标", {name});
+            log.debug("icon picked", {name});
             options.onSelect(name);
             dialog.destroy();
         });

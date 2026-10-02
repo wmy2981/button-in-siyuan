@@ -1,11 +1,15 @@
-import {getFrontend, Plugin} from "siyuan";
+import {getFrontend, Plugin, Setting, showMessage} from "siyuan";
 import type {IEventBusMap, Protyle} from "siyuan";
+import {downloadAgentSkill, installAgentSkill, removeAgentSkill} from "./agentSkill";
+import {syncAssetReferences, syncRenderedAssetReference} from "./assetReference";
 import {createButtonBlockIconHtml} from "./buttonIcon";
 import {BUTTON_BLOCK_TYPE, DEFAULT_BUTTON_ICON, parseButtonConfig, renderButtonBlock, serializeButtonConfig} from "./buttonBlock";
 import type {IContext} from "./context";
 import {openButtonBlockEditor} from "./editDialog";
 import type {II18n} from "./i18nKeys";
 import {createLogger} from "./logger";
+import type {ISettings, TOutputMode} from "./settings";
+import {DEFAULT_SETTINGS, loadSettings, OUTPUT_MODES, saveSettings} from "./settings";
 import "./index.scss";
 
 const log = createLogger("plugin");
@@ -13,6 +17,34 @@ const log = createLogger("plugin");
 /** 块信息格式为 <插件包名>/<块类型>，两段都经过 encodeURIComponent。 */
 const encodeBlockInfo = (pluginName: string, blockType: string) =>
     `${encodeURIComponent(pluginName)}/${encodeURIComponent(blockType)}`;
+
+/**
+ * 斜杠菜单项的 id。
+ *
+ * 主编辑器的斜杠菜单会按 id 过滤单元格里的候选项：只保留思源 `TABLE_CELL_SLASH_IDS` 清单里的项，
+ * 插件项一律被过滤掉（过滤在 `app/src/protyle/hint/extend.ts` 的 `hintSlash`，清单在
+ * `app/src/protyle/util/tableCellRichMenu.ts`），而这个过滤只看 `id`，所以插件必须借清单里的一个
+ * id 才有机会出现在那条路径上 —— 取 `code` 是因为它最接近「在这里插入一个块」的语义。
+ * 插件项与内置项不会串：思源给插件项算的 entryKey 是 `plugin:<包名>:<id>`
+ * （`app/src/config/entryVisibility/catalog.ts`），与内置项的 id 无关；点选时的派发也按这个 entryKey
+ * 回到本插件的 `protyleSlash`。
+ *
+ * 注意：**桌面端在单元格里编辑时这条路径走不到**。思源 3.8.6 起点击单元格会挂上富文本单元格编辑器
+ * （`app/src/protyle/render/tableCellRichEditor.ts`），它把 `pluginExtensions` 关掉，插件项根本不会被
+ * 构造出来，单元格的斜杠菜单里也就不会有按钮块。这个 id 只兜住「思源仍然向插件索取单元格候选」的
+ * 情形，不代表单元格里一定能用（README 的「限制」里写明了）。
+ */
+const SLASH_ITEM_ID = "code";
+
+/** 输出弹窗策略 → 文案键。设置面板里的下拉列表与 i18n 一一对应。 */
+const OUTPUT_MODE_KEYS: Record<TOutputMode, keyof II18n> = {
+    always: "outputModeAlways",
+    output: "outputModeOutput",
+    console: "outputModeConsole",
+    warn: "outputModeWarn",
+    error: "outputModeError",
+    never: "outputModeNever",
+};
 
 /** 解析块信息；格式不合法时返回 undefined。 */
 const parseBlockInfo = (info: string) => {
@@ -26,13 +58,14 @@ const parseBlockInfo = (info: string) => {
             blockType: decodeURIComponent(info.slice(separator + 1)),
         };
     } catch (error) {
-        log.warn("块信息不是合法的编码格式", {info, error});
+        log.warn("block info is not valid encoded text", {info, error});
         return;
     }
 };
 
 export default class ButtonInSiYuan extends Plugin {
     private isMobile = false;
+    private settings: ISettings = {...DEFAULT_SETTINGS};
 
     /** 每次取值都反映当前的 app 与 i18n，避免在生命周期之外持有宿主对象。 */
     private get context(): IContext {
@@ -42,6 +75,8 @@ export default class ButtonInSiYuan extends Plugin {
             i18n: this.i18n as II18n,
             isMobile: this.isMobile,
             openEditor: (blockID, config) => openButtonBlockEditor(this.context, {blockID, config}),
+            syncAssetReference: (element, blockID, config) => syncRenderedAssetReference(element, blockID, config),
+            getSettings: () => this.settings,
         };
     }
 
@@ -49,7 +84,7 @@ export default class ButtonInSiYuan extends Plugin {
         const frontend = getFrontend();
         this.isMobile = frontend === "mobile" || frontend === "browser-mobile";
         const context = this.context;
-        log.info("插件加载", {name: this.name, displayName: this.displayName, frontend, isMobile: this.isMobile});
+        log.info("plugin loaded", {name: this.name, displayName: this.displayName, frontend, isMobile: this.isMobile});
         this.customBlockRenders[BUTTON_BLOCK_TYPE] = {
             render: (options) => renderButtonBlock(context, options),
         };
@@ -63,26 +98,149 @@ export default class ButtonInSiYuan extends Plugin {
             // .keyboard__slash-text（插件项没有图标槽），那里没有 .b3-list-item__first 的 flex 上下文，
             // 图标与文字会叠成两行，index.scss 里按这个类把 flex 补回来。
             html: `<div class="b3-list-item__first bis-slash-item">${createButtonBlockIconHtml()}<span class="b3-list-item__text">${context.i18n.insertButtonBlock}</span></div>`,
-            id: "insertButtonBlock",
+            id: SLASH_ITEM_ID,
             callback: (protyle) => this.insertButtonBlock(protyle),
         }];
-        log.debug("已注册自定义块渲染器、斜杠菜单项与块菜单监听", {
+        log.debug("registered the custom block renderer, the slash item and the block menu listener", {
             blockType: BUTTON_BLOCK_TYPE,
             blockInfo: encodeBlockInfo(this.name, BUTTON_BLOCK_TYPE),
             slashFilter: this.protyleSlash[0].filter,
         });
+        // 设置与技能都要读盘/走内核，放到注册之后再跑：渲染器与菜单项必须第一时间就位。
+        // 设置面板等设置读完再注册，否则面板打开的瞬间可能还拿着默认值，保存就把用户设置冲掉了
+        void this.initSettings().finally(() => this.registerSetting());
     }
 
     onunload() {
         this.eventBus.off("click-blockicon", this.blockIconMenu);
-        log.info("插件卸载");
+        log.info("plugin unloaded");
+        // 禁用、重载与卸载都会走到这里：宿主的 teardown 一定先跑 onunload，只有卸载时才接着补跑
+        // uninstall（siyuan 的 app/src/plugin/lifecycle.ts）。所以技能在这里删一次就覆盖了「禁用」
+        // 与「卸载」两种情况，不会留下一个指向已停用插件的技能让 Agent 白调一趟。
+        return removeAgentSkill();
     }
 
-    /** 斜杠菜单：在光标处插入一个还没有操作的按钮块，内容由用户在「编辑按钮块」里设置。 */
+    private async initSettings() {
+        this.settings = await loadSettings(this);
+        if (this.settings.agentSkill) {
+            await installAgentSkill(this.name);
+        }
+        // 补齐按钮块上的资源引用属性：脚本文件不该出现在「未引用的资源文件」里被清理掉
+        await syncAssetReferences(this.context);
+    }
+
+    /**
+     * 注册插件设置面板（集市 - 已下载 里插件卡片上的齿轮图标）。
+     *
+     * 面板是思源自己的 `Setting`：默认就是当前窗口里的模态对话框（不传 openInWindow），
+     * 控件要插件自己造 —— 思源按类名判断布局（`b3-switch` 放进 label，其余元素加
+     * `fn__flex-center fn__size200`），所以这里只用思源自己的控件类。
+     * `createActionElement` 在每次打开面板时调用，那时读 `this.settings` 就是最新值。
+     */
+    private registerSetting() {
+        const i18n = this.i18n as II18n;
+        const outputSelect = document.createElement("select");
+        outputSelect.className = "b3-select";
+        OUTPUT_MODES.forEach((mode) => {
+            const option = document.createElement("option");
+            option.value = mode;
+            option.textContent = i18n[OUTPUT_MODE_KEYS[mode]];
+            outputSelect.append(option);
+        });
+        const skillSwitch = document.createElement("input");
+        skillSwitch.type = "checkbox";
+        skillSwitch.className = "b3-switch fn__flex-center";
+        // 下载按钮与思源自己的设置按钮同款：b3-button--outline，尺寸交给面板里的 fn__size200
+        const skillDownload = document.createElement("button");
+        skillDownload.className = "b3-button b3-button--outline";
+        skillDownload.textContent = i18n.downloadSkill;
+        skillDownload.addEventListener("click", () => void this.downloadSkill(skillDownload));
+        this.setting = new Setting({
+            confirmCallback: () => {
+                // 保存按钮不等待回调：这里自己把结果落盘、必要时提示
+                void this.saveSetting(outputSelect.value as TOutputMode, skillSwitch.checked);
+            },
+        });
+        this.setting.addItem({
+            title: i18n.settingsOutputMode,
+            description: i18n.settingsOutputModeTip,
+            // row：标题与说明在上、下拉列表占满整行，长选项文案才不会被 200px 切掉
+            direction: "row",
+            createActionElement: () => {
+                outputSelect.value = this.settings.outputMode;
+                return outputSelect;
+            },
+        });
+        this.setting.addItem({
+            title: i18n.settingsAgentSkill,
+            description: i18n.settingsAgentSkillTip,
+            createActionElement: () => {
+                skillSwitch.checked = this.settings.agentSkill;
+                return skillSwitch;
+            },
+        });
+        this.setting.addItem({
+            title: i18n.settingsDownloadSkill,
+            description: i18n.settingsDownloadSkillTip,
+            createActionElement: () => skillDownload,
+        });
+        log.debug("registered the plugin setting panel", {outputModes: OUTPUT_MODES.length});
+    }
+
+    /**
+     * 设置面板里的「下载 SKILL.md」：把内置的技能正文交给思源原生的保存流程（见 agentSkill.ts）。
+     * 保存对话框由宿主弹出，用户在对话框里取消不算失败，所以这里只在真正出错时提示。
+     */
+    private async downloadSkill(button: HTMLButtonElement) {
+        button.disabled = true;
+        try {
+            await downloadAgentSkill(this.name);
+        } catch (error) {
+            log.error("failed to download the agent skill", {error});
+            showMessage((this.i18n as II18n).downloadSkillFailed);
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    /** 保存设置并应用副作用：技能开关变化时立刻写入或删除技能。 */
+    private async saveSetting(outputMode: TOutputMode, agentSkill: boolean) {
+        const previous = this.settings;
+        const next: ISettings = {outputMode, agentSkill};
+        let saved = false;
+        try {
+            saved = await saveSettings(this, next);
+        } catch (error) {
+            // 只读模式、发布服务下 saveData 会直接 reject
+            log.error("failed to save the plugin settings", {error});
+        }
+        if (!saved) {
+            showMessage((this.i18n as II18n).settingsSaveFailed);
+            return;
+        }
+        this.settings = next;
+        if (next.agentSkill === previous.agentSkill) {
+            return;
+        }
+        if (next.agentSkill) {
+            await installAgentSkill(this.name);
+        } else {
+            await removeAgentSkill();
+        }
+    }
+
+    /**
+     * 斜杠菜单：在光标处插入一个还没有操作的按钮块，内容由用户在「编辑按钮块」里设置。
+     *
+     * 插入交给思源自己的 `protyle.insert(dom, true)`：它按光标找最近的块，把新块插在那个块后面。
+     * 光标在表格单元格里时，单元格本身不是块 —— 思源把整个表格渲染成一个 `NodeTable` 块，
+     * 单元格里只有行内内容（`app/src/protyle/util/table.ts` 的表格 DOM），所以最近的块就是表格，
+     * 按钮块会落在表格后面。
+     */
     private insertButtonBlock(protyle: Protyle) {
         const lute = protyle.protyle.lute;
         if (!lute) {
-            log.warn("当前编辑器没有 lute，取消插入按钮块");
+            log.warn("the editor has no lute, skipping the button block insertion");
             return;
         }
         const info = encodeBlockInfo(this.name, BUTTON_BLOCK_TYPE);
@@ -90,15 +248,15 @@ export default class ButtonInSiYuan extends Plugin {
         const content = serializeButtonConfig({text: this.context.i18n.defaultButtonText, icon: DEFAULT_BUTTON_ICON});
         const markdown = `;;;${info}\n${content}\n;;;`;
         protyle.insert(lute.Md2BlockDOM(markdown), true);
-        log.info("插入按钮块", {blockInfo: info});
-        log.debug("插入的 markdown", markdown);
+        log.info("inserted a button block", {blockInfo: info});
+        log.debug("inserted markdown", markdown);
     }
 
     /** 块菜单 > 插件 > 编辑按钮块：只对本插件的按钮块显示，只读文档不提供编辑。 */
     private readonly blockIconMenu = (event: CustomEvent<IEventBusMap["click-blockicon"]>) => {
         const {menu, protyle, blockElements} = event.detail;
         if (protyle.disabled) {
-            log.debug("块菜单：文档只读，不提供编辑入口");
+            log.debug("block menu: the document is read-only, no edit entry");
             return;
         }
         const blockElement = blockElements.find(item => {
@@ -117,10 +275,10 @@ export default class ButtonInSiYuan extends Plugin {
         const config = parseButtonConfig(content, i18n.defaultButtonText);
         // 内容不是本插件的配置时不提供编辑，避免把用户自己的数据覆盖成按钮配置
         if (!blockID || !config) {
-            log.warn("块菜单：按钮块内容不是本插件的配置，不提供编辑入口", {blockID, content});
+            log.warn("block menu: the button block content is not this plugin config, no edit entry", {blockID, content});
             return;
         }
-        log.debug("块菜单：命中按钮块", {blockID, action: config.action?.type || "none", icon: config.icon});
+        log.debug("block menu: button block matched", {blockID, action: config.action?.type || "none", icon: config.icon});
         menu.addItem({
             id: "button-in-siyuan-edit",
             icon: "iconEdit",

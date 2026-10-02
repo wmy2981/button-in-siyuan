@@ -1,22 +1,21 @@
 # JavaScript actions for button blocks
 
-A button block can turn a click into a piece of JavaScript: the script runs in the SiYuan frontend page, can call
-every API SiYuan exposes to plugins, and can read or write kernel data. This document explains how a script runs,
+A button block runs a piece of JavaScript: the script runs in the SiYuan frontend page, can call every API
+SiYuan exposes to plugins, and can read or write kernel data. This document explains how a script runs,
 which APIs are available, and gives examples you can paste as-is.
-
-> Written for plugin version 0.1.0; the APIs were checked against the SiYuan 3.8.x sources
-> (`app/src/plugin/API.ts`, `kernel/api/`).
 
 ---
 
 ## 1. How a script runs
 
-- **Trigger**: it runs when the button is clicked. Right-clicking (desktop) or long-pressing (mobile) the button
-  opens the edit dialog instead, which does not run the script.
+- **Trigger**: it runs when the button is clicked.
+- **Where the code comes from**: everything below holds whether the button carries the code inline or its action is
+  "JavaScript file" — then the code is read from an `assets/` file (or downloaded from an http(s) URL) again on
+  every click, so editing that file is enough to change what the button does.
 - **Wrapped in async**: the code is placed inside an async function, so `await` works and `return` ends it.
 - **Return value**: the returned value is shown as the "Return value" line of the result dialog (objects are
   JSON-serialised). With **no `return`, no `console` output and no error the dialog does not open at all**
-  (silent run, see 4.15).
+  (silent run, see 4.15); the plugin setting "JavaScript output dialog" decides when the dialog opens.
 - **Calling the kernel**: `const response = await fetchPost("/api/…", {…})` gives you the kernel response directly
   (`code === 0` means success). The `fetchPost` SiYuan hands to plugins is callback-style; this plugin makes the
   no-callback form awaitable and leaves the callback form exactly as SiYuan behaves. Same for `fetchSyncPost`
@@ -40,7 +39,7 @@ which APIs are available, and gives examples you can paste as-is.
 | `Constants` | SiYuan constants (asset extensions, channel names) |
 | `platformUtils` | Platform helpers: `copyPlainText`, `readText`, `isMac`, `openByMobile`, … |
 | `fetchPost` / `fetchSyncPost` / `fetchGet` | Kernel HTTP API — the one you will use most; without a callback you can `await` the response |
-| `showMessage` / `hideMessage` | The bottom-right toast |
+| `showMessage` / `hideMessage` | SiYuan's native toast |
 | `confirm` | Confirmation dialog |
 | `openInputDialog` | A dialog that asks the user for a piece of text |
 | `openSetting` | Opens the plugin's settings page |
@@ -277,9 +276,12 @@ try {
 ### 4.12 Remember how often the button was clicked (plugin data)
 
 ```javascript
-const count = (await plugin.loadData("click-count")) || 0;
-const next = count + 1;
-await plugin.saveData("click-count", next);
+// Store an object: a plugin storage file has no extension, so the kernel guesses the Content-Type from the
+// bytes and only `{…}` / `[…]` are parsed back as JSON. A bare number is served as text and `loadData`
+// resolves with a string, where "1" + 1 gives "11".
+const saved = (await plugin.loadData("click-count")) || {};
+const next = (Number(saved.count) || 0) + 1;
+await plugin.saveData("click-count", {count: next});
 showMessage(`clicked ${next} times`);
 return next;
 ```
@@ -322,10 +324,10 @@ return "waiting for input";
 
 ### 4.15 Silent run: no return value, no dialog
 
-When the script returns nothing and produces no `console` output and no error, clicking the button opens
-**no dialog at all** — a "do one thing" button should not be covered by an empty window every time. Use
-`showMessage` if the user should still get a hint; `console` output or a thrown error still opens the dialog,
-so failures never disappear silently.
+This is the default policy, the "With output" option of the plugin setting **JavaScript output dialog**
+(<kbd>Settings</kbd> > <kbd>Marketplace</kbd> > <kbd>Downloaded</kbd> > the plugin's gear icon). The other
+options are `Always`, `Console output only`, `On warning (and error)`, `On error` and `Never`; they only
+change whether the dialog opens, never whether the script runs.
 
 ```javascript
 showMessage("done, no dialog");
@@ -343,7 +345,12 @@ showMessage("done, no dialog");
   (`code` is not 0). You can check `window.siyuan.config.readonly` or `protyle.disabled` first.
 - **Mobile differences**: `getActiveTab`, `getAllModels` and `getAllTabs` only exist on desktop (`undefined` on
   mobile), and anything relying on Electron is unavailable on mobile and browser frontends.
-- **Avoid destructive calls**: the kernel also exposes `/api/block/deleteBlock`, `/api/filetree/removeDoc` and
-  friends. A wrong click cannot be undone, so the examples here only read or append.
+- **`plugin.loadData` does not always give you an object**: a plugin storage file has no extension, so the
+  kernel sniffs its Content-Type (`getFile` in `kernel/api/file.go`) and only `{…}` or `[…]` are parsed back
+  as JSON; a bare number, string or `true` is served as text, and `loadData` resolves with a **string** —
+  `"1" + 1` gives `"11"`, so a counter runs 1, 11, 111… Store plugin data as an object (`{count: next}`), or
+  coerce with `Number()` / `JSON.parse()` yourself.
+- **Destructive calls**: the kernel also exposes `/api/block/deleteBlock`, `/api/filetree/removeDoc` and
+  friends. A wrong click cannot be undone, so write them with care.
 - **Debugging**: `console` output is captured by the dialog and does not stay in DevTools; use `showMessage`,
   or a `debugger` statement, when you need to see something there.

@@ -250,7 +250,7 @@ const toPlainText = (context: IContext, scriptResult: IScriptResult) => {
 export const showScriptOutput = (context: IContext, scriptResult: IScriptResult) => {
     const {i18n} = context;
     const plainText = toPlainText(context, scriptResult);
-    log.debug("打开运行结果弹窗", {
+    log.debug("opened the result dialog", {
         consoleLines: scriptResult.entries.length,
         hasResult: typeof scriptResult.result !== "undefined",
         hasFailure: typeof scriptResult.failure !== "undefined",
@@ -269,7 +269,7 @@ export const showScriptOutput = (context: IContext, scriptResult: IScriptResult)
     });
     const outputElement = dialog.element.querySelector<HTMLElement>('[data-bis="output"]');
     if (!outputElement) {
-        log.error("运行结果弹窗的节点缺失，关闭弹窗");
+        log.error("the result dialog has missing nodes, closing it");
         dialog.destroy();
         return;
     }
@@ -289,7 +289,7 @@ export const showScriptOutput = (context: IContext, scriptResult: IScriptResult)
             showMessage(i18n.noOutput);
             return;
         }
-        log.info("复制运行结果", {chars: plainText.length});
+        log.info("copied the run result", {chars: plainText.length});
         platformUtils.copyPlainText(plainText);
         showMessage(i18n.copied);
     });
