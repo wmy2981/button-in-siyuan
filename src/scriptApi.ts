@@ -163,7 +163,7 @@ export const createScriptScope = (options: {
         isMobile: options.isMobile,
         i18n: options.i18n,
     };
-    log.debug("准备脚本运行环境", {
+    log.debug("prepared the script environment", {
         blockID: options.blockID,
         names: Object.keys(scope).length,
         hasProtyle: Boolean(protyle),

@@ -67,7 +67,7 @@ export const runScript = async (context: IContext, options: {
         blockID: options.blockID,
         blockElement: options.blockElement,
     });
-    log.info("开始执行 JavaScript 操作", {blockID: options.blockID, chars: options.code.length, api: scope.names.length});
+    log.info("running the JavaScript action", {blockID: options.blockID, chars: options.code.length, api: scope.names.length});
     const restoreConsole = captureConsole(entries);
     const startedAt = Date.now();
     let result: unknown;
@@ -89,14 +89,14 @@ export const runScript = async (context: IContext, options: {
         hasResult: typeof result !== "undefined",
     };
     if (typeof failure === "undefined") {
-        log.info("JavaScript 操作执行完成", detail);
+        log.info("JavaScript action finished", detail);
     } else {
-        log.error("JavaScript 操作执行出错", {failure, ...detail});
+        log.error("JavaScript action failed", {failure, ...detail});
     }
     // 没有 return、没有 console 输出、也没有报错时保持静默：这种「点一下做件事」的按钮不该每次都被
     // 一个空弹窗挡住。有输出或出错仍然弹窗，免得错误被吞掉。
     if (typeof result === "undefined" && typeof failure === "undefined" && entries.length === 0) {
-        log.debug("没有返回值也没有输出，不弹结果弹窗", detail);
+        log.debug("no return value and no output, keeping the result dialog closed", detail);
         return;
     }
     showScriptOutput(context, {

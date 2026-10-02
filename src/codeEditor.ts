@@ -102,9 +102,9 @@ const readCodeTheme = () => {
     });
     holder.remove();
     if (specs.length === 0) {
-        log.warn("没读到代码高亮主题的标记配色，编辑器只有基础配色", {background, color: base.color});
+        log.warn("no token colours found in the code highlight theme, the editor only has the base colours", {background, color: base.color});
     } else {
-        log.debug("读取代码高亮主题", {background, color: base.color, tokens: specs.length});
+        log.debug("read the code highlight theme", {background, color: base.color, tokens: specs.length});
     }
     return {base, background, specs};
 };
@@ -249,7 +249,7 @@ const openNativeTextMenu = (event: MouseEvent) => {
     // 宿主 window 上的 contextmenu 监听会给非输入框 preventDefault（浏览器菜单不出来），
     // 这里已经弹了思源的原生菜单，不再让它继续处理
     event.stopPropagation();
-    log.debug("弹出代码编辑区的原生右键菜单");
+    log.debug("opened the native context menu of the code editor");
 };
 
 export const createCodeEditor = (options: {
@@ -278,7 +278,7 @@ export const createCodeEditor = (options: {
         parent: element,
     });
     element.addEventListener("contextmenu", openNativeTextMenu);
-    log.debug("创建代码编辑器", {chars: view.state.doc.length, dark, lineWrap, tokens: specs.length});
+    log.debug("created the code editor", {chars: view.state.doc.length, dark, lineWrap, tokens: specs.length});
     return {
         element,
         getValue: () => view.state.doc.toString(),

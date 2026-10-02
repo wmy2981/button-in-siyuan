@@ -103,7 +103,8 @@
   改了文档跑 `node scripts/check-docs.mjs`：代码块语言（统一 `javascript`，不用缩写 `js`）、
   示例语法、接口表与注入清单都在那里校验。
 * **日志**：每个模块 `createLogger("<模块名>")` 建一个 logger，前缀形如 `[button-in-siyuan][buttonBlock]`，
-  第二个参数传结构化细节对象。分级约定：`debug` 走 `console.debug`（浏览器默认归到 Verbose，不打扰用户）
+  第二个参数传结构化细节对象。**日志文案一律英文**（面向开发者工具与问题排查，不参与 i18n），
+  源码注释仍用中文。分级约定：`debug` 走 `console.debug`（浏览器默认归到 Verbose，不打扰用户）
   记渲染、菜单命中、主题探针等过程细节；`info` 记加载/卸载、打开对话框、保存、执行操作等用户可见动作；
   `warn` 记能继续跑但不符合预期的情况（内容认不出、资源没有页签、保存被拒绝）；`error` 记真正出错
   （JavaScript 抛异常、写回失败）。不要用 `console.log` 直接打日志。

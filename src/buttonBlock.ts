@@ -48,7 +48,7 @@ export const parseButtonConfig = (content: string, defaultText: string): IButton
     try {
         parsed = JSON.parse(content);
     } catch (error) {
-        log.warn("块内容不是合法 JSON，按原始内容显示", {content, error});
+        log.warn("the block content is not valid JSON, showing it as is", {content, error});
         return undefined;
     }
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
@@ -77,12 +77,12 @@ const contentSetters = new Map<string, (content: string) => boolean>();
 export const updateButtonContent = (blockID: string, config: IButtonConfig) => {
     const setContent = contentSetters.get(blockID);
     if (!setContent) {
-        log.warn("按钮块当前不在渲染状态，无法写回", {blockID, rendered: contentSetters.size});
+        log.warn("the button block is not rendered right now, cannot write it back", {blockID, rendered: contentSetters.size});
         return false;
     }
     const content = serializeButtonConfig(config);
     const written = setContent(content);
-    log.debug("写回按钮块", {blockID, written, content});
+    log.debug("wrote the button block back", {blockID, written, content});
     return written;
 };
 
@@ -131,17 +131,17 @@ const openAssetWithSystem = (context: IContext, address: string) => {
     fetchPost("/api/asset/resolveAssetPath", {path: address}, (response) => {
         const filePath = typeof response.data === "string" ? response.data : "";
         if (response.code !== 0 || !filePath) {
-            log.error("解析资源路径失败，无法交给系统打开", {address, code: response.code, msg: response.msg});
+            log.error("failed to resolve the asset path, cannot hand the asset to the system", {address, code: response.code, msg: response.msg});
             showMessage(response.msg || context.i18n.assetOpenFailed);
             return;
         }
         const ipcRenderer = getIpcRenderer();
         if (!ipcRenderer) {
-            log.error("当前环境没有 Electron 的 ipcRenderer，无法交给系统打开", {address, filePath});
+            log.error("this environment has no Electron ipcRenderer, cannot hand the asset to the system", {address, filePath});
             showMessage(context.i18n.assetOpenFailed);
             return;
         }
-        log.info("交给系统默认程序打开资源", {address, filePath});
+        log.info("opening the asset with the system default application", {address, filePath});
         ipcRenderer.send(Constants.SIYUAN_CMD, {cmd: "openPath", filePath});
     });
 };
@@ -150,12 +150,12 @@ const openAssetWithSystem = (context: IContext, address: string) => {
 const openLink = (context: IContext, link: string) => {
     const address = link.trim();
     if (!address) {
-        log.warn("链接地址为空，忽略这次点击");
+        log.warn("the link is empty, ignoring this click");
         return;
     }
     const blockID = /^siyuan:\/\/blocks\/([^/?#]+)/.exec(address)?.[1];
     if (blockID) {
-        log.info("打开思源块", {blockID, isMobile: context.isMobile});
+        log.info("opening a SiYuan block", {blockID, isMobile: context.isMobile});
         if (context.isMobile) {
             openMobileFileById(context.app, blockID);
         } else {
@@ -165,7 +165,7 @@ const openLink = (context: IContext, link: string) => {
     }
     if (address.startsWith("assets/")) {
         if (!context.isMobile && isPreviewableAsset(address)) {
-            log.info("在思源页签里打开资源", {address});
+            log.info("opening the asset in a SiYuan tab", {address});
             openTab({app: context.app, asset: {path: address}});
         } else if (hasLocalFileSystem()) {
             // 图片/音视频/PDF 之外的资源（txt、zip、docx…）思源没有对应的页签，
@@ -173,7 +173,7 @@ const openLink = (context: IContext, link: string) => {
             openAssetWithSystem(context, address);
         } else {
             // 浏览器前端与移动端没有本地文件系统，交给宿主自己的打开逻辑（宿主在浏览器前端同样打不开这类资源）
-            log.warn("当前环境没有本地文件系统，交给宿主打开资源", {
+            log.warn("this environment has no local file system, letting the host open the asset", {
                 address,
                 extension: getAssetExtension(address),
                 frontend: getFrontend(),
@@ -182,7 +182,7 @@ const openLink = (context: IContext, link: string) => {
         }
         return;
     }
-    log.info("交给系统打开链接", {address});
+    log.info("handing the link to the system", {address});
     window.open(address);
 };
 
@@ -193,7 +193,7 @@ const runAction = (context: IContext, options: {
 }) => {
     const action = options.config.action;
     if (!action) {
-        log.debug("按钮没有配置操作，忽略这次点击");
+        log.debug("the button has no action configured, ignoring this click");
         return;
     }
     if (action.type === "link") {
@@ -216,7 +216,7 @@ export const renderButtonBlock = (context: IContext, options: {
     const blockID = options.element.closest<HTMLElement>('[data-type="NodeCustomBlock"]')?.getAttribute("data-node-id") || "";
     const config = parseButtonConfig(options.content, context.i18n.defaultButtonText);
     if (!config) {
-        log.warn("块内容不是本插件配置，按原始内容显示", {blockID, content: options.content});
+        log.warn("the block content is not this plugin config, showing it as is", {blockID, content: options.content});
         const preElement = document.createElement("pre");
         preElement.textContent = options.content;
         options.element.append(preElement);
@@ -225,7 +225,7 @@ export const renderButtonBlock = (context: IContext, options: {
     if (blockID) {
         contentSetters.set(blockID, options.setContent);
     }
-    log.debug("渲染按钮块", {
+    log.debug("rendering the button block", {
         blockID,
         text: config.text,
         icon: config.icon || "none",
@@ -247,16 +247,16 @@ export const renderButtonBlock = (context: IContext, options: {
             suppressClick = false;
             return;
         }
-        log.debug("点击按钮块", {blockID, text: config.text, action: config.action?.type || "none"});
+        log.debug("button block clicked", {blockID, text: config.text, action: config.action?.type || "none"});
         runAction(context, {blockID, blockElement: options.element, config});
     };
     // 右键（桌面）与长按（移动端）都打开「编辑按钮块」，与块菜单里的入口一致
     const edit = (source: "contextmenu" | "long-press") => {
         if (!blockID) {
-            log.warn("按钮块没有块 ID，无法打开编辑窗口");
+            log.warn("the button block has no block ID, cannot open the editor");
             return;
         }
-        log.info("从按钮上打开编辑窗口", {blockID, source});
+        log.info("opening the editor from the button", {blockID, source});
         context.openEditor(blockID, config);
     };
     const contextMenu = (event: MouseEvent) => {
@@ -304,6 +304,6 @@ export const renderButtonBlock = (context: IContext, options: {
         if (blockID && contentSetters.get(blockID) === options.setContent) {
             contentSetters.delete(blockID);
         }
-        log.debug("清理按钮块渲染", {blockID});
+        log.debug("cleaned up the button block rendering", {blockID});
     };
 };

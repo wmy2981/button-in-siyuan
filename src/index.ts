@@ -26,7 +26,7 @@ const parseBlockInfo = (info: string) => {
             blockType: decodeURIComponent(info.slice(separator + 1)),
         };
     } catch (error) {
-        log.warn("块信息不是合法的编码格式", {info, error});
+        log.warn("block info is not valid encoded text", {info, error});
         return;
     }
 };
@@ -49,7 +49,7 @@ export default class ButtonInSiYuan extends Plugin {
         const frontend = getFrontend();
         this.isMobile = frontend === "mobile" || frontend === "browser-mobile";
         const context = this.context;
-        log.info("插件加载", {name: this.name, displayName: this.displayName, frontend, isMobile: this.isMobile});
+        log.info("plugin loaded", {name: this.name, displayName: this.displayName, frontend, isMobile: this.isMobile});
         this.customBlockRenders[BUTTON_BLOCK_TYPE] = {
             render: (options) => renderButtonBlock(context, options),
         };
@@ -66,7 +66,7 @@ export default class ButtonInSiYuan extends Plugin {
             id: "insertButtonBlock",
             callback: (protyle) => this.insertButtonBlock(protyle),
         }];
-        log.debug("已注册自定义块渲染器、斜杠菜单项与块菜单监听", {
+        log.debug("registered the custom block renderer, the slash item and the block menu listener", {
             blockType: BUTTON_BLOCK_TYPE,
             blockInfo: encodeBlockInfo(this.name, BUTTON_BLOCK_TYPE),
             slashFilter: this.protyleSlash[0].filter,
@@ -75,14 +75,14 @@ export default class ButtonInSiYuan extends Plugin {
 
     onunload() {
         this.eventBus.off("click-blockicon", this.blockIconMenu);
-        log.info("插件卸载");
+        log.info("plugin unloaded");
     }
 
     /** 斜杠菜单：在光标处插入一个还没有操作的按钮块，内容由用户在「编辑按钮块」里设置。 */
     private insertButtonBlock(protyle: Protyle) {
         const lute = protyle.protyle.lute;
         if (!lute) {
-            log.warn("当前编辑器没有 lute，取消插入按钮块");
+            log.warn("the editor has no lute, skipping the button block insertion");
             return;
         }
         const info = encodeBlockInfo(this.name, BUTTON_BLOCK_TYPE);
@@ -90,15 +90,15 @@ export default class ButtonInSiYuan extends Plugin {
         const content = serializeButtonConfig({text: this.context.i18n.defaultButtonText, icon: DEFAULT_BUTTON_ICON});
         const markdown = `;;;${info}\n${content}\n;;;`;
         protyle.insert(lute.Md2BlockDOM(markdown), true);
-        log.info("插入按钮块", {blockInfo: info});
-        log.debug("插入的 markdown", markdown);
+        log.info("inserted a button block", {blockInfo: info});
+        log.debug("inserted markdown", markdown);
     }
 
     /** 块菜单 > 插件 > 编辑按钮块：只对本插件的按钮块显示，只读文档不提供编辑。 */
     private readonly blockIconMenu = (event: CustomEvent<IEventBusMap["click-blockicon"]>) => {
         const {menu, protyle, blockElements} = event.detail;
         if (protyle.disabled) {
-            log.debug("块菜单：文档只读，不提供编辑入口");
+            log.debug("block menu: the document is read-only, no edit entry");
             return;
         }
         const blockElement = blockElements.find(item => {
@@ -117,10 +117,10 @@ export default class ButtonInSiYuan extends Plugin {
         const config = parseButtonConfig(content, i18n.defaultButtonText);
         // 内容不是本插件的配置时不提供编辑，避免把用户自己的数据覆盖成按钮配置
         if (!blockID || !config) {
-            log.warn("块菜单：按钮块内容不是本插件的配置，不提供编辑入口", {blockID, content});
+            log.warn("block menu: the button block content is not this plugin config, no edit entry", {blockID, content});
             return;
         }
-        log.debug("块菜单：命中按钮块", {blockID, action: config.action?.type || "none", icon: config.icon});
+        log.debug("block menu: button block matched", {blockID, action: config.action?.type || "none", icon: config.icon});
         menu.addItem({
             id: "button-in-siyuan-edit",
             icon: "iconEdit",

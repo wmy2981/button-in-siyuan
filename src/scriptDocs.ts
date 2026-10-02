@@ -24,11 +24,11 @@ export const openScriptDocs = (context: IContext) => {
     const lute = window.Lute?.New?.();
     const html = lute ? lute.ProtylePreviewStr("", markdown) : "";
     if (!html) {
-        log.error("没有可用的 Lute，无法渲染内置文档", {chars: markdown.length});
+        log.error("no Lute available, cannot render the bundled documentation", {chars: markdown.length});
         showMessage(context.i18n.scriptDocsFailed);
         return;
     }
-    log.info("打开 JavaScript 文档", {chars: markdown.length, htmlChars: html.length});
+    log.info("opened the JavaScript documentation", {chars: markdown.length, htmlChars: html.length});
     const dialog = new Dialog({
         title: context.i18n.scriptDocs,
         width: "min(880px, 92vw)",
@@ -41,7 +41,7 @@ export const openScriptDocs = (context: IContext) => {
     });
     const docsElement = dialog.element.querySelector<HTMLElement>('[data-bis="docs"]');
     if (!docsElement) {
-        log.error("文档弹窗的节点缺失，关闭弹窗");
+        log.error("the documentation dialog has missing nodes, closing it");
         dialog.destroy();
         return;
     }

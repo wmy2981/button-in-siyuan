@@ -18,7 +18,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
     const blockID = options.blockID;
     const config = options.config;
     let icon = config.icon;
-    log.info("打开编辑按钮块对话框", {
+    log.info("opened the button block editor", {
         blockID,
         text: config.text,
         icon: icon || "none",
@@ -118,17 +118,17 @@ export const openButtonBlockEditor = (context: IContext, options: {
             onSelect: (name) => {
                 icon = name;
                 updateIconElement();
-                log.debug("按钮图标已更新", {icon: name});
+                log.debug("button icon updated", {icon: name});
             },
         });
     });
     clearIconElement.addEventListener("click", () => {
         icon = "";
         updateIconElement();
-        log.debug("已清除按钮图标");
+        log.debug("cleared the button icon");
     });
     field<HTMLButtonElement>("cancel").addEventListener("click", () => {
-        log.debug("取消编辑按钮块", {blockID});
+        log.debug("cancelled the button block editor", {blockID});
         dialog.destroy();
     });
     field<HTMLButtonElement>("docs").addEventListener("click", () => openScriptDocs(context));
@@ -137,7 +137,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
         if (actionElement.value === "link") {
             const link = linkElement.value.trim();
             if (!link) {
-                log.warn("保存被拒绝：链接地址为空", {blockID});
+                log.warn("save rejected: the link is empty", {blockID});
                 showMessage(i18n.actionContentRequired);
                 linkElement.focus();
                 return;
@@ -146,7 +146,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
         } else if (actionElement.value === "script") {
             const script = scriptEditor.getValue();
             if (!script.trim()) {
-                log.warn("保存被拒绝：JavaScript 代码为空", {blockID});
+                log.warn("save rejected: the JavaScript code is empty", {blockID});
                 showMessage(i18n.actionContentRequired);
                 scriptEditor.focus();
                 return;
@@ -155,11 +155,11 @@ export const openButtonBlockEditor = (context: IContext, options: {
         }
         const next: IButtonConfig = {text: textElement.value.trim() || i18n.defaultButtonText, icon, action};
         if (!updateButtonContent(blockID, next)) {
-            log.error("写回按钮块失败，对话框保持打开", {blockID});
+            log.error("failed to write the button block back, keeping the dialog open", {blockID});
             showMessage(i18n.blockNotEditable);
             return;
         }
-        log.info("保存按钮块", {blockID, text: next.text, icon: icon || "none", action: action?.type || "none"});
+        log.info("saved the button block", {blockID, text: next.text, icon: icon || "none", action: action?.type || "none"});
         dialog.destroy();
     });
     textElement.focus();
