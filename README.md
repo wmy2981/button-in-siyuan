@@ -2,33 +2,28 @@
 
 # Button Block (button-in-siyuan)
 
-Insert native SiYuan button blocks into documents. The button text, icon and click action are all
-edited in a native SiYuan dialog.
+Insert native SiYuan buttons into documents, with text, a built-in icon and a link or JavaScript action.
 
 ![preview](https://gcore.jsdelivr.net/gh/wmy2981/button-in-siyuan@f6cae6d/assets/preview.png)
 
 ## Features
 
-* The button is a SiYuan custom block (`;;;button-in-siyuan/button`), so it is saved, synced,
-  undone and exported with the document.
-* The button uses the very same classes as SiYuan's own settings buttons
-  (`b3-button b3-button--outline fn__size200`): 200px wide, UI font size, and hover/pressed
-  effects all come from SiYuan's own CSS — the plugin does not restyle the button.
+* The button is a SiYuan custom block, saved, synced, undone and exported with the document.
+* The button uses the native button styling — the UI font size, hover and pressed effects all come
+  from SiYuan's own CSS; the plugin does not restyle the button.
 * The icon is picked from the SVG icons available in the current interface (the built-in icon set,
-  plus icons provided by icon packages and plugins), with a search box.
+  plus icons provided by icon packages and plugins), with search.
 * The button colour is optional: the frame, the text and the icon share one colour taken from
   SiYuan's built-in palette; the default stays SiYuan's native blue.
 * A button action is optional and is one of: open a link, run JavaScript, or run a JavaScript file
   (a local file under `assets/`, or an http(s) address).
 * The JavaScript editor is CodeMirror, with line numbers, syntax highlighting, bracket matching and
-  completion; its colors follow SiYuan's code highlighting setting. Editing a script file under
-  `assets/` uses the very same editor.
-* Every dialog, menu and form control is native SiYuan UI.
+  completion; its colors follow SiYuan's code highlighting setting.
 
 ## Install
 
-1. From the marketplace (after the plugin is listed): <kbd>Settings</kbd> > <kbd>Marketplace</kbd> >
-   <kbd>Plugins</kbd> > search for "Button Block".
+1. From the marketplace: <kbd>Settings</kbd> > <kbd>Marketplace</kbd> > <kbd>Plugins</kbd> >
+   search for "Button Block".
 2. Manually: download `package.zip` from the latest Release, unzip it as
    `{workspace}/data/plugins/button-in-siyuan/`, then enable the plugin in
    <kbd>Settings</kbd> > <kbd>Marketplace</kbd> > <kbd>Downloaded</kbd>.
@@ -41,9 +36,7 @@ Requires SiYuan 3.8.6 or later.
    inserted at the caret.
 2. Open "Edit button block": click the block icon and choose <kbd>Plugin</kbd> >
    <kbd>Edit button block</kbd>, or right-click the button (desktop) / long-press it (mobile).
-3. Set the text, the icon and the action in the dialog, then confirm. Closing the dialog with unsaved
-   edits — <kbd>Cancel</kbd>, the close icon, <kbd>Esc</kbd> or a click outside — asks for confirmation
-   first, and only the red "Discard" button throws the edit away.
+3. Set the text, the icon and the action in the dialog, then confirm.
 
 ## Settings
 
@@ -55,32 +48,14 @@ Requires SiYuan 3.8.6 or later.
 | Button action | `None`, `Open link`, `JavaScript` or `JavaScript file`. Only one action is used. |
 | Link address | Shown for `Open link`; required for that action. |
 | JavaScript code | Shown for `JavaScript`; required for that action. |
-| JavaScript file path | Shown for `JavaScript file`; required for that action. It can be a local `.js` file under `assets/` or an http(s) address. The four icon buttons next to it create, edit, rename and delete the file, and they only apply to local files. |
-
-Once the `JavaScript file` path is set, every click reads that file again (an http(s) address is
-downloaded again), so changing the file does not require editing the button. Confirming a remote
-address first opens a warning dialog: the file may change without you noticing while the script can
-read and write your notes. You can give up, use it as is, or download it into `assets/` (with a
-random name) first — after that the button has nothing to do with the web file any more. Deleting a
-script file under `assets/` asks for confirmation and then clears the path input.
-
-On disk that `assets/` file is `<workspace>/data/assets/` — the same directory document assets live in,
-so SiYuan syncs it like any other asset. The path shown in the button stays `assets/…`, exactly like an
-asset link in a document. A script file a button uses is also marked on the block as a referenced asset,
-so it never shows up under <kbd>Settings</kbd> > <kbd>Assets</kbd> > unreferenced files and the cleanup
-cannot take it away.
+| JavaScript file path | Shown for `JavaScript file`; required for that action. It can be a local `.js` file under `assets/` or an http(s) address. |
 
 ## Plugin settings
-
-Open them from the gear icon on the plugin card in <kbd>Settings</kbd> > <kbd>Marketplace</kbd> >
-<kbd>Downloaded</kbd> — as with other SiYuan plugins it is a panel in the current window.
 
 | Setting | Description |
 | --- | --- |
 | JavaScript output dialog | When the result dialog opens after a script runs: `Always`, `With output` (default), `Console output only`, `On warning (and error)`, `On error`, `Never`. |
 | Provide the button block skill to the agent | On by default: writes a skill explaining button blocks into the workspace skill directory; switching it off deletes that skill. |
-
-The settings live in `data/storage/petal/button-in-siyuan/settings`.
 
 ## Link addresses
 
@@ -90,13 +65,7 @@ A link address behaves exactly like the same link inside a document — SiYuan's
 | --- | --- |
 | `https://…`, `mailto:…`, other schemes | Handed to the host: the system browser on desktop, the matching app on mobile. |
 | `siyuan://blocks/<block ID>` | Opened (or zoomed to) by SiYuan itself; `siyuan://plugins/…` and `siyuan://bazaar/…` work as well. |
-| `assets/<asset path>`, `file://…`, an absolute path | Opened the way <kbd>Settings</kbd> > <kbd>Editor</kbd> > <kbd>Resource opening</kbd> says. With the default configuration a plain click follows the "don't split the screen when opening tabs" setting (a split to the right unless that is on), <kbd>Ctrl</kbd>+click reveals the file in the file manager, <kbd>Alt</kbd>+click uses the current tab and <kbd>Shift</kbd>+click hands the file to the system application. |
-
-SiYuan's own rules decide the rest: a resource it can render (image, audio, video, PDF) opens in a resource
-tab, anything else (an archive, a txt file…) goes to the system. A PDF link with a page (`assets/x.pdf?page=3`)
-opens at that page. Other plugins see the same cancellable events they get for a link in a document
-(`open-asset` / `open-link`), so a plugin that takes over opening `assets/` files — editor-siyuan, for
-example — takes over a button click too.
+| `assets/<asset path>`, `file://…`, an absolute path | Opened the way <kbd>Settings</kbd> > <kbd>Editor</kbd> > <kbd>Resource opening</kbd> says. |
 
 ## JavaScript
 
@@ -114,30 +83,24 @@ dialog, which can copy the whole output as plain text. When that dialog opens is
 
 Scripts can call every API SiYuan exposes to plugins.
 
-Full guide with ready-to-paste examples: [docs/javascript.md](./docs/javascript.md). The
-"JavaScript documentation" link inside the edit dialog renders these docs in a dialog, offline.
-Every example carries a <kbd>Load</kbd> and a <kbd>Copy</kbd> button in its top right corner:
-<kbd>Load</kbd> puts the example straight into the code editor (and switches the action to
-JavaScript), <kbd>Copy</kbd> copies it to the clipboard.
+Full guide with ready-to-paste examples: [docs/javascript.md](./docs/javascript.md).
 
 ## Limitations
 
 * The plugin is disabled on the publish service (`disabledInPublish`), so published pages show the
   raw block content instead of a button.
-* PDF/HTML export has no custom block renderer either: exported documents contain the raw content.
+* PDF/HTML export has no custom block renderer: exported documents contain the raw content.
 * The JavaScript action is not sandboxed; it runs with the same privileges as the user's own code
   snippets. Only run code you trust.
 * The icon list comes from the icons loaded in the current interface, so a third-party icon package
   changes what you can pick.
-* A link cannot open an asset in a **new window**: that action lives in SiYuan's Electron layer and no
-  plugin API reaches it, so an asset configured for "new window" opens in the current tab instead.
 * There is **no button block entry while editing inside a table cell on desktop**: SiYuan then uses a
   cell editor that does not load plugin extensions (`tableCellRichEditor` sets
   `pluginExtensions: false`), so its slash menu never lists plugin entries. That is a host
   limitation — insert the block in the normal editor instead. A cell can only hold inline content,
   so a button block inserted from a cell would land right after the table.
 
-## For agents
+## For agent
 
 The plugin writes a skill for SiYuan's agent: `button-block`, installed at
 `data/storage/ai/agent/skills/button-block/SKILL.md`. It explains what a button block is, how the
@@ -151,8 +114,8 @@ SiYuan's block APIs, and it points at the two documents shipped with the plugin:
 Every plugin load rewrites that file from the copy bundled in the package, so a hand edit or an older
 version cannot leave a stale skill behind. The skill is written by default; switching it off in the plugin
 settings removes it again, and so does disabling the plugin or removing it from the workspace — an agent
-never picks up a skill whose plugin is not running. When SiYuan's AI features are unavailable the plugin
-only logs a line and carries on.
+never picks up a skill whose plugin is not running. When SiYuan's AI features are unavailable those
+APIs are not available.
 
 ## Development
 

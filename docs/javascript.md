@@ -1,18 +1,14 @@
 # JavaScript actions for button blocks
 
-A button block can turn a click into a piece of JavaScript: the script runs in the SiYuan frontend page, can call
-every API SiYuan exposes to plugins, and can read or write kernel data. This document explains how a script runs,
+A button block runs a piece of JavaScript: the script runs in the SiYuan frontend page, can call every API
+SiYuan exposes to plugins, and can read or write kernel data. This document explains how a script runs,
 which APIs are available, and gives examples you can paste as-is.
-
-> Written for plugin version 0.1.0; the APIs were checked against the SiYuan 3.8.x sources
-> (`app/src/plugin/API.ts`, `kernel/api/`).
 
 ---
 
 ## 1. How a script runs
 
-- **Trigger**: it runs when the button is clicked. Right-clicking (desktop) or long-pressing (mobile) the button
-  opens the edit dialog instead, which does not run the script.
+- **Trigger**: it runs when the button is clicked.
 - **Where the code comes from**: everything below holds whether the button carries the code inline or its action is
   "JavaScript file" — then the code is read from an `assets/` file (or downloaded from an http(s) URL) again on
   every click, so editing that file is enough to change what the button does.
@@ -328,11 +324,6 @@ return "waiting for input";
 
 ### 4.15 Silent run: no return value, no dialog
 
-When the script returns nothing and produces no `console` output and no error, clicking the button opens
-**no dialog at all** — a "do one thing" button should not be covered by an empty window every time. Use
-`showMessage` if the user should still get a hint; `console` output or a thrown error still opens the dialog,
-so failures never disappear silently.
-
 This is the default policy, the "With output" option of the plugin setting **JavaScript output dialog**
 (<kbd>Settings</kbd> > <kbd>Marketplace</kbd> > <kbd>Downloaded</kbd> > the plugin's gear icon). The other
 options are `Always`, `Console output only`, `On warning (and error)`, `On error` and `Never`; they only
@@ -359,7 +350,7 @@ showMessage("done, no dialog");
   as JSON; a bare number, string or `true` is served as text, and `loadData` resolves with a **string** —
   `"1" + 1` gives `"11"`, so a counter runs 1, 11, 111… Store plugin data as an object (`{count: next}`), or
   coerce with `Number()` / `JSON.parse()` yourself.
-- **Avoid destructive calls**: the kernel also exposes `/api/block/deleteBlock`, `/api/filetree/removeDoc` and
-  friends. A wrong click cannot be undone, so the examples here only read or append.
+- **Destructive calls**: the kernel also exposes `/api/block/deleteBlock`, `/api/filetree/removeDoc` and
+  friends. A wrong click cannot be undone, so write them with care.
 - **Debugging**: `console` output is captured by the dialog and does not stay in DevTools; use `showMessage`,
   or a `debugger` statement, when you need to see something there.
