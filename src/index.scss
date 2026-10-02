@@ -25,6 +25,41 @@
     }
 }
 
+// 代码编辑区的拖动抓手（src/codeEditor.ts）。尺寸与配色照思源自己的块把手
+// （business/protyle/_block-resize.scss）：命中条足够宽，装饰线只占中间一小段，
+// 触屏上再把命中区加高，手指才好落点。
+.bis-code {
+    &__resize {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 16px;
+        cursor: ns-resize;
+        touch-action: none;
+        user-select: none;
+        color: var(--b3-theme-on-surface-light);
+
+        &::after {
+            content: "";
+            width: 40px;
+            height: 3px;
+            border-radius: 2px;
+            background-color: currentColor;
+        }
+
+        &:hover,
+        &--active {
+            color: var(--b3-theme-primary);
+        }
+    }
+}
+
+@media (any-pointer: coarse) {
+    .bis-code__resize {
+        height: 24px;
+    }
+}
+
 // 文档弹窗里的正文：与思源的富文本预览一样用 .b3-typography 排版，这里只加滚动与选中。
 .bis-script-docs {
     max-height: 70vh;

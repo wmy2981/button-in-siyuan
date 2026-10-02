@@ -62,7 +62,11 @@
   代码高亮主题（`#protyleHljsStyle`）的实际颜色，再映射到 CodeMirror 的标记（`@lezer/highlight`）；
   明暗模式取自 `data-theme-mode`，自动折行跟随 `window.siyuan.config.editor.codeLineWrap`。
   外观对齐思源的代码片段输入框（`.b3-text-field`）：字号固定 14px、同样的描边与聚焦效果、
-  `resize: vertical` 可纵向拖拽、初始高 100px。行号栏底色必须**不透明**（等于代码块底色）：
+  初始高 100px、上限 55vh、可纵向拖拽调高。**没有用 CSS 的 `resize: vertical`**：它的命中区只在右下角
+  几个像素上，触摸屏基本抓不住（issue #5）。改高由编辑区下方的抓手（`.bis-code__resize`）负责，
+  尺寸与配色照思源自己的块把手（`business/protyle/_block-resize.scss`）——命中条 16px、触屏 24px，
+  装饰线 3px；拖动逻辑在 `createResizeGrip` 里用 pointer 事件 + `setPointerCapture` 实现，
+  鼠标与手指同一套，改完调 `view.requestMeasure()` 让 CodeMirror 重新测量。行号栏底色必须**不透明**（等于代码块底色）：
   `.cm-gutters` 是 sticky 的，透明底色时横向滚动的代码会从行号下面透出来。
   右键菜单走思源的原生文本菜单：把菜单项发到 `Constants.SIYUAN_CONTEXT_MENU` 通道
   （与宿主 `menus/index.ts` 对 `.b3-text-field` 的做法一致），菜单文案取 `window.siyuan.languages`。
