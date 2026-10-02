@@ -40,6 +40,24 @@
         --b3-font-size: 14px;
         --b3-font-size-editor: 16px;
         --b3-select-background: url("data:image/svg+xml;utf8,<svg fill='rgba(95, 99, 104, .68)' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>") no-repeat right 2px center var(--b3-menu-background);
+        /* 内置正文颜色：编辑窗口色板里的方块用它预览（设置里存的是序号 1..12） */
+        --b3-card-error-color: #b1362a;
+        --b3-card-warning-color: #a67a1c;
+        --b3-card-info-color: #1f6ec4;
+        --b3-card-success-color: #437c33;
+        --b3-theme-secondary: #ff9200;
+        --b3-theme-error: #d23f31;
+        --b3-font-color1: var(--b3-card-error-color);
+        --b3-font-color2: var(--b3-card-warning-color);
+        --b3-font-color3: var(--b3-card-info-color);
+        --b3-font-color4: var(--b3-card-success-color);
+        --b3-font-color5: var(--b3-theme-on-surface);
+        --b3-font-color7: var(--b3-theme-secondary);
+        --b3-font-color8: var(--b3-theme-error);
+        --b3-font-color9: #a40074;
+        --b3-font-color10: #007080;
+        --b3-font-color11: #006e2a;
+        --b3-font-color12: #6b5a00;
     }
 
     /* ===== 窗口：1024×768，与思源主窗口一致 ===== */
@@ -513,6 +531,56 @@
         color: var(--b3-theme-on-background);
     }
 
+    /* 编辑窗口里的拖动抓手（见 src/index.scss 的 .bis-code__resize） */
+    .bis-code__resize {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 16px;
+        cursor: ns-resize;
+        touch-action: none;
+        user-select: none;
+        color: var(--b3-theme-on-surface-light);
+    }
+
+    .bis-code__resize::after {
+        content: "";
+        width: 40px;
+        height: 3px;
+        border-radius: 2px;
+        background-color: currentColor;
+    }
+
+    /* 编辑窗口里的色板（见 src/index.scss 的 .bis-button-colors）；
+       方块本身是思源自己的 .color__square（business/_color.scss），这里照抄它的样式 */
+    .bis-button-colors {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .color__square {
+        height: 26px;
+        width: 26px;
+        line-height: 26px;
+        margin: 4px;
+        border: 0;
+        box-shadow: 0 0 0 1px var(--b3-list-hover) inset;
+        display: flex;
+        align-items: center;
+        flex-direction: column;
+        justify-content: center;
+        background-color: var(--b3-theme-background);
+        padding: 0;
+        border-radius: var(--b3-border-radius);
+        font-size: 16px;
+        font-weight: 500;
+        user-select: none;
+    }
+
+    .color__square--current {
+        box-shadow: 0 0 0 2px var(--b3-menu-background) inset, 0 0 0 3px var(--b3-list-hover);
+    }
+
     /* 编辑窗口里指向 JavaScript 文档的入口（见 src/index.scss 的 .bis-docs-link） */
     .bis-docs-link {
         padding: 0;
@@ -651,7 +719,7 @@
 .ͼ1.cm-focused .cm-nonmatchingBracket {background-color: #bb555544;}
 .ͼ1 .cm-foldPlaceholder {background-color: #eee; border: 1px solid #ddd; color: #888; border-radius: .2em; margin: 0 1px; padding: 0 1px; cursor: pointer;}
 .ͼ1 .cm-foldGutter span {padding: 0 1px; cursor: pointer;}
-.ͼ1q {color: rgb(36, 41, 46); background-color: rgb(255, 255, 255); font-family: var(--b3-font-family-code); font-size: 14px; border-radius: var(--b3-border-radius); outline: 1px solid var(--b3-border-color); outline-offset: -1px; height: 100px; min-height: 100px; max-height: 55vh; resize: vertical; overflow: hidden;}
+.ͼ1q {color: rgb(36, 41, 46); background-color: rgb(255, 255, 255); font-family: var(--b3-font-family-code); font-size: 14px; border-radius: var(--b3-border-radius); outline: 1px solid var(--b3-border-color); outline-offset: -1px; height: 100px; min-height: 80px; max-height: 55vh; overflow: hidden;}
 .ͼ1q.cm-focused {outline-color: var(--b3-theme-primary-light); box-shadow: 0 0 0 .6px var(--b3-theme-primary-lighter);}
 .ͼ1q .cm-scroller {font-family: inherit; line-height: 1.625; height: 100%; overflow: auto;}
 .ͼ1q .cm-content {caret-color: rgb(36, 41, 46);}
@@ -926,22 +994,40 @@
                     <button class="b3-button b3-button--outline" type="button">不使用图标</button>
                 </div>
                 <div class="fn__hr"></div>
+                <div class="ft__on-surface">按钮颜色</div>
+                <div class="fn__hr--small"></div>
+                <div class="bis-button-colors">
+                    <button class="color__square color__square--current" type="button" style="color:var(--b3-theme-primary)" aria-label="默认（思源原生蓝）">A</button>
+                    <button class="color__square" type="button" style="color:var(--b3-font-color1)" aria-label="按钮颜色 1">A</button>
+                    <button class="color__square" type="button" style="color:var(--b3-font-color2)" aria-label="按钮颜色 2">A</button>
+                    <button class="color__square" type="button" style="color:var(--b3-font-color3)" aria-label="按钮颜色 3">A</button>
+                    <button class="color__square" type="button" style="color:var(--b3-font-color4)" aria-label="按钮颜色 4">A</button>
+                    <button class="color__square" type="button" style="color:var(--b3-font-color5)" aria-label="按钮颜色 5">A</button>
+                    <button class="color__square" type="button" style="color:var(--b3-font-color7)" aria-label="按钮颜色 7">A</button>
+                    <button class="color__square" type="button" style="color:var(--b3-font-color8)" aria-label="按钮颜色 8">A</button>
+                    <button class="color__square" type="button" style="color:var(--b3-font-color9)" aria-label="按钮颜色 9">A</button>
+                    <button class="color__square" type="button" style="color:var(--b3-font-color10)" aria-label="按钮颜色 10">A</button>
+                    <button class="color__square" type="button" style="color:var(--b3-font-color11)" aria-label="按钮颜色 11">A</button>
+                    <button class="color__square" type="button" style="color:var(--b3-font-color12)" aria-label="按钮颜色 12">A</button>
+                </div>
+                <div class="fn__hr"></div>
                 <div class="ft__on-surface">按钮操作</div>
                 <div class="fn__hr--small"></div>
                 <select class="b3-select fn__block">
                     <option>无操作</option>
                     <option>链接跳转</option>
                     <option selected>JavaScript</option>
+                    <option>JavaScript 文件</option>
                 </select>
                 <div class="fn__hr"></div>
                 <div class="ft__on-surface">JavaScript 代码</div>
                 <div class="fn__hr--small"></div>
                 <!-- JavaScript 代码编辑器：真实 CodeMirror 的 DOM 快照 -->
 <!-- editor-dom:start 由 scripts/snapshot-editor.mjs 生成，勿手改 -->
-                <div class="bis-code"><div class="cm-editor ͼ1 ͼ2 ͼ4 ͼ1q"><div class="cm-announced" aria-live="polite"></div><div tabindex="-1" class="cm-scroller"><div class="cm-gutters cm-gutters-before" aria-hidden="true" style="min-height: 99px; position: sticky;"><div class="cm-gutter cm-lineNumbers"><div class="cm-gutterElement" style="height: 0px; visibility: hidden; pointer-events: none;">9</div><div class="cm-gutterElement cm-activeLineGutter" style="height: 22.75px; margin-top: 4px;">1</div><div class="cm-gutterElement" style="height: 22.75px;">2</div><div class="cm-gutterElement" style="height: 22.75px;">3</div><div class="cm-gutterElement" style="height: 22.75px;">4</div></div><div class="cm-gutter cm-foldGutter"><div class="cm-gutterElement" style="height: 0px; visibility: hidden; pointer-events: none;"><span title="Unfold line">›</span></div><div class="cm-gutterElement cm-activeLineGutter" style="height: 22.75px; margin-top: 4px;"></div></div></div><div spellcheck="false" autocorrect="off" autocapitalize="off" writingsuggestions="false" translate="no" contenteditable="true" class="cm-content" role="textbox" aria-multiline="true" data-language="javascript" style="tab-size: 4;"><div class="cm-line cm-activeLine"><span class="ͼs">const</span> <span class="ͼ1g">el</span> <span class="ͼ1n">=</span> <span class="ͼ1g">document</span><span class="ͼ1o">.</span><span class="ͼ19">querySelector</span>(<span class="ͼt">".protyle-wysiwyg"</span>);</div><div class="cm-line"><span class="ͼs">const</span> <span class="ͼ1g">text</span> <span class="ͼ1n">=</span> <span class="ͼ1g">el</span><span class="ͼ1o">.</span><span class="ͼ1i">innerText</span><span class="ͼ1o">.</span><span class="ͼ19">replace</span>(<span class="ͼw">/\s/g</span>, <span class="ͼt">""</span>);</div><div class="cm-line"><span class="ͼ1g">console</span><span class="ͼ1o">.</span><span class="ͼ19">log</span>(<span class="ͼt">"字数："</span> <span class="ͼ1n">+</span> <span class="ͼ1g">text</span><span class="ͼ1o">.</span><span class="ͼ1i">length</span>);</div><div class="cm-line"><span class="ͼp">return</span> <span class="ͼt">"统计完成"</span>;</div></div><div class="cm-layer cm-layer-above cm-cursorLayer" aria-hidden="true" style="z-index: 150; animation-duration: 1200ms;"><div class="cm-cursor cm-cursor-primary" style="left: 39.7031px; top: 6px; height: 17px;"></div></div><div class="cm-layer cm-selectionLayer" aria-hidden="true" style="z-index: -2;"></div></div></div></div>
+                <div class="bis-code"><div class="cm-editor ͼ1 ͼ2 ͼ4 ͼ1q"><div class="cm-announced" aria-live="polite"></div><div tabindex="-1" class="cm-scroller"><div class="cm-gutters cm-gutters-before" aria-hidden="true" style="min-height: 99px; position: sticky;"><div class="cm-gutter cm-lineNumbers"><div class="cm-gutterElement" style="height: 0px; visibility: hidden; pointer-events: none;">9</div><div class="cm-gutterElement cm-activeLineGutter" style="height: 22.75px; margin-top: 4px;">1</div><div class="cm-gutterElement" style="height: 22.75px;">2</div><div class="cm-gutterElement" style="height: 22.75px;">3</div><div class="cm-gutterElement" style="height: 22.75px;">4</div></div><div class="cm-gutter cm-foldGutter"><div class="cm-gutterElement" style="height: 0px; visibility: hidden; pointer-events: none;"><span title="Unfold line">›</span></div><div class="cm-gutterElement cm-activeLineGutter" style="height: 22.75px; margin-top: 4px;"></div></div></div><div spellcheck="false" autocorrect="off" autocapitalize="off" writingsuggestions="false" translate="no" contenteditable="true" class="cm-content" role="textbox" aria-multiline="true" data-language="javascript" style="tab-size: 4;"><div class="cm-line cm-activeLine"><span class="ͼs">const</span> <span class="ͼ1g">el</span> <span class="ͼ1n">=</span> <span class="ͼ1g">document</span><span class="ͼ1o">.</span><span class="ͼ19">querySelector</span>(<span class="ͼt">".protyle-wysiwyg"</span>);</div><div class="cm-line"><span class="ͼs">const</span> <span class="ͼ1g">text</span> <span class="ͼ1n">=</span> <span class="ͼ1g">el</span><span class="ͼ1o">.</span><span class="ͼ1i">innerText</span><span class="ͼ1o">.</span><span class="ͼ19">replace</span>(<span class="ͼw">/\s/g</span>, <span class="ͼt">""</span>);</div><div class="cm-line"><span class="ͼ1g">console</span><span class="ͼ1o">.</span><span class="ͼ19">log</span>(<span class="ͼt">"字数："</span> <span class="ͼ1n">+</span> <span class="ͼ1g">text</span><span class="ͼ1o">.</span><span class="ͼ1i">length</span>);</div><div class="cm-line"><span class="ͼp">return</span> <span class="ͼt">"统计完成"</span>;</div></div><div class="cm-layer cm-layer-above cm-cursorLayer" aria-hidden="true" style="z-index: 150; animation-duration: 1200ms;"><div class="cm-cursor cm-cursor-primary" style="left: 39.7031px; top: 6px; height: 17px;"></div></div><div class="cm-layer cm-selectionLayer" aria-hidden="true" style="z-index: -2;"></div></div></div><div class="bis-code__resize" aria-hidden="true"></div></div>
                 <!-- editor-dom:end -->
                 <div class="fn__hr--small"></div>
-                <div class="ft__on-surface ft__smaller">代码在思源前端上下文里执行，支持 await；返回值、console 输出与抛出的错误都会显示在结果弹窗里。</div>
+                <div class="ft__on-surface ft__smaller">点击按钮时执行，可以用 return 返回结果、使用 await；console 输出会一起显示在弹窗里。</div>
                 <div class="fn__hr--small"></div>
                 <button class="bis-docs-link" type="button">查看 JavaScript 文档（接口清单与示例）</button>
             </div>
