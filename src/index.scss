@@ -85,6 +85,38 @@
     }
 }
 
+// 文档弹窗里每个 javascript 示例右上角的「载入 / 复制」（src/scriptDocs.ts）。
+// 按钮悬浮或键盘聚焦时才出现，免得压在代码上；触屏没有悬浮，常显。
+// 按钮自身的样式完全来自思源（b3-button b3-button--text b3-button--small），这里只管定位与底板。
+.bis-docs-code {
+    position: relative;
+
+    &__actions {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        display: flex;
+        gap: 4px;
+        padding: 0 2px;
+        border-radius: var(--b3-border-radius);
+        background-color: var(--b3-theme-surface);
+        box-shadow: inset 0 0 0 1px var(--b3-border-color);
+        opacity: 0;
+        transition: var(--b3-transition);
+    }
+
+    &:hover &__actions,
+    &:focus-within &__actions {
+        opacity: 1;
+    }
+}
+
+@media (hover: none) {
+    .bis-docs-code__actions {
+        opacity: 1;
+    }
+}
+
 // 文档弹窗里的正文：与思源的富文本预览一样用 .b3-typography 排版，这里只加滚动与选中。
 .bis-script-docs {
     max-height: 70vh;

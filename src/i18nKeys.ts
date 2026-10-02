@@ -30,6 +30,7 @@ export type II18n = {
     scriptCodeTip: string;
     scriptDocs: string;
     scriptDocsFailed: string;
+    docsLoad: string;
     scriptOutput: string;
     returnValue: string;
     errorValue: string;

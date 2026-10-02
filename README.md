@@ -81,6 +81,9 @@ Scripts can call every API SiYuan exposes to plugins.
 
 Full guide with ready-to-paste examples: [docs/javascript.md](./docs/javascript.md). The
 "JavaScript documentation" link inside the edit dialog renders these docs in a dialog, offline.
+Every example carries a <kbd>Load</kbd> and a <kbd>Copy</kbd> button in its top right corner:
+<kbd>Load</kbd> puts the example straight into the code editor (and switches the action to
+JavaScript), <kbd>Copy</kbd> copies it to the clipboard.
 
 ## Limitations
 

@@ -25,6 +25,7 @@
   "scriptCodeTip": "点击按钮时执行，可以用 return 返回结果、使用 await；console 输出会一起显示在弹窗里。",
   "scriptDocs": "查看 JavaScript 文档（接口清单与示例）",
   "scriptDocsFailed": "暂时打不开文档",
+  "docsLoad": "载入",
   "scriptOutput": "JavaScript 输出",
   "returnValue": "返回值",
   "errorValue": "错误",

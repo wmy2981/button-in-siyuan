@@ -209,6 +209,8 @@ export interface ICodeEditor {
     /** 挂载到对话框里的容器。 */
     element: HTMLElement;
     getValue: () => string;
+    /** 整段替换正文（文档弹窗里的「载入」用它把示例放进编辑器）。 */
+    setValue: (value: string) => void;
     focus: () => void;
 }
 
@@ -343,6 +345,13 @@ export const createCodeEditor = (options: {
     return {
         element,
         getValue: () => view.state.doc.toString(),
+        setValue: (value) => {
+            // 整段替换后再把光标放到末尾：载入示例后接着敲代码，落点是自然的
+            view.dispatch({
+                changes: {from: 0, to: view.state.doc.length, insert: value},
+                selection: {anchor: value.length},
+            });
+        },
         focus: () => view.focus(),
     };
 };

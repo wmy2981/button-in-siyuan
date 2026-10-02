@@ -116,6 +116,11 @@
   （思源对 `.b3-typography` 走的就是这条「预览」分支，`app/src/protyle/render/highlightRender.ts`）；
   按 `window.siyuan.config.lang` 选中文或英文文档。文档同时随包发布到
   `docs/`。**代码块语言统一写 `javascript`**（`js` 之类会被 hljs 当别名，但不与思源代码块的语言名一致）。
+  **预览渲染器输出的代码块是 `<pre class="code-block" data-language="javascript"><code class="hljs">`**
+  （Lute 的预览分支），`scriptDocs.ts` 按这个结构给每个示例套一层 `.bis-docs-code` 并在右上角加
+  「载入 / 复制」两个原生按钮（`b3-button b3-button--text b3-button--small`）：复制走
+  `platformUtils.copyPlainText`，载入回调给调用方（编辑窗口把示例塞进 `createCodeEditor` 的
+  `setValue` 并把操作切到 JavaScript），悬浮/键盘聚焦时才显示，触屏常显。
   改了文档跑 `node scripts/check-docs.mjs`：代码块语言（统一 `javascript`，不用缩写 `js`）、
   示例语法、接口表与注入清单都在那里校验。
 * **日志**：每个模块 `createLogger("<模块名>")` 建一个 logger，前缀形如 `[button-in-siyuan][buttonBlock]`，

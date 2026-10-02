@@ -164,7 +164,15 @@ export const openButtonBlockEditor = (context: IContext, options: {
         log.debug("cancelled the button block editor", {blockID});
         dialog.destroy();
     });
-    field<HTMLButtonElement>("docs").addEventListener("click", () => openScriptDocs(context));
+    field<HTMLButtonElement>("docs").addEventListener("click", () => openScriptDocs(context, {
+        onLoad: (code) => {
+            // 示例载入后把操作切到 JavaScript 并展开对应字段，不然用户看不到载进来的代码
+            actionElement.value = "script";
+            updateActionFields();
+            scriptEditor.setValue(code);
+            scriptEditor.focus();
+        },
+    }));
     field<HTMLButtonElement>("save").addEventListener("click", () => {
         let action: TButtonAction | undefined;
         if (actionElement.value === "link") {
