@@ -1,7 +1,7 @@
 // 校验 docs/ 里的 JavaScript 文档与代码一致：
 // 1. 每段 ```javascript 示例都能被 new Function 解析（与按钮执行时的包装方式完全一致）
 // 2. 示例的代码块语言必须是 javascript（思源代码块的高亮语言名，不用缩写 js）
-// 3. 文档接口表里列出的名字，与 src/scriptApi.ts 实际注入的名字一致（不多不少）
+// 3. 文档第 2 节（注入接口清单）里列出的名字，与 src/scriptApi.ts 实际注入的名字一致（不多不少）
 //
 // 文档是内嵌进插件里的，用户会照着抄；示例写错或接口表漏项都在这里拦住。
 // 用法：node scripts/check-docs.mjs（已挂在 npm run check 上）
@@ -58,6 +58,7 @@ export const adaptHotkey = noop;
 export const adjustEditorFontSize = noop;
 export const confirm = noop;
 export const expandDocTree = noop;
+export const exitSiYuan = noop;
 export const fetchGet = noop;
 export const fetchPost = noop;
 export const fetchSyncPost = noop;
@@ -74,6 +75,7 @@ export const hideMessage = noop;
 export const isBottomDockVisible = noop;
 export const isLeftDockVisible = noop;
 export const isRightDockVisible = noop;
+export const lockScreen = noop;
 export const openAssetPicker = noop;
 export const openAttributePanel = noop;
 export const openEmoji = noop;
@@ -120,15 +122,16 @@ export const toggleRightDock = noop;
 
 docs.forEach((file) => {
     const text = fs.readFileSync(path.join(root, file), "utf8");
-    const section = text.slice(text.indexOf("## 2."), text.indexOf("### 2.2"));
+    // 清单按用途分成了 2.1…2.n 几节，所以整节一起取：从「## 2.」到「## 3.」
+    const section = text.slice(text.indexOf("## 2."), text.indexOf("\n## 3."));
     if (!section) {
-        problems.push(`${file}: 找不到「2. 运行环境」小节，接口表无法校验`);
+        problems.push(`${file}: 找不到「## 2. 注入接口清单」小节，接口清单无法校验`);
         return;
     }
     const documented = new Set(Array.from(section.matchAll(/`([A-Za-z_][A-Za-z0-9_]*)`/g), (match) => match[1]));
     const missing = scopeNames.filter((name) => !documented.has(name));
     if (missing.length) {
-        problems.push(`${file}: 接口表缺少 ${missing.join(", ")}`);
+        problems.push(`${file}: 接口清单缺少 ${missing.join(", ")}`);
     }
 });
 
@@ -136,4 +139,4 @@ if (problems.length) {
     problems.forEach((problem) => console.error(problem));
     process.exit(1);
 }
-console.log(`docs: ${fenceCount} 段 javascript 示例语法合法，接口表覆盖全部 ${scopeNames.length} 个注入项`);
+console.log(`docs: ${fenceCount} 段 javascript 示例语法合法，接口清单覆盖全部 ${scopeNames.length} 个注入项`);

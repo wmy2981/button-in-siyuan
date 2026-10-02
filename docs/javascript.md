@@ -1,143 +1,220 @@
-# JavaScript actions for button blocks
+# JavaScript actions in button blocks
 
-A button block runs a piece of JavaScript: the script runs in the SiYuan frontend page, can call every API
-SiYuan exposes to plugins, and can read or write kernel data. This document explains how a script runs,
-which APIs are available, and gives examples you can paste as-is.
+A button block runs a piece of JavaScript. The script runs in the SiYuan frontend page and can call every API
+SiYuan exposes to plugins (petal), and read or write kernel data. Section 1 explains how it runs, **section 2 is
+the complete list of injected APIs** (look things up there), and section 4 keeps only a few full examples.
 
 ---
 
 ## 1. How a script runs
 
-- **Trigger**: it runs when the button is clicked.
-- **Where the code comes from**: everything below holds whether the button carries the code inline or its action is
-  "JavaScript file" — then the code is read from an `assets/` file (or downloaded from an http(s) URL) again on
-  every click, so editing that file is enough to change what the button does.
-- **Wrapped in async**: the code is placed inside an async function, so `await` works and `return` ends it.
-- **Return value**: the returned value is shown as the "Return value" line of the result dialog (objects are
-  JSON-serialised). With **no `return`, no `console` output and no error the dialog does not open at all**
-  (silent run, see 4.15); the plugin setting "JavaScript output dialog" decides when the dialog opens.
-- **Calling the kernel**: `const response = await fetchPost("/api/…", {…})` gives you the kernel response directly
-  (`code === 0` means success). The `fetchPost` SiYuan hands to plugins is callback-style; this plugin makes the
-  no-callback form awaitable and leaves the callback form exactly as SiYuan behaves. Same for `fetchSyncPost`
-  and `fetchGet`.
-- **console output**: `console.log / info / debug / warn / error / table / dir` is collected and listed per level.
-- **Errors**: a thrown exception is shown as the "Error" line; it never breaks SiYuan.
-- **Colour**: the output understands ANSI colour escapes (see section 3).
-- **Copy**: the "Copy" button in the dialog copies plain text with the colour escapes stripped.
-- **Runs every time**: the script keeps no state between clicks; use `plugin.saveData()` or write into a note.
+- **When**: on every click of the button.
+- **Where the code comes from**: written inline in the button, or the button's action points at a "JavaScript
+  file" (a local file under `assets/`, or an http(s) URL). The latter re-reads the file on every click
+  (re-downloads it for a URL), so editing the file changes the button's behaviour.
+- **async wrapper**: the whole script is wrapped in an async function, so `await` works and `return` ends it.
+- **Return value**: what you `return` shows up on the "return value" line of the result dialog (objects are
+  JSON-serialised).
+- **Result dialog**: with no `return`, no `console` output and no error, **no dialog opens** (a silent run).
+  When it opens is decided by the plugin setting "JavaScript output dialog" — the choices are listed in
+  section 5.
+- **console output**: `console.log / info / debug / warn / error / table / dir` is collected and shown in the
+  dialog, tagged by level.
+- **Errors**: an exception thrown by the script is shown on the "error" line of the dialog and does not affect
+  SiYuan.
+- **Colours**: the output understands ANSI escapes — see section 3.
+- **Fresh on every click**: the script keeps no state; use `plugin.saveData()` or write into a note when you
+  need to remember something.
+- **Calling the kernel**: `const response = await fetchPost("/api/…", {…})`; `code === 0` means success.
 
-## 2. What the environment provides
+## 2. The injected APIs
 
-### 2.1 Injected APIs
+The script is wrapped in an async function that takes these names as parameters, so every name below is
+directly usable in the script; any SiYuan API that is not listed here is out of reach. The signatures match
+SiYuan's `petal` plugin API declarations and the host implementation. Entries marked "desktop" exist on desktop
+only: `getActiveTab` / `getAllModels` / `getAllTabs` are `undefined` on mobile (calling them throws), while the
+dock helpers of 2.4 are no-ops that return `false`.
 
-| Name | Purpose |
+### 2.1 Kernel HTTP API
+
+| Name | Signature | Notes |
+| --- | --- | --- |
+| `fetchPost` | `fetchPost(url, data?, cb?, headers?)` | The one you will use most. Without `cb` you can `await` the kernel response; with `cb` it behaves exactly like SiYuan's own callback-style call |
+| `fetchSyncPost` | `fetchSyncPost(url, data?, headers?)` | POST over a synchronous XHR, resolving with the kernel response |
+| `fetchGet` | `fetchGet(url, cb?)` | GET; without `cb` it is awaitable too, resolving with an object for JSON and text otherwise |
+
+Responses have the shape `{code, msg, data}`. SiYuan's own `fetchPost` / `fetchGet` are callback-style; this
+plugin adds the awaitable form for calls that pass no callback (see section 5), so both styles work.
+
+### 2.2 Messages, dialogs and pickers
+
+| Name | Signature | Notes |
+| --- | --- | --- |
+| `showMessage` | `showMessage(text, timeout?, type?, id?)` | SiYuan's native toast; `type` is `"info"` or `"error"`, `timeout` is in milliseconds, and it returns the id of that message (the petal declaration says `void`) |
+| `hideMessage` | `hideMessage(id?)` | Hides a toast; passing an `id` hides just that one |
+| `confirm` | `confirm(title, text, onConfirm?, onCancel?)` | Confirmation dialog; both callbacks receive the `Dialog` instance |
+| `openInputDialog` | `openInputDialog({title, value, label?, type?, multiline?, placeholder?, maxLength?, actions?, onConfirm, …})` | Asks the user for a piece of text; `onConfirm(value, dialog)` receives it |
+| `Dialog` | class | Build your own window: `new Dialog({title, width, content})`, then `dialog.element` and `dialog.destroy()` |
+| `Menu` | class | Build your own menu: `new Menu()`, `menu.addItem({...})`, `menu.open({x, y})` |
+| `Setting` | class | SiYuan's settings-panel component (the plugin's own settings panel is built with it) |
+| `openSetting` | `openSetting(app)` | Opens SiYuan's **Settings** dialog (it starts on the Editor tab). To open *this plugin's* settings panel use `plugin.openSetting()` |
+| `openEmoji` | `openEmoji({position, selectedCB?, …})` | Emoji/icon panel; `selectedCB(emoji)` receives the picked icon |
+| `openAssetPicker` | `openAssetPicker({exts?, match?})` | Asset picker; resolves with `{path}` (an `assets/`-relative path) or `null` when cancelled |
+| `openAttributePanel` | `openAttributePanel({data?, nodeElement?, focusName, protyle?})` | Opens the block attribute panel; pass either `data` or `nodeElement`, `focusName` picks the field to focus |
+
+### 2.3 Tabs, windows and layout
+
+| Name | Signature | Notes |
+| --- | --- | --- |
+| `openTab` | `openTab({app, doc?, asset?, pdf?, search?, card?, custom?, position?, keepCursor?, removeCurrentTab?, afterOpen?})` | Opens a document / asset / PDF / search / card / custom tab; `position` is `"right"` or `"bottom"` |
+| `openWindow` | `openWindow({doc?, position?, width?, height?, alwaysOnTop?, tab?})` | Opens a new desktop window; a no-op on mobile |
+| `openMobileFileById` | `openMobileFileById(app, id, action?)` | Opens a document by block ID on mobile |
+| `getActiveEditor` | `getActiveEditor(wndActive?)` | The current editor instance (Protyle) |
+| `getActiveTab` | `getActiveTab(wndActive?)` | The current tab (Tab) | desktop |
+| `getAllEditor` | `getAllEditor()` | Every editor instance, including those in search, backlink and custom tabs |
+| `getAllTabs` | `getAllTabs(type?)` | Every tab; pass `type` to get one kind (`"Editor"`, `"Search"`, a custom tab's type name…) | desktop |
+| `getAllModels` | `getAllModels()` | Every tab model grouped by kind (`editor` / `search` / `backlink` / `custom` …) | desktop |
+| `getModelByDockType` | `getModelByDockType(type)` | Looks up a dock by type (`"file"`, `"outline"`, or `<plugin name><type>` for a plugin dock) |
+| `saveLayout` | `saveLayout(cb)` | Saves the current layout; `cb` runs once it is saved |
+
+### 2.4 Docks and the document tree
+
+| Name | Signature | Notes |
+| --- | --- | --- |
+| `toggleLeftDock` / `toggleRightDock` / `toggleBottomDock` | `toggleXxxDock(visible?)` | Shows / hides / toggles a whole dock bar; without `visible` it toggles, and the return value says whether the bar has an active tool | desktop |
+| `isLeftDockVisible` / `isRightDockVisible` / `isBottomDockVisible` | `isXxxDockVisible()` | Whether that dock bar is currently visible | desktop |
+| `expandDocTree` | `expandDocTree({id, isSetCurrent?})` | Expands and selects in the document tree (pass a notebook ID or a document ID); works on desktop and mobile |
+
+### 2.5 Editor, hotkeys and export
+
+| Name | Signature | Notes |
+| --- | --- | --- |
+| `setEditorFontSize` | `setEditorFontSize(fontSize, options?)` | Sets the editor font size, returning the effective one |
+| `adjustEditorFontSize` | `adjustEditorFontSize(action, options?)` | Steps the font size up / down / back to default, returning the effective one |
+| `globalCommand` | `globalCommand(command, app)` | Runs a global command; the name matches SiYuan's shortcut table (`globalSearch`, `recentDocs`, `fileTree`…), and the supported set differs per frontend |
+| `adaptHotkey` | `adaptHotkey(hotkey)` | Adapts hotkey text such as `Ctrl+…` to the current platform (becomes `⌘` on macOS) |
+| `saveExportFile` | `saveExportFile(uri, msgId?)` | Hands a kernel-produced export (the path returned by `/api/export/*`) to the user to save |
+
+### 2.6 Platform
+
+| Name | Signature | Notes |
+| --- | --- | --- |
+| `getFrontend` | `getFrontend()` | `"desktop"` / `"desktop-window"` / `"mobile"` / `"browser-desktop"` / `"browser-mobile"` |
+| `getBackend` | `getBackend()` | `"windows"` / `"linux"` / `"darwin"` / `"docker"` / `"android"` / `"ios"` / `"harmony"` |
+
+### 2.7 Quitting and locking (handle with care)
+
+| Name | Signature | Notes |
+| --- | --- | --- |
+| `exitSiYuan` | `exitSiYuan(setCurrentWorkspace?)` | Quits SiYuan: on desktop it flushes every window and the workspace first, then calls `/api/system/exit`. A failed flush, or a pending update package, only shows a message / confirmation instead of quitting. `setCurrentWorkspace` defaults to `true`, meaning the current workspace is remembered |
+| `lockScreen` | `lockScreen()` | Locks the screen: saves the layout and logs the session out (back to the lock / login screen). It returns immediately in read-only mode and on a publish service. The implementation takes no argument |
+
+Both are immediately visible to the user and cannot be undone, so ask with `confirm(...)` first — see 4.6.
+
+### 2.8 Host objects, classes and constants
+
+| Name | Notes |
 | --- | --- |
-| `app` | The SiYuan app object (needed by `openTab` and friends) |
-| `plugin` | This plugin instance: `loadData / saveData / removeData` for plugin-private data, `getSecret(name)` / `getVariable(name)` for SiYuan's secrets and variables (see 4.16) |
+| `app` | The SiYuan app object; `openTab`, `openWindow`, `openSetting` and friends need it |
+| `plugin` | This plugin instance: `loadData / saveData / removeData`, `getSecret / getVariable`, `openSetting()`, `eventBus`, `name` and more — see 2.10 |
 | `siyuan` | `window.siyuan`: config, notebooks, current language |
 | `Lute` | The Lute parser (`Lute.New().Md2BlockDOM(md)` and so on) |
-| `Constants` | SiYuan constants (asset extensions, channel names) |
-| `platformUtils` | Platform helpers: `copyPlainText`, `readText`, `isMac`, `openByMobile`, … |
-| `fetchPost` / `fetchSyncPost` / `fetchGet` | Kernel HTTP API — the one you will use most; without a callback you can `await` the response |
-| `showMessage` / `hideMessage` | SiYuan's native toast |
-| `confirm` | Confirmation dialog |
-| `openInputDialog` | A dialog that asks the user for a piece of text |
-| `openSetting` | Opens the plugin's settings page |
-| `openTab` | Opens a document / asset / search / card tab |
-| `openWindow` | Opens a new desktop window |
-| `openMobileFileById` | Opens a block by ID on mobile |
-| `openAssetPicker` | Asset picker |
-| `openEmoji` | Emoji/icon panel |
-| `openAttributePanel` | Block attribute panel |
-| `getActiveEditor` / `getAllEditor` | Current / all editor instances (Protyle) |
-| `getActiveTab` / `getAllTabs` / `getAllModels` / `getModelByDockType` | Tabs and panels |
-| `toggleLeftDock` / `toggleRightDock` / `toggleBottomDock`, `isLeftDockVisible` / `isRightDockVisible` / `isBottomDockVisible` | Docks |
-| `globalCommand` / `adaptHotkey` | Hotkeys and global commands |
-| `saveExportFile` / `saveLayout` / `expandDocTree` | Export, save layout, expand the doc tree |
-| `setEditorFontSize` / `adjustEditorFontSize` | Editor font size |
-| `getFrontend` / `getBackend` | Frontend (desktop/mobile/browser) and backend platform |
-| `Dialog` / `Menu` / `Setting` / `Protyle` / `ProtyleMethod` / `Plugin` | SiYuan classes, for custom dialogs and menus |
-| `protyle` | **The editor instance that contains this button block** (`undefined` if it cannot be found) |
+| `Constants` | SiYuan's constants (asset extensions, channel names) |
+| `platformUtils` | Platform helpers: `copyPlainText` / `writeText` / `readText`, `getStorageVal` / `setStorageVal` / `getLocalStorage`, `isMac` / `isIPhone` / `isIPad` / `isInIOS` / `isInAndroid` / `isHuawei` / `isOnlyMeta` / `isNotCtrl`, `openByMobile`, `sendNotification` / `cancelNotification`, `updateHotkeyTip`, `getEventName` |
+| `Protyle` / `ProtyleMethod` / `Plugin` | SiYuan's classes: build an editor, call render helpers, construct plugin objects |
+
+### 2.9 Context of this click (injected by this plugin)
+
+| Name | Notes |
+| --- | --- |
+| `protyle` | **The editor instance that contains this button block** (Protyle), `undefined` when it cannot be found |
 | `blockID` | The block ID of the button block itself |
 | `isMobile` | Whether this is the mobile frontend |
 | `i18n` | This plugin's strings (for example `i18n.copied`) |
 
-### 2.2 Page globals
+### 2.10 What else `plugin.` gives you
+
+- **Storage**: `plugin.saveData(name, value)` / `plugin.loadData(name)` / `plugin.removeData(name)`, stored
+  under `/data/storage/petal/button-in-siyuan/`. Names may contain subdirectories but cannot escape with `..`.
+- **Secrets and variables**: `plugin.getSecret(name)` / `plugin.getVariable(name)` — see 4.5.
+- **Settings panel**: `plugin.openSetting()` opens this plugin's own settings panel.
+- **Identity and events**: `plugin.name` / `plugin.displayName` / `plugin.i18n` / `plugin.app`, and
+  `plugin.eventBus.on / once / off / emit(...)`.
+- **Registered entries**: `plugin.models` / `plugin.docks` / `plugin.commands` / `plugin.getOpenedTab()`.
+- **Registration methods** (`addTab` / `addDock` / `addCommand` / `addTopBar` and friends): anything they
+  register lives until the plugin unloads, so a button script should not call them — register permanent
+  entries in the plugin's own `onload` instead.
+
+### 2.11 Page globals and objects without a contract
 
 The script runs in SiYuan's page context, so `window`, `document`, `fetch`, `setTimeout`, `localStorage`,
-`window.siyuan` (config, `languages`) and `window.Lute` are all available as usual.
+`window.siyuan` and `window.Lute` are all available.
 
-### 2.3 What is deliberately not injected
+`window.siyuan.layout`, `app.plugins` and `window.require("electron")` are SiYuan internals rather than plugin
+APIs: reachable, but without a version contract, so an upgrade may change them. `app.plugins` is the array of
+plugin instances loaded in the current window and is how you act on another plugin (open its settings window, a
+custom tab or a dock). `window.require("electron")` exists on desktop only — mobile and browser frontends do not
+have it.
 
-- `exitSiYuan()` (quit SiYuan) and `lockScreen()`: a script must not be able to shut down the app.
-- On desktop you can still reach Electron through `window.require("electron")`, but mobile and browser frontends
-  do not have it, so such a button would break there. Not recommended.
-
-## 3. Output and colour
+## 3. Output and colours
 
 | console method | Prefix in the dialog | Colour |
 | --- | --- | --- |
 | `console.log` / `console.info` | `log:` / `info:` | body grey |
 | `console.debug` | `debug:` | light grey |
-| `console.warn` | `warn:` | SiYuan warning colour |
-| `console.error` | `error:` | SiYuan error colour |
+| `console.warn` | `warn:` | SiYuan's warning colour |
+| `console.error` | `error:` | SiYuan's error colour |
 | `console.table` / `console.dir` | `table:` / `dir:` | body grey |
 
-Text may carry ANSI escapes (`\u001b`, i.e. ESC):
+The text may carry ANSI escape sequences (write `\u001b`, the ESC character):
 
-| Escape | Effect |
+| Form | Effect |
 | --- | --- |
-| `\u001b[31m` … `\u001b[37m` | red, green, yellow, blue, magenta, cyan, grey (standard 8) |
-| `\u001b[90m` … `\u001b[97m` | bright variants |
-| `\u001b[1m` `[2m` `[3m` `[4m` `[9m` | bold, dim, italic, underline, strikethrough |
-| `\u001b[38;5;<0-255>m` | 256 colours (xterm indexes) |
+| `\u001b[31m` … `\u001b[37m` | red, green, yellow, blue, magenta, cyan, grey (the standard 8) |
+| `\u001b[90m` … `\u001b[97m` | the bright version of those 8 |
+| `\u001b[1m` `[2m` `[3m` `[4m` `[7m` `[9m` | bold, dim, italic, underline, inverse, strike-through |
+| `\u001b[38;5;<0-255>m` | 256 colours (the xterm colour numbers) |
 | `\u001b[38;2;<r>;<g>;<b>m` | true colour |
 | `\u001b[40m`…`[47m`, `[100m`…`[107m`, `[48;5;n`, `[48;2;r;g;b` | background colours |
-| `\u001b[0m` | reset |
+| `\u001b[0m` | reset (`[22m` / `[23m` / `[24m` / `[27m` / `[29m` reset the matching attribute, `[39m` / `[49m` reset the foreground / background colour) |
 
-The palette uses mid-tones so it stays readable on both light and dark themes; the "black/white" slots are tuned
-for readability rather than being pure black/white. Copying strips these escapes.
+The palette is mid-tone so it stays readable in both light and dark themes; the "black" and "white" steps were
+tuned for readability and are not the pure black and white of a terminal. The dialog's Copy button copies plain
+text with the escapes stripped.
 
 ## 4. Examples
 
-Paste any of these into "Edit button block → Button action → JavaScript" and replace the block IDs and paths.
+Paste any of these into "edit the button block → button action → JavaScript", replacing IDs and paths with your
+own.
 
-### 4.1 Minimal: return value + console
+### 4.1 Smallest example: return value + console
 
 ```javascript
 console.log("the button was clicked");
-return 1 + 1;   // the dialog shows: Return value: 2
+return 1 + 1;   // the dialog shows: return value: 2
 ```
 
-### 4.2 Coloured output
+### 4.2 Calling the kernel and handling errors
+
+`fetchPost` resolves with the kernel response, where `code === 0` means success; network or permission problems
+throw, so wrap the call in `try / catch`.
 
 ```javascript
-console.log("\u001b[32m✓\u001b[0m done");
-console.log("\u001b[1;33mheads up\u001b[0m: this is only a demo");
-console.log("\u001b[38;5;208m256 colours\u001b[0m and \u001b[38;2;10;200;30mtrue colour\u001b[0m");
-console.warn("warn gets the warning colour automatically");
-console.error("error gets the error colour automatically");
-return "colour demo finished";
+try {
+    const response = await fetchPost("/api/block/getBlockInfo", {id: blockID});
+    if (response.code !== 0) {
+        showMessage(response.msg || "read failed", 7000, "error");
+        return "read failed";
+    }
+    console.log("in document:", response.data.rootTitle);
+    return response.data.rootTitle;
+} catch (error) {
+    console.error("kernel call failed", error);
+    return `error: ${error.message}`;
+}
 ```
 
-### 4.3 How many characters does this document have (read-only)
-
-```javascript
-const editor = protyle || getActiveEditor();
-if (!editor) {
-    return "no editor found";
-}
-const response = await fetchPost("/api/block/getTreeStat", {id: editor.protyle.block.rootID});
-if (response.code !== 0) {
-    return `failed: ${response.msg}`;
-}
-const stat = response.data.stat;
-console.log(`runes ${stat.runeCount}, words ${stat.wordCount}, blocks ${stat.blockCount}`);
-showMessage(`${stat.runeCount} characters`);
-return stat.runeCount;
-```
-
-### 4.4 Append a paragraph to the end of the document
+### 4.3 Appending a paragraph to the current document
 
 ```javascript
 const editor = protyle || getActiveEditor();
@@ -148,7 +225,7 @@ if (!rootID) {
 const response = await fetchPost("/api/block/appendBlock", {
     dataType: "markdown",
     data: `> appended by a button at ${new Date().toLocaleString()}`,
-    parentID: rootID,   // the document is the parent block, so this appends at its end
+    parentID: rootID,   // the document itself is the parent block, so this lands at the end
 });
 if (response.code !== 0) {
     return `append failed: ${response.msg}`;
@@ -157,184 +234,20 @@ showMessage("appended to the end of the document");
 return "appended";
 ```
 
-### 4.5 List unfinished tasks (read-only)
-
-SiYuan stores task list items as blocks with `subtype = 't'`; an open task's markdown looks like `- [ ] text`.
-Note that the surrounding list block (`type = 'l'`) carries `subtype = 't'` as well, so filter on `type = 'i'`
-to get list items only — otherwise every task is counted twice.
-
-```javascript
-const response = await fetchPost("/api/query/sql", {
-    stmt: "SELECT content, id FROM blocks WHERE type = 'i' AND subtype = 't' AND markdown LIKE '%- [ ]%' ORDER BY updated DESC LIMIT 10",
-});
-if (response.code !== 0) {
-    return `query failed: ${response.msg}`;
-}
-console.log(`open tasks: ${response.data.length}`);
-response.data.forEach((row, index) => console.log(`${index + 1}. ${row.content}`));
-return response.data.length;
-```
-
-### 4.6 Create a document and open it
-
-`createDocWithMd` never overwrites a document with the same path, so a timestamped path is the safe choice.
-
-```javascript
-const notebooks = await fetchPost("/api/notebook/lsNotebooks", {});
-const notebook = notebooks.data?.notebooks?.find((item) => item && !item.closed);
-if (!notebook) {
-    return "no open notebook";
-}
-const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-const title = `Created by a button ${stamp}`;
-const response = await fetchPost("/api/filetree/createDocWithMd", {
-    notebook: notebook.id,
-    path: `/${title}`,
-    markdown: `# ${title}\n\nCreated by a button block.\n`,
-});
-if (response.code !== 0) {
-    return `create failed: ${response.msg}`;
-}
-openTab({app, doc: {id: response.data}});
-return response.data;
-```
-
-### 4.7 Open a block
-
-```javascript
-// replace with your own block ID (right-click a block → Copy → Copy block ID)
-openTab({app, doc: {id: "20240101000000-abcdefg"}});
-return "opened";
-```
-
-### 4.8 Copy the document Markdown to the clipboard
-
-```javascript
-const editor = protyle || getActiveEditor();
-const rootID = editor?.protyle?.block?.rootID;
-if (!rootID) {
-    return "no current document";
-}
-const response = await fetchPost("/api/export/exportMdContent", {id: rootID});
-platformUtils.copyPlainText(response.data.content);
-showMessage(`copied ${response.data.hPath} (${response.data.content.length} characters)`);
-return "copied";
-```
-
-### 4.9 Add a custom attribute to the document
-
-```javascript
-const editor = protyle || getActiveEditor();
-const rootID = editor?.protyle?.block?.rootID;
-if (!rootID) {
-    return "no current document";
-}
-const response = await fetchPost("/api/attr/setBlockAttrs", {
-    id: rootID,
-    attrs: {"custom-last-button-click": new Date().toISOString()},
-});
-return response.code === 0 ? "click time recorded" : `failed: ${response.msg}`;
-```
-
-### 4.10 Call a kernel API and handle errors
-
-`fetchPost` resolves with the kernel response; only `code === 0` means success. Network and permission problems
-throw, so wrapping in `try / catch` is the safe pattern.
-
-```javascript
-try {
-    const response = await fetchPost("/api/block/getBlockInfo", {id: blockID});
-    if (response.code !== 0) {
-        showMessage(response.msg || "read failed", 7000, "error");
-        return "read failed";
-    }
-    console.log("document:", response.data.rootTitle);
-    return response.data.rootTitle;
-} catch (error) {
-    console.error("API call threw", error);
-    return `threw: ${error.message}`;
-}
-```
-
-### 4.11 Make a network request
-
-The desktop main window disables the same-origin restriction, so cross-origin requests work directly; failures
-show up as the error line of the dialog.
-
-```javascript
-try {
-    const response = await fetch("https://api.github.com/repos/siyuan-note/siyuan");
-    const data = await response.json();
-    showMessage(`siyuan stars: ${data.stargazers_count}`);
-    return data.stargazers_count;
-} catch (error) {
-    console.error("request failed", error);
-    return `request failed: ${error.message}`;
-}
-```
-
-### 4.12 Remember how often the button was clicked (plugin data)
+### 4.4 Remembering how often the button was clicked (plugin data)
 
 ```javascript
 // Store an object: a plugin storage file has no extension, so the kernel guesses the Content-Type from the
-// bytes and only `{…}` / `[…]` are parsed back as JSON. A bare number is served as text and `loadData`
-// resolves with a string, where "1" + 1 gives "11".
+// content and only `{…}` / `[…]` is parsed back as JSON. A bare number is served as text, so loadData
+// resolves with a string ("1" + 1 gives "11").
 const saved = (await plugin.loadData("click-count")) || {};
 const next = (Number(saved.count) || 0) + 1;
 await plugin.saveData("click-count", {count: next});
-showMessage(`clicked ${next} times`);
+showMessage(`this button was clicked ${next} times`);
 return next;
 ```
 
-### 4.13 Show your own dialog
-
-```javascript
-const dialog = new Dialog({
-    title: "A dialog built by a button",
-    width: "min(560px, 92vw)",
-    content: `<div class="b3-dialog__content">
-    <div class="ft__on-surface">This UI is built by the script, using SiYuan's own style classes.</div>
-</div>
-<div class="b3-dialog__action">
-    <button class="b3-button b3-button--text" data-role="close">Close</button>
-</div>`,
-});
-dialog.element.querySelector('[data-role="close"]').addEventListener("click", () => dialog.destroy());
-return "dialog shown";
-```
-
-### 4.14 Ask the user, then jump
-
-```javascript
-openInputDialog({
-    title: "Open block",
-    label: "Block ID",
-    value: blockID,
-    onConfirm: (value) => {
-        const id = value.trim();
-        if (!id) {
-            showMessage("block ID cannot be empty");
-            return;
-        }
-        openTab({app, doc: {id}});
-    },
-});
-return "waiting for input";
-```
-
-### 4.15 Silent run: no return value, no dialog
-
-This is the default policy, the "With output" option of the plugin setting **JavaScript output dialog**
-(<kbd>Settings</kbd> > <kbd>Marketplace</kbd> > <kbd>Downloaded</kbd> > the plugin's gear icon). The other
-options are `Always`, `Console output only`, `On warning (and error)`, `On error` and `Never`; they only
-change whether the dialog opens, never whether the script runs.
-
-```javascript
-showMessage("done, no dialog");
-// no return: the result dialog stays closed
-```
-
-### 4.16 Read a SiYuan secret or variable
+### 4.5 Reading a SiYuan secret or variable
 
 The entries of <kbd>Settings</kbd> > <kbd>Secrets and Variables</kbd> are readable from a script:
 `plugin.getSecret(name)` and `plugin.getVariable(name)` return the value, or an empty string when the name is
@@ -352,22 +265,43 @@ const response = await fetch(`https://${host}/ping`, {headers: {Authorization: `
 return response.status;
 ```
 
+### 4.6 Quitting SiYuan or locking the screen
+
+Neither can be undone, so ask first:
+
+```javascript
+confirm("Quit SiYuan?", "Unsaved input may be lost.", () => exitSiYuan());
+// locking works the same way: confirm("Lock the screen?", "", () => lockScreen());
+return "waiting for confirmation";
+```
+
 ## 5. Caveats
 
 - **Keep writes idempotent**: the script runs on every click, so appending or creating should be guarded by a
   timestamp or a check.
+- **`exitSiYuan` / `lockScreen` cannot be undone**: quitting interrupts whatever the user is doing, and locking
+  asks for the password again (when an access authorization code is set), so always `confirm` first. In
+  read-only mode and on a publish service `lockScreen` does nothing, while `exitSiYuan` still tries to quit.
+- **Result dialog policy**: the plugin setting "JavaScript output dialog" defaults to `With output` — it opens
+  when there is console output, a return value or an error. The other choices are `Always`, `Console output
+  only`, `On warning (and error)`, `On error` and `Never`; they only change whether the dialog opens, never
+  whether the script runs.
 - **Two ways to call `fetchPost`**: `await fetchPost(url, data)` resolves with the response; `fetchPost(url, data, cb)`
   behaves exactly like SiYuan's own and uses the callback. The callback only fires when `code >= 0` (SiYuan itself
   just shows a toast for `code < 0`), so use the `await` form when you want to handle error responses yourself.
 - **Read-only state**: in publish mode or a read-only document, write APIs are rejected by the kernel
   (`code` is not 0). You can check `window.siyuan.config.readonly` or `protyle.disabled` first.
-- **Mobile differences**: `getActiveTab`, `getAllModels` and `getAllTabs` only exist on desktop (`undefined` on
-  mobile), and anything relying on Electron is unavailable on mobile and browser frontends.
+- **Cross-origin requests**: on desktop with a local kernel the main window has same-origin checks disabled, so
+  `fetch("https://…")` works directly; with a remote kernel the usual same-origin rules apply and the target
+  site has to allow the request.
+- **Mobile differences**: `openTab` and `openWindow` are no-ops on mobile, `getActiveTab`, `getAllModels` and
+  `getAllTabs` do not exist there (they are `undefined`), and the dock helpers of 2.4 are no-ops returning
+  `false`. Anything relying on Electron is unavailable on mobile and browser frontends.
 - **`plugin.loadData` does not always give you an object**: a plugin storage file has no extension, so the
-  kernel sniffs its Content-Type (`getFile` in `kernel/api/file.go`) and only `{…}` or `[…]` are parsed back
-  as JSON; a bare number, string or `true` is served as text, and `loadData` resolves with a **string** —
-  `"1" + 1` gives `"11"`, so a counter runs 1, 11, 111… Store plugin data as an object (`{count: next}`), or
-  coerce with `Number()` / `JSON.parse()` yourself.
+  kernel sniffs its Content-Type (`getFile` in `kernel/api/file.go`: the file extension first, then
+  `mimetype.Detect`) and only `{…}` or `[…]` are parsed back as JSON; a bare number, string or `true` is served
+  as text, and `loadData` resolves with a **string** — `"1" + 1` gives `"11"`, so a counter runs 1, 11, 111…
+  Store plugin data as an object (`{count: next}`), or coerce with `Number()` / `JSON.parse()` yourself.
 - **Destructive calls**: the kernel also exposes `/api/block/deleteBlock`, `/api/filetree/removeDoc` and
   friends. A wrong click cannot be undone, so write them with care.
 - **Debugging**: `console` output is captured by the dialog and does not stay in DevTools; use `showMessage`,
