@@ -1,10 +1,10 @@
 name: CI
 
-# push main、PR 与手动触发都跑一遍静态检查，并确认 package.zip 里思源需要的文件齐全
 on:
   push:
     branches:
       - main
+      - dev
   pull_request:
   workflow_dispatch:
 
@@ -24,11 +24,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Build
-        run: npm run build
+      - name: Check
+        run: npm run check
 
       - name: Check package contents
         run: |
