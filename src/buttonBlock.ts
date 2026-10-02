@@ -13,6 +13,19 @@ export const BUTTON_BLOCK_TYPE = "button";
 /** 新建按钮块时默认使用的思源内置图标。 */
 export const DEFAULT_BUTTON_ICON = "iconCirclePlay";
 
+/**
+ * 按钮颜色：思源内置正文颜色（`--b3-font-colorN`）的序号，1..12。颜色值全部来自主题变量，
+ * 明暗主题与用户换主题都会跟着变；没有这个字段时完全不覆写，保持 `.b3-button--outline` 的原生蓝。
+ */
+export const MIN_BUTTON_COLOR = 1;
+export const MAX_BUTTON_COLOR = 12;
+
+/**
+ * 编辑窗口里给出的色板。跳过 13（daylight 下它等于页面底色，选中的按钮会看不见）；
+ * 6 就是主题主色、与默认的原生蓝是同一个颜色，所以留给「默认」那一格。
+ */
+export const BUTTON_COLOR_INDEXES = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12];
+
 /** 按钮操作，当前支持链接跳转与运行 JavaScript。 */
 export type TButtonAction = {type: "link", link: string} | {type: "script", script: string};
 
@@ -20,6 +33,8 @@ export type TButtonAction = {type: "link", link: string} | {type: "script", scri
 export interface IButtonConfig {
     text: string;
     icon: string;
+    /** 线框、文本与图标共用的颜色，见 MIN_BUTTON_COLOR；缺省表示思源原生蓝 */
+    color?: number;
     action?: TButtonAction;
 }
 
@@ -35,6 +50,12 @@ const parseButtonAction = (value: TButtonAction | undefined): TButtonAction | un
     }
     return;
 };
+
+/** 解析按钮颜色；越界或不是整数时当作没有设置颜色。 */
+export const parseButtonColor = (value: unknown): number | undefined =>
+    typeof value === "number" && Number.isInteger(value) && value >= MIN_BUTTON_COLOR && value <= MAX_BUTTON_COLOR
+        ? value
+        : undefined;
 
 /**
  * 解析自定义块内容：空内容按默认配置处理；内容不是本插件写入的配置时返回 undefined，
@@ -56,13 +77,15 @@ export const parseButtonConfig = (content: string, defaultText: string): IButton
     }
     const source = parsed as Partial<IButtonConfig>;
     const action = parseButtonAction(source.action);
+    const color = parseButtonColor(source.color);
     // 至少要有一个本插件认识的字段，才当成按钮配置
-    if (typeof source.text !== "string" && typeof source.icon !== "string" && !action) {
+    if (typeof source.text !== "string" && typeof source.icon !== "string" && typeof color === "undefined" && !action) {
         return undefined;
     }
     return {
         text: typeof source.text === "string" ? source.text : defaultText,
         icon: typeof source.icon === "string" ? source.icon : "",
+        color,
         action,
     };
 };
@@ -229,6 +252,7 @@ export const renderButtonBlock = (context: IContext, options: {
         blockID,
         text: config.text,
         icon: config.icon || "none",
+        color: config.color || "default",
         action: config.action?.type || "none",
         hasSetter: Boolean(blockID),
     });
@@ -237,6 +261,12 @@ export const renderButtonBlock = (context: IContext, options: {
     // 与思源原生按钮完全一致的类名（设置面板里的 b3-button b3-button--outline fn__size200）：
     // 宽度、字号、悬浮与按下效果全部由思源自己的 CSS 提供，插件不再自定义按钮外观
     button.className = "b3-button b3-button--outline fn__size200";
+    // 自定义颜色：只把颜色变量交给 index.scss 里的规则去覆写线框、文本与图标；
+    // 没有设置颜色时连类名都不加，保证默认与思源原生按钮逐像素一致
+    if (config.color) {
+        button.classList.add("bis-button-color");
+        button.style.setProperty("--bis-button-color", `var(--b3-font-color${config.color})`);
+    }
     button.textContent = config.text || context.i18n.defaultButtonText;
     if (config.icon) {
         button.prepend(createIconElement(config.icon));

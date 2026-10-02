@@ -4,6 +4,8 @@
   "defaultButtonText": "按钮",
   "buttonText": "按钮文本",
   "buttonIcon": "按钮图标",
+  "buttonColor": "按钮颜色",
+  "buttonColorDefault": "默认（思源原生蓝）",
   "chooseIcon": "选择图标",
   "chooseIconTitle": "选择思源内置图标",
   "searchIcon": "搜索图标",

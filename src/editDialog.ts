@@ -1,6 +1,6 @@
 import {Dialog, showMessage} from "siyuan";
 import type {IButtonConfig, TButtonAction} from "./buttonBlock";
-import {updateButtonContent} from "./buttonBlock";
+import {BUTTON_COLOR_INDEXES, updateButtonContent} from "./buttonBlock";
 import {createCodeEditor} from "./codeEditor";
 import type {IContext} from "./context";
 import {createIconElement, openIconPicker} from "./icon";
@@ -18,10 +18,13 @@ export const openButtonBlockEditor = (context: IContext, options: {
     const blockID = options.blockID;
     const config = options.config;
     let icon = config.icon;
+    /** 0 表示不覆写颜色（思源原生蓝），见 BUTTON_COLOR_INDEXES。 */
+    let color = config.color || 0;
     log.info("opened the button block editor", {
         blockID,
         text: config.text,
         icon: icon || "none",
+        color: color || "default",
         action: config.action?.type || "none",
         isMobile: context.isMobile,
     });
@@ -40,6 +43,10 @@ export const openButtonBlockEditor = (context: IContext, options: {
         <div class="fn__space"></div>
         <button class="b3-button b3-button--outline" data-bis="clear-icon">${i18n.clearIcon}</button>
     </div>
+    <div class="fn__hr"></div>
+    <div class="ft__on-surface">${i18n.buttonColor}</div>
+    <div class="fn__hr--small"></div>
+    <div class="bis-button-colors" data-bis="colors"></div>
     <div class="fn__hr"></div>
     <div class="ft__on-surface">${i18n.buttonAction}</div>
     <div class="fn__hr--small"></div>
@@ -83,6 +90,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
     const textElement = field<HTMLInputElement>("text");
     const iconElement = field<HTMLButtonElement>("icon");
     const clearIconElement = field<HTMLButtonElement>("clear-icon");
+    const colorsElement = field<HTMLElement>("colors");
     const actionElement = field<HTMLSelectElement>("action");
     const linkFieldElement = field<HTMLElement>("link-field");
     const linkElement = field<HTMLInputElement>("link");
@@ -101,6 +109,30 @@ export const openButtonBlockEditor = (context: IContext, options: {
         iconElement.append(document.createTextNode(icon || i18n.chooseIcon));
         clearIconElement.disabled = !icon;
     };
+    // 色板用思源自己的 .color__square（正文颜色面板就是这些方块）：0 表示不覆写、用原生蓝，
+    // 其余是 --b3-font-colorN 的序号，方块里显示一个「A」预览它的颜色。
+    const colorSquares = [0, ...BUTTON_COLOR_INDEXES].map((index) => {
+        const square = document.createElement("button");
+        square.type = "button";
+        square.className = "color__square";
+        square.dataset.bisColor = String(index);
+        square.setAttribute("aria-label", index === 0 ? i18n.buttonColorDefault : `${i18n.buttonColor} ${index}`);
+        square.style.color = index === 0 ? "var(--b3-theme-primary)" : `var(--b3-font-color${index})`;
+        square.textContent = "A";
+        square.addEventListener("click", () => {
+            color = index;
+            updateColorElement();
+            log.debug("button colour updated", {color: index || "default"});
+        });
+        colorsElement.append(square);
+        return square;
+    });
+    const updateColorElement = () => {
+        colorSquares.forEach((square) => {
+            square.classList.toggle("color__square--current", Number(square.dataset.bisColor) === color);
+            square.setAttribute("aria-pressed", String(Number(square.dataset.bisColor) === color));
+        });
+    };
     const updateActionFields = () => {
         linkFieldElement.classList.toggle("fn__none", actionElement.value !== "link");
         scriptFieldElement.classList.toggle("fn__none", actionElement.value !== "script");
@@ -110,6 +142,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
     actionElement.value = config.action?.type || "";
     linkElement.value = config.action?.type === "link" ? config.action.link : "";
     updateIconElement();
+    updateColorElement();
     updateActionFields();
     actionElement.addEventListener("change", updateActionFields);
     iconElement.addEventListener("click", () => {
@@ -153,13 +186,24 @@ export const openButtonBlockEditor = (context: IContext, options: {
             }
             action = {type: "script", script};
         }
-        const next: IButtonConfig = {text: textElement.value.trim() || i18n.defaultButtonText, icon, action};
+        const next: IButtonConfig = {
+            text: textElement.value.trim() || i18n.defaultButtonText,
+            icon,
+            color: color || undefined,
+            action,
+        };
         if (!updateButtonContent(blockID, next)) {
             log.error("failed to write the button block back, keeping the dialog open", {blockID});
             showMessage(i18n.blockNotEditable);
             return;
         }
-        log.info("saved the button block", {blockID, text: next.text, icon: icon || "none", action: action?.type || "none"});
+        log.info("saved the button block", {
+            blockID,
+            text: next.text,
+            icon: icon || "none",
+            color: color || "default",
+            action: action?.type || "none",
+        });
         dialog.destroy();
     });
     textElement.focus();

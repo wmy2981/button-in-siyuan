@@ -32,9 +32,10 @@
 * **块标识**：块信息的格式是 `<插件包名>/<块类型>`，两段都经 `encodeURIComponent`。本插件用
   `button-in-siyuan/button`，块类型常量是 `BUTTON_BLOCK_TYPE`；块菜单只在
   `data-info` 能解析出相同包名与块类型时出现。
-* **块内容**：`data-content` 里是单行 JSON（`{"text","icon","action"}`，`action` 为
+* **块内容**：`data-content` 里是单行 JSON（`{"text","icon","color","action"}`，`color` 是思源内置
+  正文颜色（`--b3-font-colorN`）的序号 1..12、缺省表示不覆写，`action` 为
   `{"type":"link","link"}` 或 `{"type":"script","script"}`）。内容为空按默认配置渲染；内容不是本插件
-  配置（认不出 `text`/`icon`/合法 `action`）时不渲染按钮、原样 `<pre>` 兜底，块菜单也不提供编辑入口，
+  配置（认不出 `text`/`icon`/`color`/合法 `action`）时不渲染按钮、原样 `<pre>` 兜底，块菜单也不提供编辑入口，
   绝不覆盖用户自己的数据。
 * **写回块**：只能通过宿主传给渲染器的 `setContent`（渲染器按块 ID 记下它，见 `updateButtonContent`）：
   宿主会做兜底、写回 `data-content`、提交事务并**强制重新渲染**。自己改 `data-content` 再提交事务
@@ -57,6 +58,13 @@
   `b3-button b3-button--outline fn__size200`，宽度、圆角、悬浮与按下效果全部由思源 CSS 提供。
   只额外用 `index.scss` 里一条作用域规则把字号对齐到界面字号 `--b3-font-size`（文档里的自定义块
   字号是编辑器字号），并把 `fn__size200` 的固定 200px 改成 200px 的宽度下限，避免长文案溢出按钮。
+* **按钮颜色**：每个按钮块可以存一个颜色序号（`IButtonConfig.color`，1..12），渲染时给按钮加
+  `bis-button-color` 类并把 `--bis-button-color` 设成 `var(--b3-font-color<N>)`；`index.scss` 里那条
+  作用域规则覆写 `color` 与描边用的 `box-shadow`（思源用 `box-shadow: inset` 画描边，不是 `border`），
+  悬浮/按下底色用 `color-mix` 取该颜色的淡色。**没有存颜色时不加类名**，按钮与思源原生
+  `.b3-button--outline` 逐像素一致。色板全部走主题变量，明暗主题与用户换主题都会跟着变，
+  因此不提供任意取色的取色器（会写死颜色）。设置窗口里的色板直接复用思源的 `.color__square`
+  （正文颜色面板那套方块），编号跳过 13（daylight 下等于页面底色）与 6（与默认的原生蓝同色）。
 * **代码编辑器**：CodeMirror 6（`codemirror` + `@codemirror/lang-javascript`）提供行号、高亮、
   括号匹配与补全。配色不写死：`readCodeTheme` 在离屏 `.code-block` / `.hljs-*` 探针上读取思源已加载的
   代码高亮主题（`#protyleHljsStyle`）的实际颜色，再映射到 CodeMirror 的标记（`@lezer/highlight`）；

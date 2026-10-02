@@ -4,6 +4,8 @@
   "defaultButtonText": "Button",
   "buttonText": "Button text",
   "buttonIcon": "Button icon",
+  "buttonColor": "Button colour",
+  "buttonColorDefault": "Default (SiYuan blue)",
   "chooseIcon": "Choose icon",
   "chooseIconTitle": "Choose a built-in SiYuan icon",
   "searchIcon": "Search icons",

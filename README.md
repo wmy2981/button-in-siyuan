@@ -16,6 +16,8 @@ edited in a native SiYuan dialog.
   effects all come from SiYuan's own CSS — the plugin does not restyle the button.
 * The icon is picked from the SVG icons available in the current interface (the built-in icon set,
   plus icons provided by icon packages and plugins), with a search box.
+* The button colour is optional: the frame, the text and the icon share one colour taken from
+  SiYuan's built-in palette; the default stays SiYuan's native blue.
 * A button action is optional and is one of: open a link, or run JavaScript.
 * The JavaScript editor is CodeMirror, with line numbers, syntax highlighting, bracket matching and
   completion; its colors follow SiYuan's code highlighting setting.
@@ -45,6 +47,7 @@ Requires SiYuan 3.8.6 or later.
 | --- | --- |
 | Button text | Button label, plain text. Empty input falls back to the default text. |
 | Button icon | One SVG icon of the current interface; can also be unset. |
+| Button colour | Colours the frame, the text and the icon together, picked from SiYuan's built-in palette; the default is SiYuan's native blue. |
 | Button action | `None`, `Open link` or `JavaScript`. Only one action is used. |
 | Link address | Shown for `Open link`; required for that action. |
 | JavaScript code | Shown for `JavaScript`; required for that action. |

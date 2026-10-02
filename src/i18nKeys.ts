@@ -9,6 +9,8 @@ export type II18n = {
     defaultButtonText: string;
     buttonText: string;
     buttonIcon: string;
+    buttonColor: string;
+    buttonColorDefault: string;
     chooseIcon: string;
     chooseIconTitle: string;
     searchIcon: string;
