@@ -70,6 +70,10 @@ export type II18n = {
     outputModeNever: string;
     settingsAgentSkill: string;
     settingsAgentSkillTip: string;
+    settingsDownloadSkill: string;
+    settingsDownloadSkillTip: string;
+    downloadSkill: string;
+    downloadSkillFailed: string;
     settingsSaveFailed: string;
     blockNotEditable: string;
     discardChangesTitle: string;

@@ -56,6 +56,7 @@ Requires SiYuan 3.8.6 or later.
 | --- | --- |
 | JavaScript output dialog | When the result dialog opens after a script runs: `Always`, `With output` (default), `Console output only`, `On warning (and error)`, `On error`, `Never`. |
 | Provide the button block skill to the agent | On by default: writes a skill explaining button blocks into the workspace skill directory; switching it off deletes that skill. |
+| Download the skill file | The "Download SKILL.md" button saves the bundled skill text to disk through SiYuan's own save dialog. |
 
 ## Link addresses
 

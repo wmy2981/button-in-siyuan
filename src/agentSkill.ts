@@ -1,4 +1,5 @@
-import {fetchSyncPost} from "siyuan";
+import {fetchSyncPost, saveExportFile} from "siyuan";
+import type {APIFormData, PutFileRequestInput} from "siyuan";
 import skillSource from "../docs/skill.md";
 import {createLogger} from "./logger";
 
@@ -53,4 +54,31 @@ export const removeAgentSkill = async () => {
     } catch (error) {
         log.warn("cannot remove the agent skill", {error});
     }
+};
+
+/** 下载时用的文件名：宿主的保存对话框按 URL 最后一段取默认文件名。 */
+const SKILL_FILE_NAME = "SKILL.md";
+
+/**
+ * 把技能正文交给思源原生的保存流程（设置面板里的「下载 SKILL.md」）。
+ *
+ * 保存由宿主的 `saveExportFile` 完成：桌面端弹系统保存对话框、用 `/api/export/copyExportFile` 复制，
+ * 移动端交给原生 App（见 `app/src/protyle/util/compatibility.ts`）。它只肯复制内核
+ * `<工作空间>/temp/export/` 下的文件（`kernel/api/export.go` 的 `copyExportFile` 会校验来源路径），
+ * 所以先把正文写进那个目录再交给它 —— 内核写文件走 `/api/file/putFile`，路径相对工作空间根。
+ * 失败一律抛给调用方，弹什么提示由调用方决定。
+ */
+export const downloadAgentSkill = async () => {
+    const content = skillContent();
+    // putFile 的契约是 multipart，宿主的类型要求 APIFormData<PutFileRequestInput>，这里按同一契约标注
+    const form = new FormData() as APIFormData<PutFileRequestInput>;
+    form.append("path", `temp/export/${SKILL_FILE_NAME}`);
+    form.append("isDir", "false");
+    form.append("file", new File([content], SKILL_FILE_NAME, {type: "text/markdown"}));
+    const response = await fetchSyncPost("/api/file/putFile", form, undefined, false);
+    if (response.code !== 0) {
+        throw new Error(response.msg || `/api/file/putFile code ${response.code}`);
+    }
+    await saveExportFile(`/export/${SKILL_FILE_NAME}`);
+    log.info("handed the agent skill to saveExportFile", {name: SKILL_FILE_NAME, chars: content.length});
 };

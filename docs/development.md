@@ -75,6 +75,8 @@
   `docs/javascript.md` 与 `docs/icons.md`，所以包内 `docs/` 的位置不能改。每次加载都**无条件覆盖写入**
   （技能由插件维护，目录里的副本可能是旧版本或被手改过）。删除只写在 `onunload` 一处：禁用、重载与卸载
   都会先跑它，只有卸载才接着补跑 `uninstall`。AI 功能被关掉时接口直接失败，只记日志、不弹提示。
+  设置面板里的「下载 SKILL.md」走宿主的 `saveExportFile`，而它只肯复制 `<工作空间>/temp/export/` 下的
+  文件，所以先把正文 `putFile` 到那里再交给它 —— 保存对话框里的默认文件名就是那个文件名。
 * **内置文档**：`docs/*.md` 由 webpack 的 `asset/source` 内嵌进 index.js，入口用 Lute 的富文本预览渲染器
   转成 HTML（代码块靠 `ProtyleMethod.highlightRender` 上色），按界面语言选文档。**代码块语言统一写
   `javascript`**；预览输出的代码块结构是 `<pre class="code-block" data-language="javascript">`，

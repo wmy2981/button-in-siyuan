@@ -1,6 +1,6 @@
 import {getFrontend, Plugin, Setting, showMessage} from "siyuan";
 import type {IEventBusMap, Protyle} from "siyuan";
-import {installAgentSkill, removeAgentSkill} from "./agentSkill";
+import {downloadAgentSkill, installAgentSkill, removeAgentSkill} from "./agentSkill";
 import {syncAssetReferences} from "./assetReference";
 import {createButtonBlockIconHtml} from "./buttonIcon";
 import {BUTTON_BLOCK_TYPE, DEFAULT_BUTTON_ICON, parseButtonConfig, renderButtonBlock, serializeButtonConfig} from "./buttonBlock";
@@ -149,6 +149,11 @@ export default class ButtonInSiYuan extends Plugin {
         const skillSwitch = document.createElement("input");
         skillSwitch.type = "checkbox";
         skillSwitch.className = "b3-switch fn__flex-center";
+        // 下载按钮与思源自己的设置按钮同款：b3-button--outline，尺寸交给面板里的 fn__size200
+        const skillDownload = document.createElement("button");
+        skillDownload.className = "b3-button b3-button--outline";
+        skillDownload.textContent = i18n.downloadSkill;
+        skillDownload.addEventListener("click", () => void this.downloadSkill(skillDownload));
         this.setting = new Setting({
             confirmCallback: () => {
                 // 保存按钮不等待回调：这里自己把结果落盘、必要时提示
@@ -173,7 +178,28 @@ export default class ButtonInSiYuan extends Plugin {
                 return skillSwitch;
             },
         });
+        this.setting.addItem({
+            title: i18n.settingsDownloadSkill,
+            description: i18n.settingsDownloadSkillTip,
+            createActionElement: () => skillDownload,
+        });
         log.debug("registered the plugin setting panel", {outputModes: OUTPUT_MODES.length});
+    }
+
+    /**
+     * 设置面板里的「下载 SKILL.md」：把内置的技能正文交给思源原生的保存流程（见 agentSkill.ts）。
+     * 保存对话框由宿主弹出，用户在对话框里取消不算失败，所以这里只在真正出错时提示。
+     */
+    private async downloadSkill(button: HTMLButtonElement) {
+        button.disabled = true;
+        try {
+            await downloadAgentSkill();
+        } catch (error) {
+            log.error("failed to download the agent skill", {error});
+            showMessage((this.i18n as II18n).downloadSkillFailed);
+        } finally {
+            button.disabled = false;
+        }
     }
 
     /** 保存设置并应用副作用：技能开关变化时立刻写入或删除技能。 */
