@@ -68,7 +68,10 @@ wrong directory:
 
 So the file the payload calls `assets/my-script.js` is `data/assets/my-script.js` for every tool you use to
 touch it, and a local `file` value must start with `assets/` — the plugin only offers edit, rename and delete
-for those. If you write through `/api/file/putFile` with the payload form, the kernel happily creates a second
+for those. A script file a button uses is also marked on the block with the
+`custom-data-assets-button-in-siyuan` attribute, so SiYuan counts it as referenced and never offers it for
+cleanup; the plugin maintains that attribute itself, just do not remove it. If you write through
+`/api/file/putFile` with the payload form, the kernel happily creates a second
 `assets/` directory at the workspace root: the button still works because the plugin reads that same path
 back, but a file outside `data/` is neither indexed by SiYuan nor synced, so the script silently stays on one
 device. When a button's script file is missing on another device, check this first.

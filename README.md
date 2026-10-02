@@ -66,7 +66,9 @@ script file under `assets/` asks for confirmation and then clears the path input
 
 On disk that `assets/` file is `<workspace>/data/assets/` — the same directory document assets live in,
 so SiYuan syncs it like any other asset. The path shown in the button stays `assets/…`, exactly like an
-asset link in a document.
+asset link in a document. A script file a button uses is also marked on the block as a referenced asset,
+so it never shows up under <kbd>Settings</kbd> > <kbd>Assets</kbd> > unreferenced files and the cleanup
+cannot take it away.
 
 ## Plugin settings
 

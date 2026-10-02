@@ -1,6 +1,7 @@
 import {getFrontend, Plugin, Setting, showMessage} from "siyuan";
 import type {IEventBusMap, Protyle} from "siyuan";
 import {installAgentSkill, removeAgentSkill} from "./agentSkill";
+import {syncAssetReferences} from "./assetReference";
 import {createButtonBlockIconHtml} from "./buttonIcon";
 import {BUTTON_BLOCK_TYPE, DEFAULT_BUTTON_ICON, parseButtonConfig, renderButtonBlock, serializeButtonConfig} from "./buttonBlock";
 import type {IContext} from "./context";
@@ -123,6 +124,8 @@ export default class ButtonInSiYuan extends Plugin {
         if (this.settings.agentSkill) {
             await installAgentSkill();
         }
+        // 补齐按钮块上的资源引用属性：脚本文件不该出现在「未引用的资源文件」里被清理掉
+        await syncAssetReferences(this.context);
     }
 
     /**

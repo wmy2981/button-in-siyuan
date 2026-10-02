@@ -14,6 +14,7 @@
 | `src/buttonBlock.ts` | 按钮块配置的解析/序列化、渲染、操作派发、右键/长按入口 |
 | `src/openLink.ts` | 链接操作：与宿主 `editor/openLink.ts` 对齐的打开方式（`siyuan://`、外部地址、本地资源） |
 | `src/assetOpen.ts` | 「资源打开方式」的解析（宿主 `editor/assetOpen.ts` 的移植） |
+| `src/assetReference.ts` | 把「按钮块在用哪个脚本文件」写成块属性，免得文件被当成未引用的资源清理掉 |
 | `src/buttonIcon.ts` | 界面内的按钮块图标（斜杠菜单等）的图形来源；集市图标是手绘的 `assets/icon.svg`，与它各自独立 |
 | `src/editDialog.ts` | 「编辑按钮块」对话框 |
 | `src/codeEditor.ts` | JavaScript 代码编辑器（CodeMirror，配色取自用户的代码高亮主题） |
@@ -151,6 +152,16 @@
   MouseEvent 一路传到 `openLink()`。移动端与宿主一致：不认配置，直接 `openByMobile`。
   两个已知差距：`new-window` 回落成当前页签（宿主的 `openAssetNewWindow` 走 Electron 专用通道，
   插件 API 没有入口）；远端内核（`--remote`）下宿主的 `localFileSystem` 为假，插件这里仍按前端判断。
+* **脚本文件别被当成未引用资源**：脚本放在 `assets/` 下，而「设置 - 资源 - 未引用的资源文件」列的是没有被
+  任何文档引用的资源，用户或者那里的「清理未引用资源」一删，按钮就点不动了 —— 按钮的引用关系写在块内容的
+  JSON 里，思源的引用扫描只看文档链接与块属性，看不到它。所以 `src/assetReference.ts` 把脚本路径写成块属性
+  `custom-data-assets-button-in-siyuan`：思源会把所有以 `custom-data-assets` 开头的块属性值算作资源引用
+  （`kernel/model/assets.go` 的 `getAssetsLinkDests`），用自己的属性名是为了不覆盖用户自己写的
+  `custom-data-assets`（一个块只有一个脚本文件，一个属性就够）。保存按钮块时立刻写（`editDialog.ts`），
+  插件加载时再跑一次 `syncAssetReferences()`：一条 SQL 找出「内容里提到 file」或「已经带这个属性」的自定义块，
+  与 `ial` 列里的值比对，只在不一致时写回 —— 所以 Agent 直接写 markdown 建的块、以及属性被手删的块都会补上，
+  稳定状态下一次写操作都没有。属性值以块内容为准（块内容就是唯一事实来源），思源给资源改名时同步过来的新值
+  会在下次加载时被改回块内容里的旧路径 —— 那种情况下按钮本来也已经读不到文件了，改回旧路径是对的。
 * **资源页签的坑**：`openTab({asset})` 只在资源是图片/音视频/PDF（宿主的
   `Constants.SIYUAN_ASSETS_EXTS`）且不带 `download=true` 时才会建页签，其他资源会让宿主的
   `newTab` 返回 `undefined`，`wnd.addTab(undefined)` 直接把页签布局搞坏（思源整窗报错）。

@@ -1,4 +1,5 @@
 import {confirm, Dialog, openInputDialog, showMessage} from "siyuan";
+import {setAssetReference} from "./assetReference";
 import type {IButtonConfig, TButtonAction} from "./buttonBlock";
 import {BUTTON_COLOR_INDEXES, serializeButtonConfig, updateButtonContent} from "./buttonBlock";
 import {createCodeEditor} from "./codeEditor";
@@ -493,6 +494,8 @@ export const openButtonBlockEditor = (context: IContext, options: {
             action: next.action?.type || "none",
             file: next.action?.type === "file" ? next.action.file : "none",
         });
+        // 让思源知道这个块引用了哪个脚本文件，免得它出现在「未引用的资源文件」里被清理掉
+        void setAssetReference(blockID, next);
         // 已经写回块里了，关窗时不必再问一次
         saved = true;
         dialog.destroy();
