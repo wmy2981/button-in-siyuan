@@ -6,6 +6,19 @@ const log = createLogger("scriptFile");
 /** 本地脚本文件都放在工作空间的 assets/ 下。 */
 export const ASSET_PREFIX = "assets/";
 
+/**
+ * 按钮里存的资源路径（`assets/xxx.js`）→ 内核文件接口要的工作空间相对路径（`data/assets/xxx.js`）。
+ *
+ * 两个前缀不是一回事：`assets/…` 是思源引用资源的形式，相对的是**数据目录**（`GetAssetAbsPathInBox`
+ * 拿它拼 `util.DataDir`，见 kernel/model/assets.go）；而 `/api/file/*` 与 Agent 的 `file` 工具的 path
+ * 一律相对**工作空间根**（`GetAbsPathInWorkspace` 直接拼 `util.WorkspaceDir`，见 kernel/util/path.go），
+ * 资源目录实际是 `<工作空间>/data/assets/`（kernel/util/working.go 的 InitWorkspace）。
+ * 少了 `data/` 前缀，文件会落到工作空间根下另建的一个 `assets/`：插件自己按同一路径读写、看不出问题，
+ * 但那个目录不在数据目录里，既不进思源的资源索引，也不会被同步（同步仓库只索引 `data/`，
+ * 见 kernel/model/sync_ignore.go 的 syncPathFilter 与 model/sync_path.go 的 pathsAffectSync）。
+ */
+const toWorkspacePath = (assetPath: string) => `data/${assetPath}`;
+
 /** 云端脚本：http(s) 地址，每次点击按钮都会重新下载。 */
 export const isRemoteScript = (path: string) => /^https?:\/\//i.test(path.trim());
 
@@ -51,7 +64,7 @@ const kernelError = async (response: Response) => {
 };
 
 /**
- * 读工作空间里的文本文件。
+ * 读 assets/ 下的文本文件（`path` 是按钮里存的那种 `assets/…` 资源路径）。
  *
  * 这里没有用宿主的 `fetchPost`：`/api/file/getFile` 成功时回的是裸字节（按 Content-Type 给文本或
  * JSON），出错时才是 JSON 信封（HTTP 202，见 apicontract 的 `GetFile.ErrorStatus`）；而宿主对
@@ -61,7 +74,7 @@ const kernelError = async (response: Response) => {
 export const readWorkspaceFile = async (path: string) => {
     const response = await fetch("/api/file/getFile", {
         method: "POST",
-        body: JSON.stringify({path}),
+        body: JSON.stringify({path: toWorkspacePath(path)}),
     });
     if (response.status === 202 || !response.ok) {
         throw new Error(await kernelError(response));
@@ -83,22 +96,22 @@ const postKernel = async (url: string, body: unknown) => {
     return response;
 };
 
-/** 写入工作空间里的文本文件；文件不存在时由内核创建（父目录也会建）。 */
+/** 写入 assets/ 下的文本文件（`path` 同上）；文件不存在时由内核创建（父目录也会建）。 */
 export const writeWorkspaceFile = async (path: string, content: string) => {
     const fileName = path.substring(path.lastIndexOf("/") + 1);
     // /api/file/putFile 是 multipart/form-data：path 决定写到哪里，file 是内容（isDir 用字符串）
     const form = new FormData();
-    form.append("path", path);
+    form.append("path", toWorkspacePath(path));
     form.append("isDir", "false");
     form.append("file", new File([content], fileName, {type: "text/javascript"}));
     await postKernel("/api/file/putFile", form);
     log.info("wrote a script file", {path, chars: content.length});
 };
 
-export const removeWorkspaceFile = (path: string) => postKernel("/api/file/removeFile", {path});
+export const removeWorkspaceFile = (path: string) => postKernel("/api/file/removeFile", {path: toWorkspacePath(path)});
 
 export const renameWorkspaceFile = (path: string, newPath: string) =>
-    postKernel("/api/file/renameFile", {path, newPath});
+    postKernel("/api/file/renameFile", {path: toWorkspacePath(path), newPath: toWorkspacePath(newPath)});
 
 /**
  * 同目录下是否已经有这个文件名。用 readDir 列目录，而不是「试着读一次文件」：读取失败时
@@ -106,11 +119,12 @@ export const renameWorkspaceFile = (path: string, newPath: string) =>
  */
 export const workspaceFileExists = async (path: string) => {
     const slash = path.lastIndexOf("/");
-    const response = await fetchSyncPost("/api/file/readDir", {path: path.substring(0, slash)}, undefined, false);
+    const dir = path.substring(0, slash);
+    const response = await fetchSyncPost("/api/file/readDir", {path: toWorkspacePath(dir)}, undefined, false);
     if (response.code !== 0) {
         // assets/ 目录还不存在就是还没有这个文件（第一次新建脚本）
         log.debug("cannot list the asset directory, treating the file as missing", {
-            dir: path.substring(0, slash),
+            dir,
             code: response.code,
             msg: response.msg,
         });

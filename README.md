@@ -62,6 +62,10 @@ read and write your notes. You can give up, use it as is, or download it into `a
 random name) first — after that the button has nothing to do with the web file any more. Deleting a
 script file under `assets/` asks for confirmation and then clears the path input.
 
+On disk that `assets/` file is `<workspace>/data/assets/` — the same directory document assets live in,
+so SiYuan syncs it like any other asset. The path shown in the button stays `assets/…`, exactly like an
+asset link in a document.
+
 ## Plugin settings
 
 Open them from the gear icon on the plugin card in <kbd>Settings</kbd> > <kbd>Marketplace</kbd> >

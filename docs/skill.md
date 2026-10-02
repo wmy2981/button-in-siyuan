@@ -49,12 +49,29 @@ the plugin name and the block type, with a **single-line JSON payload** as its b
 | --- | --- |
 | `{"type":"link","link":"…"}` | Opens the address: `https://…`, `mailto:…`, `siyuan://blocks/<block ID>`, `assets/<path>`, or any protocol registered on the system. |
 | `{"type":"script","script":"…"}` | Runs the code inline in the SiYuan frontend page, wrapped in an async function (`await` and `return` work). Suits roughly a dozen lines. |
-| `{"type":"file","file":"assets/my-script.js"}` | Runs a JavaScript file under `assets/`, read again on every click — maintain it with the `file` tool. |
+| `{"type":"file","file":"assets/my-script.js"}` | Runs a JavaScript file under `assets/`, read again on every click. Maintain it with the `file` tool — see the path note below. |
 | `{"type":"file","file":"https://example.com/x.js"}` | Downloads and runs that URL on every click. Prefer a local file: the remote content can change unnoticed, and the script can read and write the user's notes. |
 
 The payload must be one line of JSON. Content that is not valid JSON, or that carries none of the fields
 above, is *not* treated as a button block: the plugin renders it as raw text and offers no edit entry, so
 never store anything else in this block type.
+
+### Asset paths: `assets/…` in the payload, `data/assets/…` in your tools
+
+A script file is named in two different ways, and mixing them up does not fail loudly — it writes to the
+wrong directory:
+
+| Where | Path | Relative to |
+| --- | --- | --- |
+| The `file` field of the payload, and every asset link inside a document | `assets/my-script.js` | the data directory (`data/`) |
+| The `file` tool (`read` / `write` / `rename` / `delete` / `stat`) and `/api/file/*` | `data/assets/my-script.js` | the workspace root |
+
+So the file the payload calls `assets/my-script.js` is `data/assets/my-script.js` for every tool you use to
+touch it, and a local `file` value must start with `assets/` — the plugin only offers edit, rename and delete
+for those. If you write through `/api/file/putFile` with the payload form, the kernel happily creates a second
+`assets/` directory at the workspace root: the button still works because the plugin reads that same path
+back, but a file outside `data/` is neither indexed by SiYuan nor synced, so the script silently stays on one
+device. When a button's script file is missing on another device, check this first.
 
 ## Creating a button block
 

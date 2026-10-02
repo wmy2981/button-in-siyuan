@@ -121,6 +121,13 @@
   **云端脚本必须二次确认**（`editDialog.ts` 的 `askAboutRemoteScript`）：警告窗口里可以放弃、直接使用，
   或下载到 `assets/<NodeID>.js` 之后与云端再无关系；只有本地 assets 文件才提供编辑/改名/删除。
   脚本文件的读写一律不走 `plugin.loadData` —— 那是插件私有数据，位置与 assets 无关。
+  **按钮里存的 `assets/xxx.js` 不能直接喂给 `/api/file/*`**：`assets/…` 是资源引用形式，相对的是数据目录
+  （`GetAssetAbsPathInBox` 拼 `util.DataDir`，见 `kernel/model/assets.go`），而文件接口与 Agent 的 `file`
+  工具的 path 相对的是工作空间根（`GetAbsPathInWorkspace` 拼 `util.WorkspaceDir`，见 `kernel/util/path.go`），
+  资源目录实际是 `<工作空间>/data/assets/`（`kernel/util/working.go` 的 InitWorkspace）。所以 `scriptFile.ts`
+  统一用 `toWorkspacePath()` 补 `data/` 前缀。少了它文件会落到工作空间根下另建的 `assets/`：插件自己读写
+  正常，但那个目录不在数据目录里 —— 不进资源索引，也不会被同步（同步仓库只索引 `data/`，见
+  `kernel/model/sync_ignore.go` 的 `syncPathFilter`）。
 * **资源链接的坑**：`openTab({asset})` 只在资源是图片/音视频/PDF（宿主的
   `Constants.SIYUAN_ASSETS_EXTS`）且不带 `download=true` 时才会建页签，其他资源会让宿主的
   `newTab` 返回 `undefined`，`wnd.addTab(undefined)` 直接把页签布局搞坏（思源整窗报错）。
