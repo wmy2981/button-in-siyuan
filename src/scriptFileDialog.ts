@@ -1,6 +1,7 @@
 import {Dialog, showMessage} from "siyuan";
 import {createCodeEditor} from "./codeEditor";
 import type {IContext} from "./context";
+import {guardUnsavedChanges} from "./discardChanges";
 import {createLogger} from "./logger";
 import {readWorkspaceFile, writeWorkspaceFile} from "./scriptFile";
 import {openScriptDocs} from "./scriptDocs";
@@ -43,6 +44,10 @@ export const openScriptFileEditor = async (context: IContext, options: {
     const field = <T extends HTMLElement>(type: string) => dialog.element.querySelector<T>(`[data-bis="${type}"]`);
     const editor = createCodeEditor({value: content, placeholder: i18n.scriptCodePlaceholder});
     field<HTMLElement>("file-editor")?.append(editor.element);
+    // 与「编辑按钮块」一样：改了内容还没保存时，关窗前先问一次（取消、×、Esc、点遮罩都拦）
+    const openedWith = content;
+    let saved = false;
+    guardUnsavedChanges(context, dialog, {path: options.path}, () => !saved && editor.getValue() !== openedWith);
     field<HTMLButtonElement>("cancel")?.addEventListener("click", () => {
         log.debug("cancelled the script file editor", {path: options.path});
         dialog.destroy();
@@ -64,6 +69,8 @@ export const openScriptFileEditor = async (context: IContext, options: {
             return;
         }
         log.info("saved the script file", {path: options.path, chars: next.length});
+        // 已经落盘了，关窗时不必再问一次
+        saved = true;
         dialog.destroy();
     });
     editor.focus();

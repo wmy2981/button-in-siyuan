@@ -3,6 +3,7 @@ import type {IButtonConfig, TButtonAction} from "./buttonBlock";
 import {BUTTON_COLOR_INDEXES, serializeButtonConfig, updateButtonContent} from "./buttonBlock";
 import {createCodeEditor} from "./codeEditor";
 import type {IContext} from "./context";
+import {guardUnsavedChanges} from "./discardChanges";
 import {createIconElement, openIconPicker} from "./icon";
 import {createLogger} from "./logger";
 import {
@@ -85,32 +86,6 @@ const askAboutRemoteScript = (context: IContext, url: string) => new Promise<str
         }
     });
 });
-
-/**
- * 「放弃未保存的修改」确认窗口：确认按钮用思源自己的危险操作样式 `b3-button--remove`
- * （宿主的删除确认就是这个红色样式，见 `app/src/assets/scss/component/_button.scss`），
- * 确认后才执行 onConfirm；关掉窗口（取消、Esc、点遮罩）都算保留编辑窗口。
- */
-const confirmDiscard = (context: IContext, onConfirm: () => void) => {
-    const {i18n} = context;
-    const dialog = new Dialog({
-        title: i18n.discardChangesTitle,
-        width: context.isMobile ? "92vw" : "520px",
-        content: `<div class="b3-dialog__content">
-    <div class="ft__breakword">${i18n.discardChangesTip}</div>
-</div>
-<div class="b3-dialog__action">
-    <button class="b3-button b3-button--cancel" data-bis="keep">${i18n.cancel}</button>
-    <div class="fn__space"></div>
-    <button class="b3-button b3-button--remove" data-bis="discard">${i18n.discardChangesConfirm}</button>
-</div>`,
-    });
-    dialog.element.querySelector('[data-bis="keep"]')?.addEventListener("click", () => dialog.destroy());
-    dialog.element.querySelector('[data-bis="discard"]')?.addEventListener("click", () => {
-        onConfirm();
-        dialog.destroy();
-    });
-};
 
 /**
  * 在新建脚本文件的输入框后面补一个固定的 `.js`：用户只填文件名，后缀由 `toAssetScriptPath` 补全。
@@ -316,24 +291,11 @@ export const openButtonBlockEditor = (context: IContext, options: {
     updateIconElement();
     updateColorElement();
     updateActionFields();
-    // 关窗拦截：宿主自己的关闭路径（Esc、点遮罩、× 图标）最后都调用实例上的 `dialog.destroy()`
-    // （`app/src/dialog/index.ts` 的 scrim/close 监听与 `boot/globalEvent/keydown.ts` 的 Esc 分支），
-    // 所以换掉这个方法就能把四条路一起管住，不必逐条去拦。改了东西且还没保存时先问一次，
-    // 确认后才真关；取消则什么都不做，编辑窗口原地留着。
+    // 改了东西且还没保存时，关窗前先问一次（取消、×、Esc、点遮罩四条路都拦，见 discardChanges.ts）
     const openedWith = serializeButtonConfig(currentConfig());
     let saved = false;
-    const destroyDialog = dialog.destroy.bind(dialog);
-    dialog.destroy = (options?: Parameters<typeof destroyDialog>[0]) => {
-        if (saved || serializeButtonConfig(currentConfig()) === openedWith) {
-            destroyDialog(options);
-            return;
-        }
-        log.debug("close intercepted: the button block editor has unsaved changes", {blockID});
-        confirmDiscard(context, () => {
-            log.info("discarded the button block edits", {blockID});
-            destroyDialog(options);
-        });
-    };
+    guardUnsavedChanges(context, dialog, {blockID}, () =>
+        !saved && serializeButtonConfig(currentConfig()) !== openedWith);
     actionElement.addEventListener("change", updateActionFields);
     iconElement.addEventListener("click", () => {
         openIconPicker(context, {
