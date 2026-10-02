@@ -280,9 +280,12 @@ try {
 ### 4.12 Remember how often the button was clicked (plugin data)
 
 ```javascript
-const count = (await plugin.loadData("click-count")) || 0;
-const next = count + 1;
-await plugin.saveData("click-count", next);
+// Store an object: a plugin storage file has no extension, so the kernel guesses the Content-Type from the
+// bytes and only `{…}` / `[…]` are parsed back as JSON. A bare number is served as text and `loadData`
+// resolves with a string, where "1" + 1 gives "11".
+const saved = (await plugin.loadData("click-count")) || {};
+const next = (Number(saved.count) || 0) + 1;
+await plugin.saveData("click-count", {count: next});
 showMessage(`clicked ${next} times`);
 return next;
 ```
@@ -351,6 +354,11 @@ showMessage("done, no dialog");
   (`code` is not 0). You can check `window.siyuan.config.readonly` or `protyle.disabled` first.
 - **Mobile differences**: `getActiveTab`, `getAllModels` and `getAllTabs` only exist on desktop (`undefined` on
   mobile), and anything relying on Electron is unavailable on mobile and browser frontends.
+- **`plugin.loadData` does not always give you an object**: a plugin storage file has no extension, so the
+  kernel sniffs its Content-Type (`getFile` in `kernel/api/file.go`) and only `{…}` or `[…]` are parsed back
+  as JSON; a bare number, string or `true` is served as text, and `loadData` resolves with a **string** —
+  `"1" + 1` gives `"11"`, so a counter runs 1, 11, 111… Store plugin data as an object (`{count: next}`), or
+  coerce with `Number()` / `JSON.parse()` yourself.
 - **Avoid destructive calls**: the kernel also exposes `/api/block/deleteBlock`, `/api/filetree/removeDoc` and
   friends. A wrong click cannot be undone, so the examples here only read or append.
 - **Debugging**: `console` output is captured by the dialog and does not stay in DevTools; use `showMessage`,

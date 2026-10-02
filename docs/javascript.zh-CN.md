@@ -273,9 +273,11 @@ try {
 ### 4.12 记住点击次数（插件私有数据）
 
 ```javascript
-const count = (await plugin.loadData("click-count")) || 0;
-const next = count + 1;
-await plugin.saveData("click-count", next);
+// 存成对象：插件存储文件没有扩展名，内核按内容猜 Content-Type，只有 `{…}` / `[…]` 会被当成
+// application/json 解析回对象；存裸数字会被当成文本，loadData 拿回来的是字符串（"1" + 1 = "11"）。
+const saved = (await plugin.loadData("click-count")) || {};
+const next = (Number(saved.count) || 0) + 1;
+await plugin.saveData("click-count", {count: next});
 showMessage(`这个按钮被点了 ${next} 次`);
 return next;
 ```
@@ -342,6 +344,11 @@ showMessage("已执行，没有弹窗");
   可以先看 `window.siyuan.config.readonly` 或 `protyle.disabled`。
 - **移动端差异**：`getActiveTab`、`getAllModels`、`getAllTabs` 只在桌面端存在（移动端为 `undefined`）；
   依赖 Electron 的写法在移动端与浏览器前端一律不可用。
+- **`plugin.loadData` 拿到的未必是对象**：插件存储文件没有扩展名，内核按内容嗅探 Content-Type
+  （`kernel/api/file.go` 的 `getFile`），只有 `{…}` 或 `[…]` 会被当成 `application/json` 解析回对象/数组；
+  存裸数字、裸字符串、`true` 会被当成文本，`loadData` 回来的是**字符串** —— `"1" + 1` 得到 `"11"`，
+  计数就会变成 1、11、111…。插件私有数据统一存成对象（`{count: next}`），或自己用 `Number()` /
+  `JSON.parse()` 兜底。
 - **不要做破坏性操作**：脚本可以直接调用 `/api/block/deleteBlock`、`/api/filetree/removeDoc` 之类的接口，
   但一旦点错就无法撤销。本文的例子都只读或只追加。
 - **调试**：脚本里的 `console` 输出会被弹窗收走（不会留在开发者工具里）；想同时看开发者工具，

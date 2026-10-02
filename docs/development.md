@@ -184,6 +184,9 @@
   所以保存与应用副作用都在 `saveSetting()` 里自己处理。**输出策略在 `scriptRunner.ts` 的
   `shouldShowOutput` 里生效**，`IContext.getSettings()` 每次取最新值（渲染器与菜单项是加载时注册的，
   不能持有设置快照）。改这条要同步 `docs/javascript*.md` 的 4.15。
+  **设置必须存成对象**：插件存储文件没有扩展名，内核按内容嗅探 Content-Type（`kernel/api/file.go` 的
+  `getFile`），只有 `{…}` / `[…]` 会被当成 `application/json`、`loadData` 才解析回对象；裸数字或字符串
+  会当文本回来一个字符串（`"1" + 1 = "11"`，见 `docs/javascript*.md` 的 4.12）。
 
 ## 构建产物与发布
 

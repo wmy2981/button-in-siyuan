@@ -135,4 +135,7 @@ output policy, so a failure does not disappear by accident.
 - For a script: it reports through `showMessage(...)`, not through `console.log` or a `return` value (see
   "Reporting from a script"). A button runs its script on every click, so keep writes idempotent, and remind
   the user to back up before a script that creates or deletes notes.
+- When a script has to remember something, keep it in an object (`plugin.saveData("click-count", {count: n})`):
+  a plugin storage file has no extension, and a bare number or string comes back from `plugin.loadData` as
+  text, so `count + 1` would concatenate digits.
 - The click itself can only be confirmed by the user inside SiYuan.
