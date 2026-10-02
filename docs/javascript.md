@@ -40,7 +40,7 @@ which APIs are available, and gives examples you can paste as-is.
 | `Constants` | SiYuan constants (asset extensions, channel names) |
 | `platformUtils` | Platform helpers: `copyPlainText`, `readText`, `isMac`, `openByMobile`, … |
 | `fetchPost` / `fetchSyncPost` / `fetchGet` | Kernel HTTP API — the one you will use most; without a callback you can `await` the response |
-| `showMessage` / `hideMessage` | The bottom-right toast |
+| `showMessage` / `hideMessage` | SiYuan's native toast |
 | `confirm` | Confirmation dialog |
 | `openInputDialog` | A dialog that asks the user for a piece of text |
 | `openSetting` | Opens the plugin's settings page |

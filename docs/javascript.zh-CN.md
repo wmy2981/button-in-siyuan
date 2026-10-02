@@ -19,7 +19,7 @@
 - **console 输出**：`console.log / info / debug / warn / error / table / dir` 会被收集，按级别显示在弹窗里。
 - **错误**：脚本里抛出的异常会显示在弹窗的「错误」一行，不会影响思源运行。
 - **颜色**：输出支持 ANSI 颜色转义（见第 3 节）。
-- **复制**：弹窗右下角有「复制」按钮，复制的是去掉颜色转义后的纯文本。
+- **复制**：结果弹窗里的「复制」按钮复制的是去掉颜色转义后的纯文本。
 - **每次都重新执行**：脚本本身不保存状态，需要记住东西时用 `plugin.saveData()` 或写进笔记。
 
 ## 2. 运行环境里有什么
@@ -35,7 +35,7 @@
 | `Constants` | 思源的常量表（扩展名列表、通道名等） |
 | `platformUtils` | 平台工具：`copyPlainText`、`readText`、`isMac`、`openByMobile` 等 |
 | `fetchPost` / `fetchSyncPost` / `fetchGet` | 内核 HTTP 接口，最常用的一个；不传回调时可以直接 `await` 到响应 |
-| `showMessage` / `hideMessage` | 右下角提示 |
+| `showMessage` / `hideMessage` | 思源原生 Toast 提示 |
 | `confirm` | 确认对话框 |
 | `openInputDialog` | 让用户输入一段文本的对话框 |
 | `openSetting` | 打开插件设置（思源「设置 - 集市 - 已下载」里的插件页） |
