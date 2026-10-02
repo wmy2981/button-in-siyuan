@@ -53,275 +53,276 @@ written here (for example `iconCirclePlay`). An empty string means "no icon".
 
 ## All built-in ids
 
-The `name` column is the id without the `icon` prefix, split into words, so the table can be searched by
-concept as well as by id. Order is SiYuan's own order inside the built-in set.
+Every built-in id, in SiYuan's own order inside the built-in set. The id spells out the name (the `icon`
+prefix plus camel case, for example `iconCirclePlay`), so the table is searchable by concept as well as by
+id; use "Picking by intent" above when you only know what the button should do.
 
-| id | name |
-| --- | --- |
-| `iconMindmap` | Mindmap |
-| `iconRoute` | Route |
-| `iconAlignTop` | Align Top |
-| `iconAlignMiddle` | Align Middle |
-| `iconAlignBottom` | Align Bottom |
-| `iconTableCellsSplit` | Table Cells Split |
-| `iconTableCellsMerge` | Table Cells Merge |
-| `iconScale` | Scale |
-| `iconDatabaseBackup` | Database Backup |
-| `iconObsidian` | Obsidian |
-| `iconBrain` | Brain |
-| `iconAtom` | Atom |
-| `iconPictureInPicture` | Picture In Picture |
-| `iconPlugZap` | Plug Zap |
-| `iconSquareAsterisk` | Square Asterisk |
-| `iconSquarePlus` | Square Plus |
-| `iconSquareStop` | Square Stop |
-| `iconSend` | Send |
-| `iconLayoutGrid` | Layout Grid |
-| `iconListFilterPlus` | List Filter Plus |
-| `iconFolderClock` | Folder Clock |
-| `iconTriangleAlert` | Triangle Alert |
-| `iconCirclePlay` | Circle Play |
-| `iconCircleStop` | Circle Stop |
-| `iconListTree` | List Tree |
-| `iconPaintBucket` | Paint Bucket |
-| `iconPaintRoller` | Paint Roller |
-| `iconLanguage` | Language |
-| `iconPanelLeft` | Panel Left |
-| `iconPanelBottom` | Panel Bottom |
-| `iconPanelRight` | Panel Right |
-| `iconPanelLeftDashed` | Panel Left Dashed |
-| `iconPanelBottomDashed` | Panel Bottom Dashed |
-| `iconPanelRightDashed` | Panel Right Dashed |
-| `iconSelectAll` | Select All |
-| `iconUploadAssets` | Upload Assets |
-| `iconDownloadAssets` | Download Assets |
-| `iconKeepContent` | Keep Content |
-| `iconFullWidth` | Full Width |
-| `iconTurnInto` | Turn Into |
-| `iconGlobe` | Globe |
-| `iconPublish` | Publish |
-| `iconDocx` | DOCX |
-| `iconSearchAsset` | Search Asset |
-| `iconAddDoc` | Add Doc |
-| `iconExpandLevel` | Expand Level |
-| `iconWidth` | Width |
-| `iconHeight` | Height |
-| `iconAlignSettings` | Align Settings |
-| `iconFoldUnFold` | Fold Un Fold |
-| `iconJumpTo` | Jump To |
-| `iconEnterBack` | Enter Back |
-| `iconEnter` | Enter |
-| `iconRecentDocs` | Recent Docs |
-| `iconOutline` | Outline |
-| `iconCallout` | Callout |
-| `iconInclude` | Include |
-| `iconGroups` | Groups |
-| `iconCamera` | Camera |
-| `iconGallery` | Gallery |
-| `iconBoard` | Board |
-| `iconTerminal` | Terminal |
-| `iconSoftWrap` | Soft Wrap |
-| `iconLink` | Link |
-| `iconLinkOff` | Link Off |
-| `iconImgDown` | Img Down |
-| `iconArrowDown` | Arrow Down |
-| `iconPaperclip` | Paperclip |
-| `iconUnpin` | Unpin |
-| `iconPin` | Pin |
-| `iconOpen` | Open |
-| `iconKey` | Key |
-| `iconClock` | Clock |
-| `iconAttr` | Attr |
-| `iconPaste` | Paste |
-| `iconCopy` | Copy |
-| `iconPhone` | Phone |
-| `iconEmail` | Email |
-| `iconDrag` | Drag |
-| `iconCalendar` | Calendar |
-| `iconCalendarPlus` | Calendar Plus |
-| `iconNumber` | Number |
-| `iconIndeterminateCheck` | Indeterminate Check |
-| `iconPlugin` | Plugin |
-| `iconUsers` | Users |
-| `iconZoomIn` | Zoom In |
-| `iconZoomOut` | Zoom Out |
-| `iconFeedback` | Feedback |
-| `iconCloseRound` | Close Round |
-| `iconTabs` | Tabs |
-| `iconTabItem` | Tab Item |
-| `iconLayout` | Layout |
-| `iconFullscreenExit` | Fullscreen Exit |
-| `iconFullscreen` | Fullscreen |
-| `iconScrollHoriz` | Scroll Horiz |
-| `iconScrollVert` | Scroll Vert |
-| `iconSparkles` | Sparkles |
-| `iconDatabase` | Database |
-| `iconBIU` | B I U |
-| `iconKeyboardHide` | Keyboard Hide |
-| `iconWorkspace` | Workspace |
-| `iconCloud` | Cloud |
-| `iconCloudOff` | Cloud Off |
-| `iconCloudError` | Cloud Error |
-| `iconCloudSucc` | Cloud Succ |
-| `iconLiandi` | Liandi |
-| `iconRiffCard` | Riff Card |
-| `iconEyeoff` | Eyeoff |
-| `iconEye` | Eye |
-| `iconReplace` | Replace |
-| `iconRtl` | RTL |
-| `iconLtr` | LTR |
-| `iconBack` | Back |
-| `iconForward` | Forward |
-| `iconLayoutBottom` | Layout Bottom |
-| `iconLayoutRight` | Layout Right |
-| `iconLayoutLeft` | Layout Left |
-| `iconRef` | Ref |
-| `iconFilter` | Filter |
-| `iconDark` | Dark |
-| `iconLight` | Light |
-| `iconMode` | Mode |
-| `iconHistory` | History |
-| `iconClear` | Clear |
-| `iconEraser` | Eraser |
-| `iconFormat` | Format |
-| `iconQuit` | Quit |
-| `iconDock` | Dock |
-| `iconHideDock` | Hide Dock |
-| `iconInbox` | Inbox |
-| `iconGithub` | Github |
-| `iconGitHubI` | Git Hub I |
-| `iconHTML5` | H T M L5 |
-| `iconStar` | Star |
-| `iconSpreadEven` | Spread Even |
-| `iconSpreadOdd` | Spread Odd |
-| `iconScrollWrapped` | Scroll Wrapped |
-| `iconSelectText` | Select Text |
-| `iconHand` | Hand |
-| `iconPan` | Pan |
-| `iconShieldCheck` | Shield Check |
-| `iconSiYuan` | Si Yuan |
-| `iconCut` | Cut |
-| `iconAdd` | Add |
-| `iconUncheck` | Uncheck |
-| `iconTaskInProgress` | Task In Progress |
-| `iconListItem` | List Item |
-| `iconDot` | Dot |
-| `iconUnderline` | Underline |
-| `iconA` | A |
-| `iconM` | M |
-| `iconN` | N |
-| `iconYuque` | Yuque |
-| `iconGlobalGraph` | Global Graph |
-| `iconGraph` | Graph |
-| `iconRightTop` | Right Top |
-| `iconLeftTop` | Left Top |
-| `iconLeftBottom` | Left Bottom |
-| `iconRightBottom` | Right Bottom |
-| `iconBottomLeft` | Bottom Left |
-| `iconBottomRight` | Bottom Right |
-| `iconMove` | Move |
-| `iconBazaar` | Bazaar |
-| `iconKeymap` | Keymap |
-| `iconFont` | Font |
-| `iconVIP` | V I P |
-| `iconSuper` | Super |
-| `iconSelect` | Select |
-| `iconSQL` | S Q L |
-| `iconSub` | Sub |
-| `iconSup` | Sup |
-| `iconMark` | Mark |
-| `iconEdit` | Edit |
-| `iconPDF` | P D F |
-| `iconVideo` | Video |
-| `iconSplitLR` | Split L R |
-| `iconSplitTB` | Split T B |
-| `iconFocus` | Focus |
-| `iconSort` | Sort |
-| `iconDownload` | Download |
-| `iconUpload` | Upload |
-| `iconExact` | Exact |
-| `iconRegex` | Regex |
-| `iconMenu` | Menu |
-| `iconLeft` | Left |
-| `iconRight` | Right |
-| `iconDown` | Down |
-| `iconUp` | Up |
-| `iconTags` | Tags |
-| `iconTag` | Tag |
-| `iconImage` | Image |
-| `iconRefresh` | Refresh |
-| `iconDices` | Dices |
-| `iconUnlock` | Unlock |
-| `iconLock` | Lock |
-| `iconAccount` | Account |
-| `iconMarkdown` | Markdown |
-| `iconBookmarks` | Bookmarks |
-| `iconBookmark` | Bookmark |
-| `iconH1` | H1 |
-| `iconH2` | H2 |
-| `iconH3` | H3 |
-| `iconH4` | H4 |
-| `iconH5` | H5 |
-| `iconH6` | H6 |
-| `iconHeadings` | Headings |
-| `iconMath` | Math |
-| `iconClose` | Close |
-| `iconRestore` | Restore |
-| `iconFiles` | Files |
-| `iconFilesRoot` | Files Root |
-| `iconNotebook` | Notebook |
-| `iconNewNoteBook` | New Note Book |
-| `iconMax` | Max |
-| `iconMin` | Min |
-| `iconSettings` | Settings |
-| `iconFolder` | Folder |
-| `iconSearch` | Search |
-| `iconFile` | File |
-| `iconFileText` | File Text |
-| `iconHeart` | Heart |
-| `iconParagraph` | Paragraph |
-| `iconMp` | MP |
-| `iconQuote` | Quote |
-| `iconAfter` | After |
-| `iconBefore` | Before |
-| `iconInsertLeft` | Insert Left |
-| `iconInsertRight` | Insert Right |
-| `iconDeleteColumn` | Delete Column |
-| `iconDeleteRow` | Delete Row |
-| `iconLine` | Line |
-| `iconCode` | Code |
-| `iconInlineCode` | Inline Code |
-| `iconBoth` | Both |
-| `iconTheme` | Theme |
-| `iconOpenWindow` | Open Window |
-| `iconPause` | Pause |
-| `iconPreview` | Preview |
-| `iconInfo` | Info |
-| `iconHelp` | Help |
-| `iconStrike` | Strike |
-| `iconContract` | Contract |
-| `iconExpand` | Expand |
-| `iconRecord` | Record |
-| `iconBold` | Bold |
-| `iconBug` | Bug |
-| `iconPlay` | Play |
-| `iconCheck` | Check |
-| `iconTrashcan` | Trashcan |
-| `iconMore` | More |
-| `iconEmoji` | Emoji |
-| `iconAlignCenter` | Align Center |
-| `iconAlignJustify` | Align Justify |
-| `iconAlignLeft` | Align Left |
-| `iconAlignRight` | Align Right |
-| `iconItalic` | Italic |
-| `iconOutdent` | Outdent |
-| `iconIndent` | Indent |
-| `iconOrderedList` | Ordered List |
-| `iconList` | List |
-| `iconTable` | Table |
-| `iconRedo` | Redo |
-| `iconUndo` | Undo |
-| `iconZhihu` | Zhihu |
+| id |
+| --- |
+| `iconMindmap` |
+| `iconRoute` |
+| `iconAlignTop` |
+| `iconAlignMiddle` |
+| `iconAlignBottom` |
+| `iconTableCellsSplit` |
+| `iconTableCellsMerge` |
+| `iconScale` |
+| `iconDatabaseBackup` |
+| `iconObsidian` |
+| `iconBrain` |
+| `iconAtom` |
+| `iconPictureInPicture` |
+| `iconPlugZap` |
+| `iconSquareAsterisk` |
+| `iconSquarePlus` |
+| `iconSquareStop` |
+| `iconSend` |
+| `iconLayoutGrid` |
+| `iconListFilterPlus` |
+| `iconFolderClock` |
+| `iconTriangleAlert` |
+| `iconCirclePlay` |
+| `iconCircleStop` |
+| `iconListTree` |
+| `iconPaintBucket` |
+| `iconPaintRoller` |
+| `iconLanguage` |
+| `iconPanelLeft` |
+| `iconPanelBottom` |
+| `iconPanelRight` |
+| `iconPanelLeftDashed` |
+| `iconPanelBottomDashed` |
+| `iconPanelRightDashed` |
+| `iconSelectAll` |
+| `iconUploadAssets` |
+| `iconDownloadAssets` |
+| `iconKeepContent` |
+| `iconFullWidth` |
+| `iconTurnInto` |
+| `iconGlobe` |
+| `iconPublish` |
+| `iconDocx` |
+| `iconSearchAsset` |
+| `iconAddDoc` |
+| `iconExpandLevel` |
+| `iconWidth` |
+| `iconHeight` |
+| `iconAlignSettings` |
+| `iconFoldUnFold` |
+| `iconJumpTo` |
+| `iconEnterBack` |
+| `iconEnter` |
+| `iconRecentDocs` |
+| `iconOutline` |
+| `iconCallout` |
+| `iconInclude` |
+| `iconGroups` |
+| `iconCamera` |
+| `iconGallery` |
+| `iconBoard` |
+| `iconTerminal` |
+| `iconSoftWrap` |
+| `iconLink` |
+| `iconLinkOff` |
+| `iconImgDown` |
+| `iconArrowDown` |
+| `iconPaperclip` |
+| `iconUnpin` |
+| `iconPin` |
+| `iconOpen` |
+| `iconKey` |
+| `iconClock` |
+| `iconAttr` |
+| `iconPaste` |
+| `iconCopy` |
+| `iconPhone` |
+| `iconEmail` |
+| `iconDrag` |
+| `iconCalendar` |
+| `iconCalendarPlus` |
+| `iconNumber` |
+| `iconIndeterminateCheck` |
+| `iconPlugin` |
+| `iconUsers` |
+| `iconZoomIn` |
+| `iconZoomOut` |
+| `iconFeedback` |
+| `iconCloseRound` |
+| `iconTabs` |
+| `iconTabItem` |
+| `iconLayout` |
+| `iconFullscreenExit` |
+| `iconFullscreen` |
+| `iconScrollHoriz` |
+| `iconScrollVert` |
+| `iconSparkles` |
+| `iconDatabase` |
+| `iconBIU` |
+| `iconKeyboardHide` |
+| `iconWorkspace` |
+| `iconCloud` |
+| `iconCloudOff` |
+| `iconCloudError` |
+| `iconCloudSucc` |
+| `iconLiandi` |
+| `iconRiffCard` |
+| `iconEyeoff` |
+| `iconEye` |
+| `iconReplace` |
+| `iconRtl` |
+| `iconLtr` |
+| `iconBack` |
+| `iconForward` |
+| `iconLayoutBottom` |
+| `iconLayoutRight` |
+| `iconLayoutLeft` |
+| `iconRef` |
+| `iconFilter` |
+| `iconDark` |
+| `iconLight` |
+| `iconMode` |
+| `iconHistory` |
+| `iconClear` |
+| `iconEraser` |
+| `iconFormat` |
+| `iconQuit` |
+| `iconDock` |
+| `iconHideDock` |
+| `iconInbox` |
+| `iconGithub` |
+| `iconGitHubI` |
+| `iconHTML5` |
+| `iconStar` |
+| `iconSpreadEven` |
+| `iconSpreadOdd` |
+| `iconScrollWrapped` |
+| `iconSelectText` |
+| `iconHand` |
+| `iconPan` |
+| `iconShieldCheck` |
+| `iconSiYuan` |
+| `iconCut` |
+| `iconAdd` |
+| `iconUncheck` |
+| `iconTaskInProgress` |
+| `iconListItem` |
+| `iconDot` |
+| `iconUnderline` |
+| `iconA` |
+| `iconM` |
+| `iconN` |
+| `iconYuque` |
+| `iconGlobalGraph` |
+| `iconGraph` |
+| `iconRightTop` |
+| `iconLeftTop` |
+| `iconLeftBottom` |
+| `iconRightBottom` |
+| `iconBottomLeft` |
+| `iconBottomRight` |
+| `iconMove` |
+| `iconBazaar` |
+| `iconKeymap` |
+| `iconFont` |
+| `iconVIP` |
+| `iconSuper` |
+| `iconSelect` |
+| `iconSQL` |
+| `iconSub` |
+| `iconSup` |
+| `iconMark` |
+| `iconEdit` |
+| `iconPDF` |
+| `iconVideo` |
+| `iconSplitLR` |
+| `iconSplitTB` |
+| `iconFocus` |
+| `iconSort` |
+| `iconDownload` |
+| `iconUpload` |
+| `iconExact` |
+| `iconRegex` |
+| `iconMenu` |
+| `iconLeft` |
+| `iconRight` |
+| `iconDown` |
+| `iconUp` |
+| `iconTags` |
+| `iconTag` |
+| `iconImage` |
+| `iconRefresh` |
+| `iconDices` |
+| `iconUnlock` |
+| `iconLock` |
+| `iconAccount` |
+| `iconMarkdown` |
+| `iconBookmarks` |
+| `iconBookmark` |
+| `iconH1` |
+| `iconH2` |
+| `iconH3` |
+| `iconH4` |
+| `iconH5` |
+| `iconH6` |
+| `iconHeadings` |
+| `iconMath` |
+| `iconClose` |
+| `iconRestore` |
+| `iconFiles` |
+| `iconFilesRoot` |
+| `iconNotebook` |
+| `iconNewNoteBook` |
+| `iconMax` |
+| `iconMin` |
+| `iconSettings` |
+| `iconFolder` |
+| `iconSearch` |
+| `iconFile` |
+| `iconFileText` |
+| `iconHeart` |
+| `iconParagraph` |
+| `iconMp` |
+| `iconQuote` |
+| `iconAfter` |
+| `iconBefore` |
+| `iconInsertLeft` |
+| `iconInsertRight` |
+| `iconDeleteColumn` |
+| `iconDeleteRow` |
+| `iconLine` |
+| `iconCode` |
+| `iconInlineCode` |
+| `iconBoth` |
+| `iconTheme` |
+| `iconOpenWindow` |
+| `iconPause` |
+| `iconPreview` |
+| `iconInfo` |
+| `iconHelp` |
+| `iconStrike` |
+| `iconContract` |
+| `iconExpand` |
+| `iconRecord` |
+| `iconBold` |
+| `iconBug` |
+| `iconPlay` |
+| `iconCheck` |
+| `iconTrashcan` |
+| `iconMore` |
+| `iconEmoji` |
+| `iconAlignCenter` |
+| `iconAlignJustify` |
+| `iconAlignLeft` |
+| `iconAlignRight` |
+| `iconItalic` |
+| `iconOutdent` |
+| `iconIndent` |
+| `iconOrderedList` |
+| `iconList` |
+| `iconTable` |
+| `iconRedo` |
+| `iconUndo` |
+| `iconZhihu` |
 
 ---
 
