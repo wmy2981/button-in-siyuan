@@ -150,6 +150,11 @@
   手势 → 动作 → 按可预览性/本地文件系统回落）算出动作，再落到 `openTab({asset|pdf, position, keepCursor})`
   、`Constants.SIYUAN_CMD` 的 `openPath` / `showItemInFolder` 上；修饰键来自点击事件，所以渲染器要把
   MouseEvent 一路传到 `openLink()`。移动端与宿主一致：不认配置，直接 `openByMobile`。
+  **打开之前必须先把 `open-asset` / `open-link` 发给其他插件**（`emitToPlugins`）：这两个是宿主
+  `openLink` 里发出的**可取消**事件，接管资源打开的插件（如 editor-siyuan）就靠 `preventDefault()`
+  顶掉默认打开；漏掉这一步的表现是「文档里点链接会被接管、从按钮点却不会」。宿主没有把
+  `emitToPlugins` 暴露给插件，只能照它的做法遍历 `app.plugins` 各自的 eventBus（没有订阅者的总线
+  emit 只是空转），顺序与细节都对在 `app/src/plugin/EventBusCore.ts` 与 `editor/openLinkEvent.ts`。
   两个已知差距：`new-window` 回落成当前页签（宿主的 `openAssetNewWindow` 走 Electron 专用通道，
   插件 API 没有入口）；远端内核（`--remote`）下宿主的 `localFileSystem` 为假，插件这里仍按前端判断。
 * **脚本文件别被当成未引用资源**：脚本放在 `assets/` 下，而「设置 - 资源 - 未引用的资源文件」列的是没有被

@@ -94,7 +94,9 @@ A link address behaves exactly like the same link inside a document — SiYuan's
 
 SiYuan's own rules decide the rest: a resource it can render (image, audio, video, PDF) opens in a resource
 tab, anything else (an archive, a txt file…) goes to the system. A PDF link with a page (`assets/x.pdf?page=3`)
-opens at that page.
+opens at that page. Other plugins see the same cancellable events they get for a link in a document
+(`open-asset` / `open-link`), so a plugin that takes over opening `assets/` files — editor-siyuan, for
+example — takes over a button click too.
 
 ## JavaScript
 

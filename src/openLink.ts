@@ -1,5 +1,7 @@
 import {Constants, fetchPost, getBackend, getFrontend, openTab, platformUtils, showMessage} from "siyuan";
+import type {IEventBusMap, TEventBus} from "siyuan";
 import type {IContext} from "./context";
+import type {TAssetOpenAction} from "./assetOpen";
 import {
     resolveAssetOpenAction,
     resolveAvailableAssetOpenAction,
@@ -9,6 +11,24 @@ import {getIpcRenderer} from "./electron";
 import {createLogger} from "./logger";
 
 const log = createLogger("openLink");
+
+/**
+ * 把「马上要打开这个链接/资源」发给其他插件，与宿主的 `emitCancelablePluginEvent`
+ * （`app/src/editor/openLinkEvent.ts` → `app/src/plugin/EventBusCore.ts` 的 `emitToPlugins`）一致：
+ * 逐个插件 emit 一个可取消的事件，谁 `preventDefault()` 谁就接管了，返回 false 时调用方不再自己打开。
+ * 宿主没有把 `emitToPlugins` 暴露给插件，只能照它的做法遍历 `app.plugins` 各自的 eventBus；
+ * 没有订阅者的总线 emit 只是空转（返回 true），不影响结果。接管 `assets/` 打开的插件（例如
+ * editor-siyuan 的 `open-asset`）靠的就是这一步，缺了它从按钮点链接就不会被接管。
+ */
+const emitToPlugins = <K extends TEventBus>(context: IContext, type: K, detail: IEventBusMap[K]) => {
+    for (const plugin of context.app.plugins) {
+        if (plugin.eventBus.emit(type, detail) === false) {
+            log.info("another plugin took over this link", {type});
+            return false;
+        }
+    }
+    return true;
+};
 
 /** 取资源扩展名：去掉查询串与锚点后的小写后缀。 */
 const getAssetExtension = (path: string) => {
@@ -185,13 +205,6 @@ const openAssetTab = (context: IContext, path: string, pdfParams: number | strin
 
 /** 本地资源（`assets/…`、`file://…`、绝对路径）：按用户配的「资源文件打开方式」打开，与点文档里的资源链接一致。 */
 const openLocalAsset = (context: IContext, address: string, event?: MouseEvent) => {
-    // 移动端与宿主的 openLink 一样不认打开方式配置，直接交给 openByMobile：iOS/Android/鸿蒙各自
-    // 把地址交给原生（`assets/…` 会转成工作空间里的资源地址），PDF 也由原生打开
-    if (isMobileFrontend()) {
-        log.info("handing the local asset to the host mobile logic", {address});
-        platformUtils.openByMobile(address);
-        return;
-    }
     let linkAddress = address;
     let pdfParams: number | string | undefined;
     if (address.startsWith("assets/")) {
@@ -203,20 +216,34 @@ const openLocalAsset = (context: IContext, address: string, event?: MouseEvent) 
         pdfParams = Number.isNaN(parsed) ? undefined : parsed;
         linkAddress = address.split("?page")[0];
     }
-    const action = resolveAvailableAssetOpenAction(
-        resolveExecutableAssetOpenAction(
-            resolveAssetOpenAction(window.siyuan?.config?.editor?.assetOpen, {
-                altKey: event?.altKey,
-                shiftKey: event?.shiftKey,
-                ctrlKey: event?.ctrlKey,
-            }),
-            {
-                previewable: isPreviewableAsset(linkAddress),
-                noSplitScreen: Boolean(window.siyuan?.config?.fileTree?.noSplitScreenWhenOpenTab),
-            },
-        ),
-        hasLocalFileSystem(),
-    );
+    const mobile = isMobileFrontend();
+    // 移动端与宿主的 openLink 一样不认打开方式配置：PDF 之外一律按「外部打开」处理（宿主的移动端 PDF
+    // 走它自己的阅读器，插件没有这个入口，交给 openByMobile 由原生打开）
+    const action: TAssetOpenAction = mobile
+        ? (linkAddress.startsWith("assets/") && getAssetExtension(linkAddress) === ".pdf" ? "current" : "app")
+        : resolveAvailableAssetOpenAction(
+            resolveExecutableAssetOpenAction(
+                resolveAssetOpenAction(window.siyuan?.config?.editor?.assetOpen, {
+                    altKey: event?.altKey,
+                    shiftKey: event?.shiftKey,
+                    ctrlKey: event?.ctrlKey,
+                }),
+                {
+                    previewable: isPreviewableAsset(linkAddress),
+                    noSplitScreen: Boolean(window.siyuan?.config?.fileTree?.noSplitScreenWhenOpenTab),
+                },
+            ),
+            hasLocalFileSystem(),
+        );
+    // 与宿主的 openLink 一样：先把这件事发给其他插件（可取消），有插件接管就不再自己打开
+    if (!emitToPlugins(context, "open-asset", {path: address, action, event})) {
+        return;
+    }
+    if (mobile) {
+        log.info("handing the local asset to the host mobile logic", {address: linkAddress});
+        platformUtils.openByMobile(linkAddress);
+        return;
+    }
     switch (action) {
         case "current":
             openAssetTab(context, linkAddress, pdfParams);
@@ -271,8 +298,13 @@ export const openLink = (context: IContext, link: string, event?: MouseEvent) =>
         return;
     }
     if (!isLocalPath(address)) {
-        log.info("handing the link to the host", {address});
-        platformUtils.openByMobile(address);
+        // 与宿主的 resolveOpenLinkEvent 一致：没有协议的地址按 https 补全，再发可取消的 open-link
+        const href = address.indexOf(":") < 0 ? `https://${address}` : address;
+        if (!emitToPlugins(context, "open-link", {href, originalHref: address, event})) {
+            return;
+        }
+        log.info("handing the link to the host", {href});
+        platformUtils.openByMobile(href);
         return;
     }
     openLocalAsset(context, address, event);
