@@ -103,7 +103,9 @@
   `fetchSyncPost` / 原生 `fetch` 拿响应。改这里时别把包装去掉。
   结果弹窗按级别给前缀配色，正文支持 ANSI 转义（16 色/256 色/真彩/加粗下划线等），复制时去掉转义。
   **没有 `return`、没有 console 输出、也没有报错时不弹结果弹窗**（静默执行，「点一下做件事」的按钮不该
-  每次都被空弹窗挡住）；有输出或报错照常弹窗，别把错误吞掉。改动这条要同步 `docs/javascript*.md` 的 4.15。
+  每次都被空弹窗挡住）；有输出或报错照常弹窗，别把错误吞掉。这条是默认策略（设置里的「有输出时显示」），
+  用户还能在设置面板里改成总是显示、仅 console 输出、警告/错误时显示或始终不显示。改动这条要同步
+  `docs/javascript*.md` 的 4.15。
 * **JavaScript 文件操作**（`{"type":"file","file"}`）：点按钮时先把代码取回来 —— `assets/` 下的本地文件
   走 `/api/file/getFile`，http(s) 地址用 `fetch` 现下载（每次点击都重新下）—— 再交给与内联脚本同一个
   `runScript`，所以 `console`、返回值、错误、静默规则完全一致。文件取不到时只提示、不执行任何代码。
@@ -154,8 +156,20 @@
   记渲染、菜单命中、主题探针等过程细节；`info` 记加载/卸载、打开对话框、保存、执行操作等用户可见动作；
   `warn` 记能继续跑但不符合预期的情况（内容认不出、资源没有页签、保存被拒绝）；`error` 记真正出错
   （JavaScript 抛异常、写回失败）。不要用 `console.log` 直接打日志。
-* **生命周期**：`onload` 注册 `click-blockicon` 监听，`onunload` 配对注销；插件不写存储，也没有
-  设置项、命令、停靠栏。
+* **生命周期**：`onload` 注册 `click-blockicon` 监听与斜杠菜单项、注册设置面板，`onunload` 配对注销；
+  设置与技能都是异步的，放在 `initSettings()` 里后跑，免得拖慢文档渲染。`uninstall`（只在从工作空间
+  移除插件时调用）删掉写给 Agent 的技能。插件不注册命令与停靠栏；写盘只有两处：插件设置
+  （`data/storage/petal/button-in-siyuan/settings.json`，见 `settings.ts`）与技能目录。
+* **设置**：`ISettings` 的两个字段都要过 `mergeSettings`（缺字段/非法值回落默认，`OUTPUT_MODES` 之外
+  的值不算），`saveSettings` 写完读回校验（宿主的 `saveData` 在落盘前就可能 resolve，也不看
+  `response.code`），校验失败提示用户重试。面板用思源的 `Setting`：**不传 `openInWindow`**，
+  即当前窗口里的模态面板（issue #7 的补充要求）；`addItem` 没有 `type` 字段，控件由插件自己造 ——
+  输出策略是 `<select class="b3-select">` 且 `direction: "row"`（row 模式下思源给元素加 `fn__block`，
+  占满整行，长选项不会被 200px 切掉），技能开关是 `<input type="checkbox" class="b3-switch">`
+  （思源会把 `b3-switch` 放进 `<label>`，点标签就能切换）。`confirmCallback` 不等待异步逻辑就关窗，
+  所以保存与应用副作用都在 `saveSetting()` 里自己处理。**输出策略在 `scriptRunner.ts` 的
+  `shouldShowOutput` 里生效**，`IContext.getSettings()` 每次取最新值（渲染器与菜单项是加载时注册的，
+  不能持有设置快照）。改这条要同步 `docs/javascript*.md` 的 4.15。
 
 ## 构建产物与发布
 

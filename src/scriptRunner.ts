@@ -3,11 +3,40 @@ import {createLogger} from "./logger";
 import {createScriptScope} from "./scriptApi";
 import type {IScriptEntry, TScriptLevel} from "./scriptOutput";
 import {showScriptOutput} from "./scriptOutput";
+import type {TOutputMode} from "./settings";
 
 const log = createLogger("scriptRunner");
 
 /** 会被捕获的 console 方法：执行期间临时接管，输出进结果弹窗。 */
 const CONSOLE_LEVELS: TScriptLevel[] = ["log", "info", "debug", "warn", "error", "table", "dir"];
+
+/**
+ * 按设置里的输出弹窗策略判断这次执行要不要弹结果弹窗。
+ *
+ * `output` 是插件一直以来的行为（有 console 输出、有返回值或出错才弹，都没有就静默）；
+ * 其余策略是用户在设置面板里显式选的，所以即使把错误也关掉也照办，只是日志里会记下判定结果。
+ */
+export const shouldShowOutput = (mode: TOutputMode, options: {
+    entries: IScriptEntry[];
+    hasResult: boolean;
+    hasFailure: boolean;
+}) => {
+    switch (mode) {
+        case "always":
+            return true;
+        case "never":
+            return false;
+        case "console":
+            return options.entries.length > 0;
+        case "warn":
+            return options.hasFailure ||
+                options.entries.some((entry) => entry.level === "warn" || entry.level === "error");
+        case "error":
+            return options.hasFailure || options.entries.some((entry) => entry.level === "error");
+        default:
+            return options.entries.length > 0 || options.hasResult || options.hasFailure;
+    }
+};
 
 export const formatValue = (value: unknown): string => {
     if (typeof value === "string") {
@@ -93,12 +122,18 @@ export const runScript = async (context: IContext, options: {
     } else {
         log.error("JavaScript action failed", {failure, ...detail});
     }
-    // 没有 return、没有 console 输出、也没有报错时保持静默：这种「点一下做件事」的按钮不该每次都被
-    // 一个空弹窗挡住。有输出或出错仍然弹窗，免得错误被吞掉。
-    if (typeof result === "undefined" && typeof failure === "undefined" && entries.length === 0) {
-        log.debug("no return value and no output, keeping the result dialog closed", detail);
+    // 弹不弹窗由设置里的策略决定；默认策略下「没有 return、没有 console 输出、也没有报错」保持静默 ——
+    // 这种「点一下做件事」的按钮不该每次都被一个空弹窗挡住。
+    const outputMode = context.getSettings().outputMode;
+    if (!shouldShowOutput(outputMode, {
+        entries,
+        hasResult: typeof result !== "undefined",
+        hasFailure: typeof failure !== "undefined",
+    })) {
+        log.debug("the output mode keeps the result dialog closed", {...detail, outputMode});
         return;
     }
+    log.debug("showing the result dialog", {...detail, outputMode});
     showScriptOutput(context, {
         entries,
         result: typeof result === "undefined" ? undefined : formatValue(result),

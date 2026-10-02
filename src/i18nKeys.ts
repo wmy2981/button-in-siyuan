@@ -56,6 +56,17 @@ export type II18n = {
     noOutput: string;
     copy: string;
     copied: string;
+    settingsOutputMode: string;
+    settingsOutputModeTip: string;
+    outputModeAlways: string;
+    outputModeOutput: string;
+    outputModeConsole: string;
+    outputModeWarn: string;
+    outputModeError: string;
+    outputModeNever: string;
+    settingsAgentSkill: string;
+    settingsAgentSkillTip: string;
+    settingsSaveFailed: string;
     blockNotEditable: string;
     save: string;
     cancel: string;

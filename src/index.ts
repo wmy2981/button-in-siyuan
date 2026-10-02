@@ -1,4 +1,4 @@
-import {getFrontend, Plugin} from "siyuan";
+import {getFrontend, Plugin, Setting, showMessage} from "siyuan";
 import type {IEventBusMap, Protyle} from "siyuan";
 import {installAgentSkill, removeAgentSkill} from "./agentSkill";
 import {createButtonBlockIconHtml} from "./buttonIcon";
@@ -7,8 +7,8 @@ import type {IContext} from "./context";
 import {openButtonBlockEditor} from "./editDialog";
 import type {II18n} from "./i18nKeys";
 import {createLogger} from "./logger";
-import type {ISettings} from "./settings";
-import {DEFAULT_SETTINGS, loadSettings} from "./settings";
+import type {ISettings, TOutputMode} from "./settings";
+import {DEFAULT_SETTINGS, loadSettings, OUTPUT_MODES, saveSettings} from "./settings";
 import "./index.scss";
 
 const log = createLogger("plugin");
@@ -28,6 +28,16 @@ const encodeBlockInfo = (pluginName: string, blockType: string) =>
  * 取 `code` 是因为它最接近「在这里插入一个块」的语义。
  */
 const SLASH_ITEM_ID = "code";
+
+/** 输出弹窗策略 → 文案键。设置面板里的下拉列表与 i18n 一一对应。 */
+const OUTPUT_MODE_KEYS: Record<TOutputMode, keyof II18n> = {
+    always: "outputModeAlways",
+    output: "outputModeOutput",
+    console: "outputModeConsole",
+    warn: "outputModeWarn",
+    error: "outputModeError",
+    never: "outputModeNever",
+};
 
 /** 解析块信息；格式不合法时返回 undefined。 */
 const parseBlockInfo = (info: string) => {
@@ -58,6 +68,7 @@ export default class ButtonInSiYuan extends Plugin {
             i18n: this.i18n as II18n,
             isMobile: this.isMobile,
             openEditor: (blockID, config) => openButtonBlockEditor(this.context, {blockID, config}),
+            getSettings: () => this.settings,
         };
     }
 
@@ -66,6 +77,7 @@ export default class ButtonInSiYuan extends Plugin {
         this.isMobile = frontend === "mobile" || frontend === "browser-mobile";
         const context = this.context;
         log.info("plugin loaded", {name: this.name, displayName: this.displayName, frontend, isMobile: this.isMobile});
+        this.registerSetting();
         this.customBlockRenders[BUTTON_BLOCK_TYPE] = {
             render: (options) => renderButtonBlock(context, options),
         };
@@ -108,6 +120,73 @@ export default class ButtonInSiYuan extends Plugin {
         this.settings = await loadSettings(this);
         if (this.settings.agentSkill) {
             await installAgentSkill();
+        }
+    }
+
+    /**
+     * 注册插件设置面板（集市 - 已下载 里插件卡片上的齿轮图标）。
+     *
+     * 面板是思源自己的 `Setting`：默认就是当前窗口里的模态对话框（不传 openInWindow），
+     * 控件要插件自己造 —— 思源按类名判断布局（`b3-switch` 放进 label，其余元素加
+     * `fn__flex-center fn__size200`），所以这里只用思源自己的控件类。
+     * `createActionElement` 在每次打开面板时调用，那时读 `this.settings` 就是最新值。
+     */
+    private registerSetting() {
+        const i18n = this.i18n as II18n;
+        const outputSelect = document.createElement("select");
+        outputSelect.className = "b3-select";
+        OUTPUT_MODES.forEach((mode) => {
+            const option = document.createElement("option");
+            option.value = mode;
+            option.textContent = i18n[OUTPUT_MODE_KEYS[mode]];
+            outputSelect.append(option);
+        });
+        const skillSwitch = document.createElement("input");
+        skillSwitch.type = "checkbox";
+        skillSwitch.className = "b3-switch fn__flex-center";
+        this.setting = new Setting({
+            confirmCallback: () => {
+                // 保存按钮不等待回调：这里自己把结果落盘、必要时提示
+                void this.saveSetting(outputSelect.value as TOutputMode, skillSwitch.checked);
+            },
+        });
+        this.setting.addItem({
+            title: i18n.settingsOutputMode,
+            description: i18n.settingsOutputModeTip,
+            // row：标题与说明在上、下拉列表占满整行，长选项文案才不会被 200px 切掉
+            direction: "row",
+            createActionElement: () => {
+                outputSelect.value = this.settings.outputMode;
+                return outputSelect;
+            },
+        });
+        this.setting.addItem({
+            title: i18n.settingsAgentSkill,
+            description: i18n.settingsAgentSkillTip,
+            createActionElement: () => {
+                skillSwitch.checked = this.settings.agentSkill;
+                return skillSwitch;
+            },
+        });
+        log.debug("registered the plugin setting panel", {outputModes: OUTPUT_MODES.length});
+    }
+
+    /** 保存设置并应用副作用：技能开关变化时立刻写入或删除技能。 */
+    private async saveSetting(outputMode: TOutputMode, agentSkill: boolean) {
+        const previous = this.settings;
+        const next: ISettings = {outputMode, agentSkill};
+        if (!await saveSettings(this, next)) {
+            showMessage((this.i18n as II18n).settingsSaveFailed);
+            return;
+        }
+        this.settings = next;
+        if (next.agentSkill === previous.agentSkill) {
+            return;
+        }
+        if (next.agentSkill) {
+            await installAgentSkill();
+        } else {
+            await removeAgentSkill();
         }
     }
 

@@ -63,6 +63,18 @@ read and write your notes. You can give up, use it as is, or download it into `a
 random name) first — after that the button has nothing to do with the web file any more. Deleting a
 script file under `assets/` asks for confirmation and then clears the path input.
 
+## Plugin settings
+
+Open them from the gear icon on the plugin card in <kbd>Settings</kbd> > <kbd>Marketplace</kbd> >
+<kbd>Downloaded</kbd> — as with other SiYuan plugins it is a panel in the current window.
+
+| Setting | Description |
+| --- | --- |
+| JavaScript output dialog | When the result dialog opens after a script runs: `Always`, `With output` (default), `Console output only`, `On warning (and error)`, `On error`, `Never`. |
+| Provide the button block skill to the agent | On by default: writes a skill explaining button blocks into the workspace skill directory; switching it off deletes that skill. |
+
+The settings live in `data/storage/petal/button-in-siyuan/settings.json`.
+
 ## Link addresses
 
 | Link | Behavior |
@@ -85,7 +97,8 @@ cut, paste, paste as plain text, select all).
 
 The code runs in the page context when the button is clicked; `await` is supported. The `return`
 value, everything written to `console` while it runs and any thrown error are shown in the result
-dialog, which can copy the whole output as plain text.
+dialog, which can copy the whole output as plain text. When that dialog opens is decided by the
+"JavaScript output dialog" plugin setting (default: "With output").
 
 Scripts can call every API SiYuan exposes to plugins.
 

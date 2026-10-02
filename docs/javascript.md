@@ -19,7 +19,7 @@ which APIs are available, and gives examples you can paste as-is.
 - **Wrapped in async**: the code is placed inside an async function, so `await` works and `return` ends it.
 - **Return value**: the returned value is shown as the "Return value" line of the result dialog (objects are
   JSON-serialised). With **no `return`, no `console` output and no error the dialog does not open at all**
-  (silent run, see 4.15).
+  (silent run, see 4.15); the plugin setting "JavaScript output dialog" decides when the dialog opens.
 - **Calling the kernel**: `const response = await fetchPost("/api/…", {…})` gives you the kernel response directly
   (`code === 0` means success). The `fetchPost` SiYuan hands to plugins is callback-style; this plugin makes the
   no-callback form awaitable and leaves the callback form exactly as SiYuan behaves. Same for `fetchSyncPost`
@@ -329,6 +329,11 @@ When the script returns nothing and produces no `console` output and no error, c
 **no dialog at all** — a "do one thing" button should not be covered by an empty window every time. Use
 `showMessage` if the user should still get a hint; `console` output or a thrown error still opens the dialog,
 so failures never disappear silently.
+
+This is the default policy, the "With output" option of the plugin setting **JavaScript output dialog**
+(<kbd>Settings</kbd> > <kbd>Marketplace</kbd> > <kbd>Downloaded</kbd> > the plugin's gear icon). The other
+options are `Always`, `Console output only`, `On warning (and error)`, `On error` and `Never`; they only
+change whether the dialog opens, never whether the script runs.
 
 ```javascript
 showMessage("done, no dialog");
