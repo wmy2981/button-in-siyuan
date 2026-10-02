@@ -12,34 +12,20 @@ export const AGENT_SKILL_NAME = "siyuan-button-block";
 
 /**
  * 技能正文：webpack 把 docs/skill.md 作为字符串内嵌进 index.js（与内置文档同一套做法），
- * 所以安装技能不需要联网、也不依赖工作区里有没有 docs/ 目录。
+ * 所以写入技能不需要联网、也不依赖工作区里有没有 docs/ 目录，插件升级后取到的必然是新版正文。
  */
 const skillContent = () => skillSource;
-
-/** 读取当前已安装的同名技能；不存在或读取失败时返回 undefined。 */
-const readSkill = async () => {
-    const response = await fetchSyncPost(`/api/ai/agent/getSkill`, {name: AGENT_SKILL_NAME}, undefined, false);
-    if (response.code !== 0) {
-        log.debug("the agent skill is not installed yet", {code: response.code, msg: response.msg});
-        return;
-    }
-    const data = response.data as {content?: string} | undefined;
-    return typeof data?.content === "string" ? data.content : undefined;
-};
 
 /**
  * 把技能写给 Agent（`/api/ai/agent/saveSkill` → `data/storage/ai/agent/skills/<name>/SKILL.md`）。
  *
- * 内容与已装的一致时什么都不做（插件每次加载都跑一遍，没必要反复写盘）；内容不同（插件升级，
- * 或用户/Agent 改过这个文件）时以插件内嵌的版本覆盖 —— 这个技能由插件维护，不是用户数据。
+ * 每次加载插件都无条件重写一遍：技能由插件维护、不是用户数据，而技能目录里的副本可能是旧版本留下的、
+ * 也可能被手工改过，只有每次覆盖才能保证 Agent 读到的就是当前插件 `docs/skill.md` 的正文。
+ * 代价只是内核 `util.SaveSkill` 里的一次覆盖写，不值得为省下它去先 `getSkill` 比对内容。
  */
 export const installAgentSkill = async () => {
     const content = skillContent();
     try {
-        if (await readSkill() === content) {
-            log.debug("the agent skill is already up to date", {name: AGENT_SKILL_NAME});
-            return;
-        }
         const response = await fetchSyncPost("/api/ai/agent/saveSkill", {
             name: AGENT_SKILL_NAME,
             content,

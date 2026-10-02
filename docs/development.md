@@ -136,8 +136,9 @@
   （`SaveSkill` 自己建目录；技能目录与 frontmatter 里的 name 都由 `AGENT_SKILL_NAME` 决定）。
   技能正文要求 Agent 去读工作区相对路径 `data/plugins/button-in-siyuan/docs/javascript.md` 与
   `docs/icons.md` —— 这两个文件随包发布，路径写死在技能里，所以包内 docs/ 的位置不能改。
-  写入前先 `getSkill` 比对，内容一致时一个字节都不写；不一致（插件升级，或用户/Agent 改过这个
-  文件）时以插件内嵌的版本覆盖 —— 技能由插件维护，不是用户数据。
+  每次加载插件都无条件覆盖写入（不再先 `getSkill` 比对内容）：技能由插件维护、不是用户数据，而技能目录
+  里的副本可能是旧版本留下的、也可能被手工改过，只有无条件重写才能保证 Agent 读到的就是当前插件的正文；
+  `SaveSkill` 只是覆盖写一个 `SKILL.md`，为此省下一次请求不值得。
   设置里关掉开关、禁用插件或从工作空间移除插件时都删掉技能。禁用、重载与卸载都会先跑 `onunload`，
   只有卸载才接着补跑 `uninstall`（宿主的 teardown 顺序见 `app/src/plugin/lifecycle.ts`），所以删除只写在
   `onunload` 一处，不再单独实现 `uninstall`。AI 功能被关掉时这几个接口直接失败，
