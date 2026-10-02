@@ -47,10 +47,14 @@
 * **插入块**：斜杠菜单回调里用 `protyle.insert(protyle.protyle.lute.Md2BlockDOM(markdown), true)`，
   markdown 为 `;;;button-in-siyuan/button\n{JSON}\n;;;`；新建的块默认带 `iconCirclePlay`
   （`DEFAULT_BUTTON_ICON`）。斜杠菜单的图标是本插件自绘的图形（`createButtonBlockIconHtml()`）。
-  **斜杠项的 id 取的是思源放行清单里的 `code`**（`SLASH_ITEM_ID`）：表格单元格里的斜杠菜单只保留
-  `TABLE_CELL_SLASH_IDS` 里的项、按 `id` 过滤，插件项用别的 id 在单元格里根本不出现，而单元格没有
-  别的插入入口 —— 光标在单元格里时最近的块是整个表格（单元格只放行内内容），所以按钮块落在表格后面。
-  插件项与内置同名项不会串：思源给插件项算的 entryKey 是 `plugin:<包名>:<id>`。
+  **斜杠项的 id 取的是思源放行清单里的 `code`**（`SLASH_ITEM_ID`）：主编辑器的斜杠菜单按 `id` 过滤
+  单元格里的候选项（只保留 `TABLE_CELL_SLASH_IDS`，插件项一律被过滤），借一个清单里的 id 才有机会
+  出现在那条路径上。**但这不足以让单元格里真的能用**：思源 3.8.6 起点击单元格会挂上富文本单元格编辑器
+  （`app/src/protyle/render/tableCellRichEditor.ts`），它把 `pluginExtensions` 关掉且用自己的
+  `safeSlash`，插件项根本不会被构造，所以桌面端单元格的斜杠菜单里没有按钮块 —— 这是宿主限制，
+  README 的「限制」里写明了。插件项与内置同名项不会串：思源给插件项算的 entryKey 是 `plugin:<包名>:<id>`。
+  光标在单元格里时最近的块是整个表格（单元格只放行内内容），所以真从单元格发起插入时按钮块会落在
+  表格后面。
   移动端的斜杠菜单是底部键盘工具栏里的一块面板，思源会把插件项 html **整个塞进 `.keyboard__slash-text`**
   （插件项没有图标槽，见 `mobile/util/keyboardToolbar.ts` 的 `getSlashItem` 调用），那里没有
   `.b3-list-item__first` 的 flex 上下文，`.b3-list-item__text`（`display: flow-root`）会退化成块级盒子，
@@ -132,7 +136,8 @@
   （`SaveSkill` 自己建目录；技能目录与 frontmatter 里的 name 都由 `AGENT_SKILL_NAME` 决定）。
   技能正文要求 Agent 去读工作区相对路径 `data/plugins/button-in-siyuan/docs/javascript.md` 与
   `docs/icons.md` —— 这两个文件随包发布，路径写死在技能里，所以包内 docs/ 的位置不能改。
-  写入前先 `getSkill` 比对，内容一致时一个字节都不写（用户改过的文件也不会被无声覆盖）；
+  写入前先 `getSkill` 比对，内容一致时一个字节都不写；不一致（插件升级，或用户/Agent 改过这个
+  文件）时以插件内嵌的版本覆盖 —— 技能由插件维护，不是用户数据。
   设置里关掉开关或**从工作空间移除插件**时 `removeSkill`；只禁用/重载不会调用 `uninstall`
   （见宿主的 `plugin/lifecycle.ts`），那种情况下技能留在原处。AI 功能被关掉时这几个接口直接失败，
   只记日志、不弹提示。改技能内容或图标清单时，`docs/skill.md` 与 `docs/icons.md` 是唯一来源，
@@ -159,7 +164,7 @@
 * **生命周期**：`onload` 注册 `click-blockicon` 监听与斜杠菜单项、注册设置面板，`onunload` 配对注销；
   设置与技能都是异步的，放在 `initSettings()` 里后跑，免得拖慢文档渲染。`uninstall`（只在从工作空间
   移除插件时调用）删掉写给 Agent 的技能。插件不注册命令与停靠栏；写盘只有两处：插件设置
-  （`data/storage/petal/button-in-siyuan/settings.json`，见 `settings.ts`）与技能目录。
+  （`data/storage/petal/button-in-siyuan/settings`，见 `settings.ts`）与技能目录。
 * **设置**：`ISettings` 的两个字段都要过 `mergeSettings`（缺字段/非法值回落默认，`OUTPUT_MODES` 之外
   的值不算），`saveSettings` 写完读回校验（宿主的 `saveData` 在落盘前就可能 resolve，也不看
   `response.code`），校验失败提示用户重试。面板用思源的 `Setting`：**不传 `openInWindow`**，

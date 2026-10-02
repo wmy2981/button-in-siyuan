@@ -30,8 +30,8 @@ const readSkill = async () => {
 /**
  * 把技能写给 Agent（`/api/ai/agent/saveSkill` → `data/storage/ai/agent/skills/<name>/SKILL.md`）。
  *
- * 内容与我们的一致时什么都不做：插件每次加载都跑一遍，没必要反复写盘，也不会把用户改过的文件
- * 无声无息地盖掉 —— 只有内容确实不同（插件升级、用户改过）才覆盖。
+ * 内容与已装的一致时什么都不做（插件每次加载都跑一遍，没必要反复写盘）；内容不同（插件升级，
+ * 或用户/Agent 改过这个文件）时以插件内嵌的版本覆盖 —— 这个技能由插件维护，不是用户数据。
  */
 export const installAgentSkill = async () => {
     const content = skillContent();

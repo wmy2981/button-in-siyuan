@@ -38,8 +38,7 @@ Requires SiYuan 3.8.6 or later.
 ## Usage
 
 1. Type `/button` (or `/按钮块`) in a document and press <kbd>Enter</kbd>: a button block is
-   inserted at the caret. The same menu works inside a table cell; a cell can only hold inline
-   content, so the button block lands right after the table.
+   inserted at the caret.
 2. Open "Edit button block": click the block icon and choose <kbd>Plugin</kbd> >
    <kbd>Edit button block</kbd>, or right-click the button (desktop) / long-press it (mobile).
 3. Set the text, the icon and the action in the dialog, then confirm.
@@ -73,7 +72,7 @@ Open them from the gear icon on the plugin card in <kbd>Settings</kbd> > <kbd>Ma
 | JavaScript output dialog | When the result dialog opens after a script runs: `Always`, `With output` (default), `Console output only`, `On warning (and error)`, `On error`, `Never`. |
 | Provide the button block skill to the agent | On by default: writes a skill explaining button blocks into the workspace skill directory; switching it off deletes that skill. |
 
-The settings live in `data/storage/petal/button-in-siyuan/settings.json`.
+The settings live in `data/storage/petal/button-in-siyuan/settings`.
 
 ## Link addresses
 
@@ -117,6 +116,11 @@ JavaScript), <kbd>Copy</kbd> copies it to the clipboard.
   snippets. Only run code you trust.
 * The icon list comes from the icons loaded in the current interface, so a third-party icon package
   changes what you can pick.
+* There is **no button block entry while editing inside a table cell on desktop**: SiYuan then uses a
+  cell editor that does not load plugin extensions (`tableCellRichEditor` sets
+  `pluginExtensions: false`), so its slash menu never lists plugin entries. That is a host
+  limitation — insert the block in the normal editor instead. A cell can only hold inline content,
+  so a button block inserted from a cell would land right after the table.
 
 ## For agents
 

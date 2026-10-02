@@ -19,11 +19,11 @@ export const isLocalScript = (path: string) => {
 };
 
 /**
- * 内核只接受能通过 `FilterUploadFileName` 的文件名（会删掉 `~ [ ] ( ) ! \` & { } = # % $ ;`
- * 并把名字截到 189 字节，见 kernel/util/file.go），先在本地拦住，免得用户在保存时才撞上一个
- * 看不懂的 400。
+ * 内核只接受能通过 `FilterUploadFileName` 的文件名（先经 `FilterFileName` 把 `'` 换成 `_`，再删掉
+ * `~ [ ] ( ) ! \` & { } = # % $ ;` 并把名字截到 189 字节，见 kernel/util/file.go），先在本地拦住，
+ * 免得用户在保存时才撞上一个看不懂的 400。
  */
-const INVALID_FILE_NAME_CHARS = /[~[\]()!`&{}=#%$;\\/:*?"<>|]/;
+const INVALID_FILE_NAME_CHARS = /[~[\]()!`&{}=#%$;'\\/:*?"<>|]/;
 
 /** 用户输入的文件名 → assets/ 下的脚本路径；名字不合法时返回 undefined。 */
 export const toAssetScriptPath = (name: string) => {

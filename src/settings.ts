@@ -3,7 +3,10 @@ import {createLogger} from "./logger";
 
 const log = createLogger("settings");
 
-/** 设置存放的名字（落在 data/storage/petal/button-in-siyuan/settings.json）。 */
+/**
+ * 设置存放的名字。宿主按这个名字原样拼路径（不加扩展名），所以盘上是
+ * data/storage/petal/button-in-siyuan/settings。
+ */
 export const SETTINGS_STORAGE = "settings";
 
 /**

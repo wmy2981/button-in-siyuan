@@ -18,14 +18,20 @@ const encodeBlockInfo = (pluginName: string, blockType: string) =>
     `${encodeURIComponent(pluginName)}/${encodeURIComponent(blockType)}`;
 
 /**
- * 斜杠菜单项的 id。它同时决定这一项在**表格单元格**里能不能用：单元格里的斜杠菜单只保留
- * 思源 `TABLE_CELL_SLASH_IDS` 清单里的项，插件项一律被过滤掉
- * （过滤在 `app/src/protyle/hint/extend.ts` 的 `hintSlash`，清单在
+ * 斜杠菜单项的 id。
+ *
+ * 主编辑器的斜杠菜单会按 id 过滤单元格里的候选项：只保留思源 `TABLE_CELL_SLASH_IDS` 清单里的项，
+ * 插件项一律被过滤掉（过滤在 `app/src/protyle/hint/extend.ts` 的 `hintSlash`，清单在
  * `app/src/protyle/util/tableCellRichMenu.ts`），而这个过滤只看 `id`，所以插件必须借清单里的一个
- * id 才能在单元格里出现 —— 单元格只能放行内内容，没有别的入口。插件项与内置项不会串：
- * 思源给插件项算的 entryKey 是 `plugin:<包名>:<id>`（`app/src/config/entryVisibility/catalog.ts`），
- * 与内置项的 id 无关；点选时的派发也按这个 entryKey 回到本插件的 `protyleSlash`。
- * 取 `code` 是因为它最接近「在这里插入一个块」的语义。
+ * id 才有机会出现在那条路径上 —— 取 `code` 是因为它最接近「在这里插入一个块」的语义。
+ * 插件项与内置项不会串：思源给插件项算的 entryKey 是 `plugin:<包名>:<id>`
+ * （`app/src/config/entryVisibility/catalog.ts`），与内置项的 id 无关；点选时的派发也按这个 entryKey
+ * 回到本插件的 `protyleSlash`。
+ *
+ * 注意：**桌面端在单元格里编辑时这条路径走不到**。思源 3.8.6 起点击单元格会挂上富文本单元格编辑器
+ * （`app/src/protyle/render/tableCellRichEditor.ts`），它把 `pluginExtensions` 关掉，插件项根本不会被
+ * 构造出来，单元格的斜杠菜单里也就不会有按钮块。这个 id 只兜住「思源仍然向插件索取单元格候选」的
+ * 情形，不代表单元格里一定能用（README 的「限制」里写明了）。
  */
 const SLASH_ITEM_ID = "code";
 
