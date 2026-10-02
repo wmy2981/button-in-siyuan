@@ -82,14 +82,17 @@ The settings live in `data/storage/petal/button-in-siyuan/settings`.
 
 ## Link addresses
 
+A link address behaves exactly like the same link inside a document — SiYuan's own link handling does the work:
+
 | Link | Behavior |
 | --- | --- |
-| `https://…`, `mailto:…`, other schemes | Handed to the system default handler, exactly like clicking a link in SiYuan. |
-| `siyuan://blocks/<block ID>` | Opens (or zooms to) the block inside SiYuan. |
-| `assets/<asset path>` | Images, audio, video and PDF open in a SiYuan tab; assets SiYuan has no tab renderer for (for example archives or txt files) open with the system default application. |
+| `https://…`, `mailto:…`, other schemes | Handed to the host: the system browser on desktop, the matching app on mobile. |
+| `siyuan://blocks/<block ID>` | Opened (or zoomed to) by SiYuan itself; `siyuan://plugins/…` and `siyuan://bazaar/…` work as well. |
+| `assets/<asset path>`, `file://…`, an absolute path | Opened the way <kbd>Settings</kbd> > <kbd>Editor</kbd> > <kbd>Resource opening</kbd> says. With the default configuration a plain click follows the "don't split the screen when opening tabs" setting (a split to the right unless that is on), <kbd>Ctrl</kbd>+click reveals the file in the file manager, <kbd>Alt</kbd>+click uses the current tab and <kbd>Shift</kbd>+click hands the file to the system application. |
 
-Any other value is passed to `window.open`, so protocols registered on the system (for example a
-custom app scheme) work as well.
+SiYuan's own rules decide the rest: a resource it can render (image, audio, video, PDF) opens in a resource
+tab, anything else (an archive, a txt file…) goes to the system. A PDF link with a page (`assets/x.pdf?page=3`)
+opens at that page.
 
 ## JavaScript
 
@@ -122,6 +125,8 @@ JavaScript), <kbd>Copy</kbd> copies it to the clipboard.
   snippets. Only run code you trust.
 * The icon list comes from the icons loaded in the current interface, so a third-party icon package
   changes what you can pick.
+* A link cannot open an asset in a **new window**: that action lives in SiYuan's Electron layer and no
+  plugin API reaches it, so an asset configured for "new window" opens in the current tab instead.
 * There is **no button block entry while editing inside a table cell on desktop**: SiYuan then uses a
   cell editor that does not load plugin extensions (`tableCellRichEditor` sets
   `pluginExtensions: false`), so its slash menu never lists plugin entries. That is a host

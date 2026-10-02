@@ -11,7 +11,9 @@
 | 文件 | 职责 |
 | --- | --- |
 | `src/index.ts` | 插件入口：注册自定义块渲染器、斜杠菜单项、块菜单项，拼装运行上下文 |
-| `src/buttonBlock.ts` | 按钮块配置的解析/序列化、渲染、链接操作、右键/长按入口 |
+| `src/buttonBlock.ts` | 按钮块配置的解析/序列化、渲染、操作派发、右键/长按入口 |
+| `src/openLink.ts` | 链接操作：与宿主 `editor/openLink.ts` 对齐的打开方式（`siyuan://`、外部地址、本地资源） |
+| `src/assetOpen.ts` | 「资源打开方式」的解析（宿主 `editor/assetOpen.ts` 的移植） |
 | `src/buttonIcon.ts` | 界面内的按钮块图标（斜杠菜单等）的图形来源；集市图标是手绘的 `assets/icon.svg`，与它各自独立 |
 | `src/editDialog.ts` | 「编辑按钮块」对话框 |
 | `src/codeEditor.ts` | JavaScript 代码编辑器（CodeMirror，配色取自用户的代码高亮主题） |
@@ -137,10 +139,22 @@
   统一用 `toWorkspacePath()` 补 `data/` 前缀。少了它文件会落到工作空间根下另建的 `assets/`：插件自己读写
   正常，但那个目录不在数据目录里 —— 不进资源索引，也不会被同步（同步仓库只索引 `data/`，见
   `kernel/model/sync_ignore.go` 的 `syncPathFilter`）。
-* **资源链接的坑**：`openTab({asset})` 只在资源是图片/音视频/PDF（宿主的
+* **链接操作**（`src/openLink.ts`）：效果必须与「在文档里点一个 `[]()` 链接」一致，即对齐宿主的
+  `app/src/editor/openLink.ts`。插件拿不到那个函数，但能拿到它用的东西：`platformUtils.openByMobile`
+  就是宿主 `openLink` 里调用的同一个函数（先 `processSiYuanUri` 处理 `siyuan://blocks|plugins|bazaar`
+  与对应的插件事件，再按平台打开外部地址），所以非本地地址一律交给它；本地路径（`assets/…`、`file://…`、
+  `\\…`、盘符、`/…`，判定见宿主 `util/pathName.ts` 的 isLocalPath）则读
+  `window.siyuan.config.editor.assetOpen`，用 `assetOpen.ts`（宿主 `editor/assetOpen.ts` 的移植：
+  手势 → 动作 → 按可预览性/本地文件系统回落）算出动作，再落到 `openTab({asset|pdf, position, keepCursor})`
+  、`Constants.SIYUAN_CMD` 的 `openPath` / `showItemInFolder` 上；修饰键来自点击事件，所以渲染器要把
+  MouseEvent 一路传到 `openLink()`。移动端与宿主一致：不认配置，直接 `openByMobile`。
+  两个已知差距：`new-window` 回落成当前页签（宿主的 `openAssetNewWindow` 走 Electron 专用通道，
+  插件 API 没有入口）；远端内核（`--remote`）下宿主的 `localFileSystem` 为假，插件这里仍按前端判断。
+* **资源页签的坑**：`openTab({asset})` 只在资源是图片/音视频/PDF（宿主的
   `Constants.SIYUAN_ASSETS_EXTS`）且不带 `download=true` 时才会建页签，其他资源会让宿主的
   `newTab` 返回 `undefined`，`wnd.addTab(undefined)` 直接把页签布局搞坏（思源整窗报错）。
-  所以打开 `assets/…` 前必须先按同样的条件判断；不能建页签的用宿主自己的路子交给系统：
+  所以交给 `openTab` 前必须先按同样的条件判断（`openLink.ts` 的 `isPreviewableAsset`，与宿主
+  `editor/openLink.ts` 的同名函数一致）；不能建页签的用宿主自己的路子交给系统：
   `fetchPost("/api/asset/resolveAssetPath")` 拿绝对路径，再经 `Constants.SIYUAN_CMD` 的 `openPath`
   通道（与宿主 `useShell` 一致）。**不要**用 `window.open` 打开资源地址 —— 会被浏览器类插件接管，
   而且思源本身也打不开这类资源。

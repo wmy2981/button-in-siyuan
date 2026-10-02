@@ -19,7 +19,7 @@
   "actionContentRequired": "请填写链接地址或 JavaScript 代码",
   "linkAddress": "链接地址",
   "linkAddressPlaceholder": "https://… / siyuan://blocks/… / assets/…",
-  "linkAddressTip": "支持任意链接：http(s)、siyuan://blocks/<块 ID>、assets/<资源路径>、mailto: 以及系统注册的其他协议。",
+  "linkAddressTip": "支持任意链接：http(s)、siyuan://blocks/<块 ID>、assets/<资源路径>、mailto: 以及系统注册的其他协议；打开方式与文档里的链接一致。",
   "assetOpenFailed": "无法打开该资源",
   "scriptCode": "JavaScript 代码",
   "scriptCodePlaceholder": "return 1 + 1;",

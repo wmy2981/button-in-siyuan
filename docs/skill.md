@@ -47,7 +47,7 @@ the plugin name and the block type, with a **single-line JSON payload** as its b
 
 | `action` | Meaning |
 | --- | --- |
-| `{"type":"link","link":"…"}` | Opens the address: `https://…`, `mailto:…`, `siyuan://blocks/<block ID>`, `assets/<path>`, or any protocol registered on the system. |
+| `{"type":"link","link":"…"}` | Opens the address the way SiYuan opens a link in a document: `https://…`, `mailto:…` and other schemes go to the system, `siyuan://blocks/<block ID>` (also `siyuan://plugins|bazaar/…`) is handled by SiYuan itself, and a local `assets/<path>` follows the user's "Resource opening" setting. |
 | `{"type":"script","script":"…"}` | Runs the code inline in the SiYuan frontend page, wrapped in an async function (`await` and `return` work). Suits roughly a dozen lines. |
 | `{"type":"file","file":"assets/my-script.js"}` | Runs a JavaScript file under `assets/`, read again on every click. Maintain it with the `file` tool — see the path note below. |
 | `{"type":"file","file":"https://example.com/x.js"}` | Downloads and runs that URL on every click. Prefer a local file: the remote content can change unnoticed, and the script can read and write the user's notes. |

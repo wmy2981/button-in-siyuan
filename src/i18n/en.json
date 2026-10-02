@@ -19,7 +19,7 @@
   "actionContentRequired": "Fill in the link address or the JavaScript code",
   "linkAddress": "Link address",
   "linkAddressPlaceholder": "https://… / siyuan://blocks/… / assets/…",
-  "linkAddressTip": "Any link works: http(s), siyuan://blocks/<block ID>, assets/<asset path>, mailto: and other protocols registered on the system.",
+  "linkAddressTip": "Any link works: http(s), siyuan://blocks/<block ID>, assets/<asset path>, mailto: and other protocols registered on the system; it opens exactly like a link inside a document.",
   "assetOpenFailed": "Cannot open the asset",
   "scriptCode": "JavaScript code",
   "scriptCodePlaceholder": "return 1 + 1;",

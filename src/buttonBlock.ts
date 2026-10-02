@@ -1,8 +1,8 @@
-import {Constants, fetchPost, getFrontend, openMobileFileById, openTab, platformUtils, showMessage} from "siyuan";
+import {showMessage} from "siyuan";
 import type {IContext} from "./context";
-import {getIpcRenderer} from "./electron";
 import {createIconElement} from "./icon";
 import {createLogger} from "./logger";
+import {openLink} from "./openLink";
 import {isRemoteScript, loadActionScript} from "./scriptFile";
 import {runScript} from "./scriptRunner";
 
@@ -116,106 +116,6 @@ export const updateButtonContent = (blockID: string, config: IButtonConfig) => {
     return written;
 };
 
-/** 取资源扩展名：去掉查询串与锚点后的小写后缀。 */
-const getAssetExtension = (path: string) => {
-    const clean = path.split("#", 1)[0].split("?", 1)[0];
-    const index = clean.lastIndexOf(".");
-    return index === -1 ? "" : clean.substring(index).toLowerCase();
-};
-
-/** 地址里的查询串（不含锚点）。 */
-const getAssetQuery = (path: string) => path.split("#", 1)[0].split("?", 2)[1] || "";
-
-const HEIF_EXTENSIONS = [".heic", ".heif"];
-
-/**
- * 判断资源能否交给思源的资源页签渲染，条件与宿主的 editor/openLink.ts 完全一致：
- * 扩展名在 Constants.SIYUAN_ASSETS_EXTS 里、HEIF 不带 download=true（宿主的
- * isBrowserRenderableImagePath）、PDF 必须是库内资源。不满足时 openTab 会让宿主的 newTab
- * 返回 undefined，wnd.addTab(undefined) 直接把页签布局搞坏（思源整窗报错），所以必须先判断。
- */
-const isPreviewableAsset = (path: string) => {
-    const extension = getAssetExtension(path);
-    if (!Constants.SIYUAN_ASSETS_EXTS.includes(extension)) {
-        return false;
-    }
-    if (HEIF_EXTENSIONS.includes(extension) &&
-        new URLSearchParams(getAssetQuery(path)).getAll("download").some((value) => value.toLowerCase() === "true")) {
-        return false;
-    }
-    return extension !== ".pdf" || path.startsWith("assets/");
-};
-
-/** 只有桌面端（含桌面端新窗口）有本地文件系统；浏览器前端没有，交给宿主的移动端逻辑。 */
-const hasLocalFileSystem = () => {
-    const frontend = getFrontend();
-    return frontend === "desktop" || frontend === "desktop-window";
-};
-
-/**
- * 用系统默认程序打开资源，步骤与宿主的 openBy(url, "app") 一致：
- * 先向内核要资源的绝对路径，再通过宿主的 openPath 通道交给 Electron 的 shell.openPath。
- * 之前这里用 window.open 打开资源地址，结果被浏览器类插件接管，非图片类资源在浏览器里也打不开。
- */
-const openAssetWithSystem = (context: IContext, address: string) => {
-    fetchPost("/api/asset/resolveAssetPath", {path: address}, (response) => {
-        const filePath = typeof response.data === "string" ? response.data : "";
-        if (response.code !== 0 || !filePath) {
-            log.error("failed to resolve the asset path, cannot hand the asset to the system", {address, code: response.code, msg: response.msg});
-            showMessage(response.msg || context.i18n.assetOpenFailed);
-            return;
-        }
-        const ipcRenderer = getIpcRenderer();
-        if (!ipcRenderer) {
-            log.error("this environment has no Electron ipcRenderer, cannot hand the asset to the system", {address, filePath});
-            showMessage(context.i18n.assetOpenFailed);
-            return;
-        }
-        log.info("opening the asset with the system default application", {address, filePath});
-        ipcRenderer.send(Constants.SIYUAN_CMD, {cmd: "openPath", filePath});
-    });
-};
-
-/** 思源内部链接用原生接口打开，其余链接交给系统默认处理（与思源打开链接的行为一致）。 */
-const openLink = (context: IContext, link: string) => {
-    const address = link.trim();
-    if (!address) {
-        log.warn("the link is empty, ignoring this click");
-        return;
-    }
-    const blockID = /^siyuan:\/\/blocks\/([^/?#]+)/.exec(address)?.[1];
-    if (blockID) {
-        log.info("opening a SiYuan block", {blockID, isMobile: context.isMobile});
-        if (context.isMobile) {
-            openMobileFileById(context.app, blockID);
-        } else {
-            openTab({app: context.app, doc: {id: blockID}});
-        }
-        return;
-    }
-    if (address.startsWith("assets/")) {
-        if (!context.isMobile && isPreviewableAsset(address)) {
-            log.info("opening the asset in a SiYuan tab", {address});
-            openTab({app: context.app, asset: {path: address}});
-        } else if (hasLocalFileSystem()) {
-            // 图片/音视频/PDF 之外的资源（txt、zip、docx…）思源没有对应的页签，
-            // 与宿主的 openLink 一样按「外部应用」处理
-            openAssetWithSystem(context, address);
-        } else {
-            // 浏览器前端与移动端没有本地文件系统，交给宿主自己的打开逻辑（宿主在浏览器前端同样打不开这类资源）
-            log.warn("this environment has no local file system, letting the host open the asset", {
-                address,
-                extension: getAssetExtension(address),
-                frontend: getFrontend(),
-            });
-            platformUtils.openByMobile(address);
-        }
-        return;
-    }
-    log.info("handing the link to the system", {address});
-    window.open(address);
-};
-
 /**
  * JavaScript 文件操作：先把文件取回来（本地文件读内核、云端地址现下载），再交给与内联脚本
  * 完全同一条执行与展示路径。文件取不到时不执行任何代码，只给一条提示。
@@ -249,6 +149,8 @@ const runAction = (context: IContext, options: {
     blockID: string;
     blockElement?: HTMLElement;
     config: IButtonConfig;
+    /** 本次点击事件：链接跳转要按修饰键决定资源的打开方式（与点文档里的链接一致）。 */
+    event?: MouseEvent;
 }) => {
     const action = options.config.action;
     if (!action) {
@@ -256,7 +158,7 @@ const runAction = (context: IContext, options: {
         return;
     }
     if (action.type === "link") {
-        openLink(context, action.link);
+        openLink(context, action.link, options.event);
         return;
     }
     if (action.type === "file") {
@@ -315,14 +217,21 @@ export const renderButtonBlock = (context: IContext, options: {
     if (config.icon) {
         button.prepend(createIconElement(config.icon));
     }
-    const click = () => {
+    const click = (event: MouseEvent) => {
         if (suppressClick) {
             // 移动端长按之后浏览器还会补一次 click，这次不该再执行按钮操作
             suppressClick = false;
             return;
         }
-        log.debug("button block clicked", {blockID, text: config.text, action: config.action?.type || "none"});
-        runAction(context, {blockID, blockElement: options.element, config});
+        log.debug("button block clicked", {
+            blockID,
+            text: config.text,
+            action: config.action?.type || "none",
+            ctrlKey: event.ctrlKey,
+            altKey: event.altKey,
+            shiftKey: event.shiftKey,
+        });
+        runAction(context, {blockID, blockElement: options.element, config, event});
     };
     // 右键（桌面）与长按（移动端）都打开「编辑按钮块」，与块菜单里的入口一致
     const edit = (source: "contextmenu" | "long-press") => {
