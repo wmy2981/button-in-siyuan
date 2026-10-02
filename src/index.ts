@@ -1,7 +1,7 @@
 import {getFrontend, Plugin, Setting, showMessage} from "siyuan";
 import type {IEventBusMap, Protyle} from "siyuan";
 import {downloadAgentSkill, installAgentSkill, removeAgentSkill} from "./agentSkill";
-import {syncAssetReferences} from "./assetReference";
+import {syncAssetReferences, syncRenderedAssetReference} from "./assetReference";
 import {createButtonBlockIconHtml} from "./buttonIcon";
 import {BUTTON_BLOCK_TYPE, DEFAULT_BUTTON_ICON, parseButtonConfig, renderButtonBlock, serializeButtonConfig} from "./buttonBlock";
 import type {IContext} from "./context";
@@ -75,6 +75,7 @@ export default class ButtonInSiYuan extends Plugin {
             i18n: this.i18n as II18n,
             isMobile: this.isMobile,
             openEditor: (blockID, config) => openButtonBlockEditor(this.context, {blockID, config}),
+            syncAssetReference: (element, blockID, config) => syncRenderedAssetReference(element, blockID, config),
             getSettings: () => this.settings,
         };
     }

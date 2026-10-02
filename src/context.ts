@@ -16,6 +16,11 @@ export interface IContext {
      */
     openEditor: (blockID: string, config: IButtonConfig) => void;
     /**
+     * 对齐按钮块的资源引用属性（脚本文件不该出现在「未引用的资源文件」里）。同样由插件入口注入，
+     * 渲染器直接依赖 assetReference 会和它互相引用成环。
+     */
+    syncAssetReference: (element: HTMLElement, blockID: string, config: IButtonConfig) => void;
+    /**
      * 当前设置。取值而不是给一个快照：渲染器与菜单项是在插件加载时注册的，
      * 设置面板里改完要立刻生效（例如输出弹窗策略）。
      */

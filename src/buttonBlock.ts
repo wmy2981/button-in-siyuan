@@ -182,7 +182,8 @@ export const renderButtonBlock = (context: IContext, options: {
     content: string,
     setContent: (content: string) => boolean,
 }) => {
-    const blockID = options.element.closest<HTMLElement>('[data-type="NodeCustomBlock"]')?.getAttribute("data-node-id") || "";
+    const blockElement = options.element.closest<HTMLElement>('[data-type="NodeCustomBlock"]');
+    const blockID = blockElement?.getAttribute("data-node-id") || "";
     const config = parseButtonConfig(options.content, context.i18n.defaultButtonText);
     if (!config) {
         log.warn("the block content is not this plugin config, showing it as is", {blockID, content: options.content});
@@ -193,6 +194,11 @@ export const renderButtonBlock = (context: IContext, options: {
     }
     if (blockID) {
         contentSetters.set(blockID, options.setContent);
+    }
+    // 资源引用属性也在这里对齐：Agent 用块接口建的块、同步过来的文档都不经过编辑窗口，
+    // 只在插件加载时整库补一次的话，用户可能在补上之前就在「未引用的资源文件」里把它清理掉了
+    if (blockElement && blockID) {
+        context.syncAssetReference(blockElement, blockID, config);
     }
     log.debug("rendering the button block", {
         blockID,
