@@ -66,6 +66,12 @@
 * **外观**：只用思源样式类（`b3-button`、`b3-text-field`、`b3-select`、`b3-dialog__content`、
   `b3-dialog__action`、`fn__*`、`ft__*`）与 `--b3-*` 变量；自有类统一用 `bis-` 前缀，
   自有对话框里的定位属性统一用 `data-bis`（`data-type` 是思源自己的派发键，不要占用）。
+* **关窗前的「放弃修改」确认**：编辑窗口改了东西还没保存时，取消、× 图标、`Esc`、点遮罩四条路都要先问一次
+  （确认按钮是思源的危险操作样式 `b3-button--remove`）。实现不是逐条拦，而是把实例上的 `dialog.destroy`
+  换成自己的函数：宿主的四条路最后都调用它（scrim/close 监听在 `app/src/dialog/index.ts`，`Esc` 在
+  `boot/globalEvent/keydown.ts` 里直接调 `dialogs[last].destroy()`）。注意 **`disableClose` 只挡遮罩与
+  × 图标，挡不住 `Esc`**；判断「有没有改过」用 `currentConfig()` 与打开时的快照比，而保存也走同一个
+  `currentConfig()`，两处口径必须一致，否则会出现「什么都没改也弹确认」。
 * **按钮外观**：渲染出的按钮类名与思源设置面板里的原生按钮完全一致 ——
   `b3-button b3-button--outline fn__size200`，宽度、圆角、悬浮与按下效果全部由思源 CSS 提供。
   只额外用 `index.scss` 里一条作用域规则把字号对齐到界面字号 `--b3-font-size`（文档里的自定义块

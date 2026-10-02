@@ -66,6 +66,9 @@
   "settingsAgentSkillTip": "把一份说明按钮块用法（块内容格式、图表清单、脚本接口）的技能写进工作空间的技能目录，供思源的 Agent 使用；关掉时会把这个技能删掉",
   "settingsSaveFailed": "设置没能保存，请重试",
   "blockNotEditable": "按钮块当前不可编辑",
+  "discardChangesTitle": "放弃未保存的修改？",
+  "discardChangesTip": "关闭后这次的改动不会写回按钮块。",
+  "discardChangesConfirm": "放弃修改",
   "save": "确定",
   "cancel": "取消",
   "close": "关闭"

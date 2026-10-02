@@ -1,6 +1,6 @@
 import {confirm, Dialog, openInputDialog, showMessage} from "siyuan";
 import type {IButtonConfig, TButtonAction} from "./buttonBlock";
-import {BUTTON_COLOR_INDEXES, updateButtonContent} from "./buttonBlock";
+import {BUTTON_COLOR_INDEXES, serializeButtonConfig, updateButtonContent} from "./buttonBlock";
 import {createCodeEditor} from "./codeEditor";
 import type {IContext} from "./context";
 import {createIconElement, openIconPicker} from "./icon";
@@ -85,6 +85,32 @@ const askAboutRemoteScript = (context: IContext, url: string) => new Promise<str
         }
     });
 });
+
+/**
+ * 「放弃未保存的修改」确认窗口：确认按钮用思源自己的危险操作样式 `b3-button--remove`
+ * （宿主的删除确认就是这个红色样式，见 `app/src/assets/scss/component/_button.scss`），
+ * 确认后才执行 onConfirm；关掉窗口（取消、Esc、点遮罩）都算保留编辑窗口。
+ */
+const confirmDiscard = (context: IContext, onConfirm: () => void) => {
+    const {i18n} = context;
+    const dialog = new Dialog({
+        title: i18n.discardChangesTitle,
+        width: context.isMobile ? "92vw" : "520px",
+        content: `<div class="b3-dialog__content">
+    <div class="ft__breakword">${i18n.discardChangesTip}</div>
+</div>
+<div class="b3-dialog__action">
+    <button class="b3-button b3-button--cancel" data-bis="keep">${i18n.cancel}</button>
+    <div class="fn__space"></div>
+    <button class="b3-button b3-button--remove" data-bis="discard">${i18n.discardChangesConfirm}</button>
+</div>`,
+    });
+    dialog.element.querySelector('[data-bis="keep"]')?.addEventListener("click", () => dialog.destroy());
+    dialog.element.querySelector('[data-bis="discard"]')?.addEventListener("click", () => {
+        onConfirm();
+        dialog.destroy();
+    });
+};
 
 /** 打开「编辑按钮块」对话框，确定后由宿主的自定义块渲染器写回并重新渲染。 */
 export const openButtonBlockEditor = (context: IContext, options: {
@@ -236,6 +262,26 @@ export const openButtonBlockEditor = (context: IContext, options: {
         scriptFieldElement.classList.toggle("fn__none", actionElement.value !== "script");
         fileFieldElement.classList.toggle("fn__none", actionElement.value !== "file");
     };
+    /**
+     * 表单当前值 → 块内容配置。保存与「有没有改过」的判断共用它，两处口径必须一致：
+     * 关窗前的拦截就是拿它和打开时的快照比，一样就说明没什么可丢的。
+     */
+    const currentConfig = (): IButtonConfig => {
+        let action: TButtonAction | undefined;
+        if (actionElement.value === "link") {
+            action = {type: "link", link: linkElement.value.trim()};
+        } else if (actionElement.value === "script") {
+            action = {type: "script", script: scriptEditor.getValue()};
+        } else if (actionElement.value === "file") {
+            action = {type: "file", file: fileElement.value.trim()};
+        }
+        return {
+            text: textElement.value.trim() || i18n.defaultButtonText,
+            icon,
+            color: color || undefined,
+            action,
+        };
+    };
 
     textElement.value = config.text;
     actionElement.value = config.action?.type || "";
@@ -244,6 +290,24 @@ export const openButtonBlockEditor = (context: IContext, options: {
     updateIconElement();
     updateColorElement();
     updateActionFields();
+    // 关窗拦截：宿主自己的关闭路径（Esc、点遮罩、× 图标）最后都调用实例上的 `dialog.destroy()`
+    // （`app/src/dialog/index.ts` 的 scrim/close 监听与 `boot/globalEvent/keydown.ts` 的 Esc 分支），
+    // 所以换掉这个方法就能把四条路一起管住，不必逐条去拦。改了东西且还没保存时先问一次，
+    // 确认后才真关；取消则什么都不做，编辑窗口原地留着。
+    const openedWith = serializeButtonConfig(currentConfig());
+    let saved = false;
+    const destroyDialog = dialog.destroy.bind(dialog);
+    dialog.destroy = (options?: Parameters<typeof destroyDialog>[0]) => {
+        if (saved || serializeButtonConfig(currentConfig()) === openedWith) {
+            destroyDialog(options);
+            return;
+        }
+        log.debug("close intercepted: the button block editor has unsaved changes", {blockID});
+        confirmDiscard(context, () => {
+            log.info("discarded the button block edits", {blockID});
+            destroyDialog(options);
+        });
+    };
     actionElement.addEventListener("change", updateActionFields);
     iconElement.addEventListener("click", () => {
         openIconPicker(context, {
@@ -375,26 +439,20 @@ export const openButtonBlockEditor = (context: IContext, options: {
         },
     }));
     field<HTMLButtonElement>("save").addEventListener("click", async () => {
-        let action: TButtonAction | undefined;
-        if (actionElement.value === "link") {
-            const link = linkElement.value.trim();
-            if (!link) {
-                log.warn("save rejected: the link is empty", {blockID});
-                showMessage(i18n.actionContentRequired);
-                linkElement.focus();
-                return;
-            }
-            action = {type: "link", link};
-        } else if (actionElement.value === "script") {
-            const script = scriptEditor.getValue();
-            if (!script.trim()) {
-                log.warn("save rejected: the JavaScript code is empty", {blockID});
-                showMessage(i18n.actionContentRequired);
-                scriptEditor.focus();
-                return;
-            }
-            action = {type: "script", script};
-        } else if (actionElement.value === "file") {
+        // 先逐项校验（并处理云端脚本的二次确认），确认无误后由 currentConfig() 统一取值
+        if (actionElement.value === "link" && !linkElement.value.trim()) {
+            log.warn("save rejected: the link is empty", {blockID});
+            showMessage(i18n.actionContentRequired);
+            linkElement.focus();
+            return;
+        }
+        if (actionElement.value === "script" && !scriptEditor.getValue().trim()) {
+            log.warn("save rejected: the JavaScript code is empty", {blockID});
+            showMessage(i18n.actionContentRequired);
+            scriptEditor.focus();
+            return;
+        }
+        if (actionElement.value === "file") {
             const path = fileElement.value.trim();
             if (!path) {
                 log.warn("save rejected: the script file path is empty", {blockID});
@@ -413,14 +471,8 @@ export const openButtonBlockEditor = (context: IContext, options: {
                     fileElement.value = accepted;
                 }
             }
-            action = {type: "file", file: fileElement.value.trim()};
         }
-        const next: IButtonConfig = {
-            text: textElement.value.trim() || i18n.defaultButtonText,
-            icon,
-            color: color || undefined,
-            action,
-        };
+        const next = currentConfig();
         if (!updateButtonContent(blockID, next)) {
             log.error("failed to write the button block back, keeping the dialog open", {blockID});
             showMessage(i18n.blockNotEditable);
@@ -431,9 +483,11 @@ export const openButtonBlockEditor = (context: IContext, options: {
             text: next.text,
             icon: icon || "none",
             color: color || "default",
-            action: action?.type || "none",
-            file: action?.type === "file" ? action.file : "none",
+            action: next.action?.type || "none",
+            file: next.action?.type === "file" ? next.action.file : "none",
         });
+        // 已经写回块里了，关窗时不必再问一次
+        saved = true;
         dialog.destroy();
     });
     textElement.focus();

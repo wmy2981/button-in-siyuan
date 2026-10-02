@@ -71,6 +71,9 @@ export type II18n = {
     settingsAgentSkillTip: string;
     settingsSaveFailed: string;
     blockNotEditable: string;
+    discardChangesTitle: string;
+    discardChangesTip: string;
+    discardChangesConfirm: string;
     save: string;
     cancel: string;
     close: string;
