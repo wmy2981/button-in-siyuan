@@ -77,7 +77,6 @@ export default class ButtonInSiYuan extends Plugin {
         this.isMobile = frontend === "mobile" || frontend === "browser-mobile";
         const context = this.context;
         log.info("plugin loaded", {name: this.name, displayName: this.displayName, frontend, isMobile: this.isMobile});
-        this.registerSetting();
         this.customBlockRenders[BUTTON_BLOCK_TYPE] = {
             render: (options) => renderButtonBlock(context, options),
         };
@@ -99,8 +98,9 @@ export default class ButtonInSiYuan extends Plugin {
             blockInfo: encodeBlockInfo(this.name, BUTTON_BLOCK_TYPE),
             slashFilter: this.protyleSlash[0].filter,
         });
-        // 设置与技能都要读盘/走内核，放到注册之后再跑：渲染器与菜单项必须第一时间就位
-        void this.initSettings();
+        // 设置与技能都要读盘/走内核，放到注册之后再跑：渲染器与菜单项必须第一时间就位。
+        // 设置面板等设置读完再注册，否则面板打开的瞬间可能还拿着默认值，保存就把用户设置冲掉了
+        void this.initSettings().finally(() => this.registerSetting());
     }
 
     onunload() {
@@ -175,7 +175,14 @@ export default class ButtonInSiYuan extends Plugin {
     private async saveSetting(outputMode: TOutputMode, agentSkill: boolean) {
         const previous = this.settings;
         const next: ISettings = {outputMode, agentSkill};
-        if (!await saveSettings(this, next)) {
+        let saved = false;
+        try {
+            saved = await saveSettings(this, next);
+        } catch (error) {
+            // 只读模式、发布服务下 saveData 会直接 reject
+            log.error("failed to save the plugin settings", {error});
+        }
+        if (!saved) {
             showMessage((this.i18n as II18n).settingsSaveFailed);
             return;
         }
