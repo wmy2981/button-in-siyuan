@@ -89,12 +89,33 @@ this works through the block tool and through `/api/block/insertBlock` alike.
 
 Read it back once afterwards: the kernel may normalise content, so confirm what actually landed.
 
+## Reporting from a script
+
+A button is clicked again and again, so its script has to stay quiet. Unless you are debugging, write
+scripts with no `console` output and no `return` value, and report through `showMessage(...)` instead:
+`console` output and a returned value are exactly what opens the result dialog, and that window then has to
+be closed by hand on every single click.
+
+```javascript
+// A toast tells the user what happened, and no result dialog opens.
+showMessage("done");
+
+// Do not leave this in a script you hand over: it opens the dialog on every click.
+// console.log("done");
+// return "done";
+```
+
+`console.log` and `return` are the debugging channel while you work on a script: the dialog collects that
+output as plain text and can copy it out. Remove them, move the message to `showMessage`, and only then
+report back. A thrown error still opens the dialog unless the user chose the `Console output only` or `Never`
+output policy, so a failure does not disappear by accident.
+
 ## Before you report back
 
 - `get_kramdown` returns JSON that `JSON.parse` accepts, and `action.type` is one of `link`, `script`,
   `file` (and, for `file`, the target really is readable).
 - Every `icon` id exists in `docs/icons.md`, and `color`, if present, is an integer between 1 and 12.
-- For a script: with no `return`, no `console` output and no thrown error the result dialog stays closed;
-  use `showMessage(...)` when the user should still see a hint. A button runs its script on every click, so
-  keep writes idempotent, and remind the user to back up before a script that creates or deletes notes.
+- For a script: it reports through `showMessage(...)`, not through `console.log` or a `return` value (see
+  "Reporting from a script"). A button runs its script on every click, so keep writes idempotent, and remind
+  the user to back up before a script that creates or deletes notes.
 - The click itself can only be confirmed by the user inside SiYuan.
