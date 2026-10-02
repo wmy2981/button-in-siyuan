@@ -4,7 +4,7 @@
 
 在思源文档里插入思源原生样式的按钮块：按钮文本、图标和点击后的操作都在思源原生对话框里设置。
 
-![预览](https://gcore.jsdelivr.net/gh/wmy2981/button-in-siyuan@2fd4ad2/assets/preview.png)
+![预览](https://gcore.jsdelivr.net/gh/wmy2981/button-in-siyuan@f6cae6d/assets/preview.png)
 
 ## 功能
 

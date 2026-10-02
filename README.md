@@ -5,7 +5,7 @@
 Insert native SiYuan button blocks into documents. The button text, icon and click action are all
 edited in a native SiYuan dialog.
 
-![preview](https://gcore.jsdelivr.net/gh/wmy2981/button-in-siyuan@2fd4ad2/assets/preview.png)
+![preview](https://gcore.jsdelivr.net/gh/wmy2981/button-in-siyuan@f6cae6d/assets/preview.png)
 
 ## Features
 
