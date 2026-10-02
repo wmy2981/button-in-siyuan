@@ -35,6 +35,7 @@
   "scriptFileRenameTitle": "重命名 JavaScript 文件",
   "scriptFileRemoveConfirm": "删除 JavaScript 文件",
   "scriptFileName": "文件名",
+  "scriptFileNameRequired": "请填写文件名",
   "scriptFileInvalidName": "文件名不合法：不能包含 ~ [ ] ( ) ! ` & { } = # % $ ; ' / \\ : * ? \" < > |，也不能超过 180 字节",
   "scriptFileExists": "assets/ 下已经有同名文件",
   "scriptFileNeeded": "请先选择一个 assets/ 下的 .js 文件",

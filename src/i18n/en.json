@@ -35,6 +35,7 @@
   "scriptFileRenameTitle": "Rename the JavaScript file",
   "scriptFileRemoveConfirm": "Delete the JavaScript file",
   "scriptFileName": "File name",
+  "scriptFileNameRequired": "Enter a file name",
   "scriptFileInvalidName": "Invalid file name: it cannot contain ~ [ ] ( ) ! ` & { } = # % $ ; ' / \\ : * ? \" < > |, or exceed 180 bytes",
   "scriptFileExists": "A file with that name already exists under assets/",
   "scriptFileNeeded": "Pick a .js file under assets/ first",

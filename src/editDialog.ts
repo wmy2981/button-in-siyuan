@@ -112,6 +112,32 @@ const confirmDiscard = (context: IContext, onConfirm: () => void) => {
     });
 };
 
+/**
+ * 在新建脚本文件的输入框后面补一个固定的 `.js`：用户只填文件名，后缀由 `toAssetScriptPath` 补全。
+ *
+ * 宿主的 `openInputDialog` 没有后缀槽位（`extraContent` 只能放在输入框下方），所以这里把它的输入框
+ * 挪进一个 `fn__flex` 行里、后面挂上后缀；挪动会让输入框失焦，所以最后要重新 focus。
+ */
+const appendScriptFileSuffix = (dialog: Dialog) => {
+    const input = dialog.element.querySelector<HTMLInputElement>("[data-dialog-input]");
+    if (!input) {
+        log.warn("the input dialog has no input element, leaving the .js suffix out");
+        return;
+    }
+    const row = document.createElement("div");
+    row.className = "fn__flex";
+    const space = document.createElement("div");
+    space.className = "fn__space";
+    const suffix = document.createElement("span");
+    suffix.className = "ft__on-surface fn__flex-center";
+    suffix.textContent = ".js";
+    input.before(row);
+    // fn__block 的 100% 宽度在 flex 行里会把后缀挤出容器，换成 fn__flex-1
+    input.classList.replace("fn__block", "fn__flex-1");
+    row.append(input, space, suffix);
+    input.focus();
+};
+
 /** 打开「编辑按钮块」对话框，确定后由宿主的自定义块渲染器写回并重新渲染。 */
 export const openButtonBlockEditor = (context: IContext, options: {
     blockID: string,
@@ -338,19 +364,36 @@ export const openButtonBlockEditor = (context: IContext, options: {
         }
         return path;
     };
+    /**
+     * 新建/重命名输入框里的名字 → assets/ 下的脚本路径。新建窗口的输入框后面固定显示 `.js`，
+     * 用户只填文件名；空名字与非法名字分别提示，都留在窗口里继续改。
+     */
+    const newScriptPath = (value: string) => {
+        if (!value.trim()) {
+            log.warn("the script file name is empty");
+            showMessage(i18n.scriptFileNameRequired);
+            return;
+        }
+        const path = toAssetScriptPath(value);
+        if (!path) {
+            showMessage(i18n.scriptFileInvalidName);
+            return;
+        }
+        return path;
+    };
     const reportScriptFailure = (error: unknown, detail: Record<string, unknown>) => {
         log.error("script file operation failed", {...detail, error});
         showMessage(error instanceof Error && error.message ? error.message : i18n.scriptFileFailed);
     };
     field<HTMLButtonElement>("file-create").addEventListener("click", () => {
-        openInputDialog({
+        const dialog = openInputDialog({
             title: i18n.scriptFileCreateTitle,
             label: i18n.scriptFileName,
-            value: "button-action.js",
+            // 不预填：让用户自己起名，扩展名由输入框后面的固定后缀给出
+            value: "",
             onConfirm: async (value, inputDialog) => {
-                const path = toAssetScriptPath(value);
+                const path = newScriptPath(value);
                 if (!path) {
-                    showMessage(i18n.scriptFileInvalidName);
                     return;
                 }
                 try {
@@ -368,6 +411,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
                 inputDialog.destroy();
             },
         });
+        appendScriptFileSuffix(dialog);
     });
     field<HTMLButtonElement>("file-edit").addEventListener("click", () => {
         const path = localScriptPath();
@@ -385,9 +429,8 @@ export const openButtonBlockEditor = (context: IContext, options: {
             label: i18n.scriptFileName,
             value: path.substring(ASSET_PREFIX.length),
             onConfirm: async (value, inputDialog) => {
-                const next = toAssetScriptPath(value);
+                const next = newScriptPath(value);
                 if (!next) {
-                    showMessage(i18n.scriptFileInvalidName);
                     return;
                 }
                 if (next === path) {

@@ -40,6 +40,7 @@ export type II18n = {
     scriptFileRenameTitle: string;
     scriptFileRemoveConfirm: string;
     scriptFileName: string;
+    scriptFileNameRequired: string;
     scriptFileInvalidName: string;
     scriptFileExists: string;
     scriptFileNeeded: string;

@@ -124,6 +124,9 @@
   403/404 拿不到 —— 「文件不存在」正是新建脚本前要判断的；写接口用 `fetchSyncPost` 并把它第四个参数
   置 false 关掉 `processMessage`，自己按 `code` 决定提示。新建/重命名只接受能通过内核
   `FilterUploadFileName` 的文件名（先在本地拦一遍，见 `scriptFile.ts` 的正则），都用 `.js` 结尾。
+  新建窗口的输入框留空、后面固定显示 `.js`（`appendScriptFileSuffix`）：用户只填文件名，后缀由
+  `toAssetScriptPath` 补全 —— 宿主的 `openInputDialog` 没有后缀槽位（`extraContent` 只能放在输入框下方），
+  所以是把它的输入框挪进一个 `fn__flex` 行里再挂后缀；挪动会让输入框失焦，最后要重新 focus。
   **云端脚本必须二次确认**（`editDialog.ts` 的 `askAboutRemoteScript`）：警告窗口里可以放弃、直接使用，
   或下载到 `assets/<NodeID>.js` 之后与云端再无关系；只有本地 assets 文件才提供编辑/改名/删除。
   脚本文件的读写一律不走 `plugin.loadData` —— 那是插件私有数据，位置与 assets 无关。
