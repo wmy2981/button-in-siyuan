@@ -36,7 +36,8 @@ Requires SiYuan 3.8.6 or later.
 ## Usage
 
 1. Type `/button` (or `/按钮块`) in a document and press <kbd>Enter</kbd>: a button block is
-   inserted at the caret.
+   inserted at the caret. The same menu works inside a table cell; a cell can only hold inline
+   content, so the button block lands right after the table.
 2. Open "Edit button block": click the block icon and choose <kbd>Plugin</kbd> >
    <kbd>Edit button block</kbd>, or right-click the button (desktop) / long-press it (mobile).
 3. Set the text, the icon and the action in the dialog, then confirm.

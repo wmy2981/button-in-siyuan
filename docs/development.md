@@ -43,6 +43,10 @@
 * **插入块**：斜杠菜单回调里用 `protyle.insert(protyle.protyle.lute.Md2BlockDOM(markdown), true)`，
   markdown 为 `;;;button-in-siyuan/button\n{JSON}\n;;;`；新建的块默认带 `iconCirclePlay`
   （`DEFAULT_BUTTON_ICON`）。斜杠菜单的图标是本插件自绘的图形（`createButtonBlockIconHtml()`）。
+  **斜杠项的 id 取的是思源放行清单里的 `code`**（`SLASH_ITEM_ID`）：表格单元格里的斜杠菜单只保留
+  `TABLE_CELL_SLASH_IDS` 里的项、按 `id` 过滤，插件项用别的 id 在单元格里根本不出现，而单元格没有
+  别的插入入口 —— 光标在单元格里时最近的块是整个表格（单元格只放行内内容），所以按钮块落在表格后面。
+  插件项与内置同名项不会串：思源给插件项算的 entryKey 是 `plugin:<包名>:<id>`。
   移动端的斜杠菜单是底部键盘工具栏里的一块面板，思源会把插件项 html **整个塞进 `.keyboard__slash-text`**
   （插件项没有图标槽，见 `mobile/util/keyboardToolbar.ts` 的 `getSlashItem` 调用），那里没有
   `.b3-list-item__first` 的 flex 上下文，`.b3-list-item__text`（`display: flow-root`）会退化成块级盒子，

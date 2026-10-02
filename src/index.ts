@@ -14,6 +14,18 @@ const log = createLogger("plugin");
 const encodeBlockInfo = (pluginName: string, blockType: string) =>
     `${encodeURIComponent(pluginName)}/${encodeURIComponent(blockType)}`;
 
+/**
+ * 斜杠菜单项的 id。它同时决定这一项在**表格单元格**里能不能用：单元格里的斜杠菜单只保留
+ * 思源 `TABLE_CELL_SLASH_IDS` 清单里的项，插件项一律被过滤掉
+ * （过滤在 `app/src/protyle/hint/extend.ts` 的 `hintSlash`，清单在
+ * `app/src/protyle/util/tableCellRichMenu.ts`），而这个过滤只看 `id`，所以插件必须借清单里的一个
+ * id 才能在单元格里出现 —— 单元格只能放行内内容，没有别的入口。插件项与内置项不会串：
+ * 思源给插件项算的 entryKey 是 `plugin:<包名>:<id>`（`app/src/config/entryVisibility/catalog.ts`），
+ * 与内置项的 id 无关；点选时的派发也按这个 entryKey 回到本插件的 `protyleSlash`。
+ * 取 `code` 是因为它最接近「在这里插入一个块」的语义。
+ */
+const SLASH_ITEM_ID = "code";
+
 /** 解析块信息；格式不合法时返回 undefined。 */
 const parseBlockInfo = (info: string) => {
     const separator = info.indexOf("/");
@@ -63,7 +75,7 @@ export default class ButtonInSiYuan extends Plugin {
             // .keyboard__slash-text（插件项没有图标槽），那里没有 .b3-list-item__first 的 flex 上下文，
             // 图标与文字会叠成两行，index.scss 里按这个类把 flex 补回来。
             html: `<div class="b3-list-item__first bis-slash-item">${createButtonBlockIconHtml()}<span class="b3-list-item__text">${context.i18n.insertButtonBlock}</span></div>`,
-            id: "insertButtonBlock",
+            id: SLASH_ITEM_ID,
             callback: (protyle) => this.insertButtonBlock(protyle),
         }];
         log.debug("registered the custom block renderer, the slash item and the block menu listener", {
@@ -78,7 +90,14 @@ export default class ButtonInSiYuan extends Plugin {
         log.info("plugin unloaded");
     }
 
-    /** 斜杠菜单：在光标处插入一个还没有操作的按钮块，内容由用户在「编辑按钮块」里设置。 */
+    /**
+     * 斜杠菜单：在光标处插入一个还没有操作的按钮块，内容由用户在「编辑按钮块」里设置。
+     *
+     * 插入交给思源自己的 `protyle.insert(dom, true)`：它按光标找最近的块，把新块插在那个块后面。
+     * 光标在表格单元格里时，单元格本身不是块 —— 思源把整个表格渲染成一个 `NodeTable` 块，
+     * 单元格里只有行内内容（`app/src/protyle/util/table.ts` 的表格 DOM），所以最近的块就是表格，
+     * 按钮块会落在表格后面。
+     */
     private insertButtonBlock(protyle: Protyle) {
         const lute = protyle.protyle.lute;
         if (!lute) {
