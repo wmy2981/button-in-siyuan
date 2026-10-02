@@ -19,7 +19,7 @@ npm run dev        # watch 构建，只写仓库根的 index.js / index.css / i1
   不要操作维护者的本机思源与工作区，也不要写端到端测试。
 * 不要为了跑构建而启动 `dev`：它是常驻 watch，产物落在仓库根，会盖住同名产物。
 * 集市图标是手绘的 `assets/icon.svg`，界面内的图标来自 `src/buttonIcon.ts`：两边各自独立，改一边不会
-  带动另一边。改了图源必须重渲染，否则集市图标与预览图还是旧的：`node scripts/render-icon.mjs`、
+  带动另一边。改了图源必须重渲染，否则集市图标与预览图不会更新：`node scripts/render-icon.mjs`、
   `node scripts/render-preview.mjs`（首次需 `npx playwright install chromium`）；改动
   `src/codeEditor.ts` 的外观要先跑 `node scripts/snapshot-editor.mjs` 写回 `assets/preview.html`。
 
@@ -45,13 +45,13 @@ npm run dev        # watch 构建，只写仓库根的 index.js / index.css / i1
 * 写回块内容只能用宿主传给渲染器的 `setContent`（见 `updateButtonContent`）。自己改 `data-content`
   再提交事务不会刷新界面 —— `updateTransaction` 打的 `data-editing` 标记会让事务保留本地 DOM。
 * `src/scriptApi.ts` 里注入的 `fetchPost` / `fetchGet` 是**包装过的**（宿主的回调式实现不给回调时
-  Promise 解析成 `undefined`），不要删掉包装；增删注入项必须同步 `docs/javascript*.md` 的接口表。
+  Promise 解析成 `undefined`），不要删掉包装；增删注入项必须同步 `docs/javascript*.md` 第 2 节的接口清单。
 * `docs/*.md` 的代码块语言统一写 `javascript`，`js` 之类会被 `scripts/check-docs.mjs` 拦下。
 * 加文案键要同时改 `src/i18n/en.json`、`src/i18n/zh-CN.json` 与 `src/i18nKeys.ts`，
   `scripts/check-i18n.mjs` 要求两份同键、非空。
 * 打开 `assets/…` 前先按宿主的 `isPreviewableAsset` 判断：不能建页签的资源交给内核
   `openPath` 通道；**不要用 `window.open`** —— 会被浏览器类插件接管，而 `wnd.addTab(undefined)`
-  会直接弄坏页签布局。
+  会弄坏页签布局。
 * 块内容认不出是本插件配置（没有合法 `text` / `icon` / `action`）时**不渲染按钮、原样 `<pre>` 兜底**，
   绝不覆盖用户数据。
 * 斜杠菜单项 html 必须带 `bis-slash-item` 标记，`index.scss` 靠它在移动端斜杠菜单里补 flex：思源把

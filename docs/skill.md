@@ -8,8 +8,8 @@ description: Create, edit and debug SiYuan button blocks - the custom block whos
 A button block is an ordinary SiYuan **custom block**: the kernel stores it, syncs it, exports it and
 indexes it like any other block, so nothing is lost when the plugin is disabled. Only the *rendering*
 comes from the plugin — with the plugin enabled the block is drawn as a native SiYuan button
-(`b3-button b3-button--outline fn__size200`) in the document; with the plugin disabled or removed,
-SiYuan falls back to showing the raw block content in a `<pre>`.
+(`b3-button b3-button--outline fn__size200`); with the plugin disabled or removed, SiYuan falls back to
+showing the raw block content in a `<pre>`.
 
 Do all of this through SiYuan's own tools — the `block` and `sql` tools, or the kernel HTTP API under
 `/api/*`. Never hand-edit `data-content` on a rendered block and never build the button's DOM: the block
@@ -21,7 +21,7 @@ Two of the bundled documents are the ones you need, at these workspace-relative 
 
 | Path | What it holds |
 | --- | --- |
-| `data/plugins/button-in-siyuan/docs/javascript.md` | The script action: which SiYuan APIs are injected, how `console` output, the return value and errors are shown, ANSI colours, and runnable examples. **Read it before writing any script.** |
+| `data/plugins/button-in-siyuan/docs/javascript.md` | The script action: which SiYuan APIs are injected, how `console` output, the return value and errors are shown, and runnable examples. **Read it before writing any script.** |
 | `data/plugins/button-in-siyuan/docs/icons.md` | Every built-in SiYuan icon id plus a "pick by intent" table. **Read it before setting `icon`** so you never invent an id. |
 
 Read them with the `file` tool's read action (paths are relative to the workspace root), for example
@@ -120,8 +120,8 @@ Read it back once afterwards: the kernel may normalise content, so confirm what 
 
 A button is clicked again and again, so its script has to stay quiet. Unless you are debugging, write
 scripts with no `console` output and no `return` value, and report through `showMessage(...)` instead:
-`console` output and a returned value are exactly what opens the result dialog, and that window then has to
-be closed by hand on every single click.
+`console` output and a returned value are what opens the result dialog, and that window then has to be closed
+by hand on every click.
 
 ```javascript
 // A toast tells the user what happened, and no result dialog opens.
@@ -135,7 +135,7 @@ showMessage("done");
 `console.log` and `return` are the debugging channel while you work on a script: the dialog collects that
 output as plain text and can copy it out. Remove them, move the message to `showMessage`, and only then
 report back. A thrown error still opens the dialog unless the user chose the `Console output only` or `Never`
-output policy, so a failure does not disappear by accident.
+output policy, so a failure does not go unnoticed.
 
 ## Before you report back
 

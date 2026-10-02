@@ -22,7 +22,7 @@
 * **按钮外观**：类名与思源设置面板的原生按钮一致，只额外用一条作用域规则把字号对齐界面字号、把
   `fn__size200` 的固定宽度改成宽度下限（文档里的自定义块字号是编辑器字号）。
 * **按钮颜色**：存了颜色才加 `bis-button-color` 类并设 `--bis-button-color`，不存就与原生
-  `.b3-button--outline` 逐像素一致。色板全部走主题变量，明暗主题与换主题都会跟着变，因此不提供任意取色的
+  `.b3-button--outline` 逐像素一致。色板全走主题变量，换明暗主题时会跟着变，因此不提供任意取色的
   取色器；编号跳过 13（daylight 下等于页面底色）与 6（与默认的原生蓝同色）。
 * **关窗前的「放弃修改」确认**：不是逐条拦取消 / × / `Esc` / 点遮罩，而是把实例上的 `dialog.destroy`
   换成自己的函数（宿主的四条路最后都调它）。**`disableClose` 只挡遮罩与 ×，挡不住 `Esc`**；判断
@@ -34,10 +34,10 @@
 * **图标**：从文档里的 `<symbol id="icon…">` 现取现用，元素带思源的 `.svg` 类以跟随 `currentColor`。
   选择器里**不要改 `color`**：悬浮与选中只换底色 / 描边，否则靠 `currentColor` 上色的图标会显示成主色。
 * **JavaScript 操作**：在页面上下文执行，整段包成 async 函数；执行期间接管 `console` 收集输出。接口以
-  形参注入（清单在 `src/scriptApi.ts`），新增注入项要同步 `docs/javascript*.md` 的接口表。**注入的
+  形参注入（清单在 `src/scriptApi.ts`），增删注入项要同步 `docs/javascript*.md` 第 2 节的接口清单。**注入的
   `fetchPost` / `fetchGet` 是包装过的**：宿主的实现是回调式的，不给回调时 Promise 解析成 `undefined`，
   脚本里 `await fetchPost(...)` 会直接报错 —— 别把包装去掉。**没有 `return`、没有 console 输出、也没有
-  报错时不弹结果弹窗**（默认策略），改动要同步 `docs/javascript*.md` 的 4.15。
+  报错时不弹结果弹窗**（默认策略），改动要同步 `docs/javascript*.md` 第 4 节的弹窗策略。
 * **JavaScript 文件操作**：每次点击都重新取代码（本地走 `/api/file/getFile`，云端用 `fetch` 重新下载），
   再交给与内联脚本同一个 `runScript`；取不到只提示、不执行。**这几个内核文件接口没有用宿主的
   `fetchPost`**：`getFile` 成功时回裸字节、出错才是 JSON 信封，而宿主对 `code < 0` 只弹提示、不调回调，
@@ -48,7 +48,7 @@
   云端再无关系；只有本地文件才提供编辑 / 改名 / 删除。脚本文件读写一律不走 `plugin.loadData`（那是插件
   私有数据）。**按钮里存的 `assets/xxx.js` 不能直接喂给 `/api/file/*`**：`assets/…` 相对的是数据目录，
   而文件接口的 path 相对工作空间根，所以统一用 `toWorkspacePath()` 补 `data/` 前缀；少了它文件会落到
-  工作空间根下另建的 `assets/`，插件自己读写正常，但那个目录不在数据目录里，不进资源索引、也不会被同步。
+  工作空间根下另建的 `assets/`，插件自己读写正常，但那个目录不在数据目录里，不进资源索引，也不会同步。
 * **链接操作**（`src/openLink.ts`）：效果要与文档里点 `[]()` 链接一致，即对齐宿主的
   `app/src/editor/openLink.ts`。非本地地址一律交给 `platformUtils.openByMobile`（宿主 `openLink` 用的
   同一个函数，`siyuan://` 与插件事件也在里面处理）；本地路径按 `window.siyuan.config.editor.assetOpen`
@@ -59,7 +59,7 @@
   会被接管、从按钮点却不会」。两个已知差距：`new-window` 回落成当前页签（宿主的实现走 Electron 专用通道，
   插件 API 没有入口）；远端内核（`--remote`）下宿主认为不是本地文件系统，插件仍按前端判断。
 * **资源页签的坑**：`openTab({asset})` 只在资源是图片 / 音视频 / PDF 且不带 `download=true` 时建页签，
-  其他资源会让宿主的 `newTab` 返回 `undefined`，`wnd.addTab(undefined)` 直接把页签布局搞坏。所以交给
+  其他资源会让宿主的 `newTab` 返回 `undefined`，`wnd.addTab(undefined)` 会弄坏页签布局。所以交给
   `openTab` 前先按同样的条件判断（`openLink.ts` 的 `isPreviewableAsset`）；不能建页签的经
   `Constants.SIYUAN_CMD` 的 `openPath` 交给系统。**不要用 `window.open`**：会被浏览器类插件接管，思源
   本身也打不开这类资源。
@@ -87,7 +87,7 @@
   转成 HTML（代码块靠 `ProtyleMethod.highlightRender` 上色），按界面语言选文档。**代码块语言统一写
   `javascript`**；预览输出的代码块结构是 `<pre class="code-block" data-language="javascript">`，
   `scriptDocs.ts` 按这个结构给每个示例套一层并加「载入 / 复制」按钮。改了文档跑
-  `node scripts/check-docs.mjs`（代码块语言、示例语法、接口表都在那里校验）。
+  `node scripts/check-docs.mjs`（代码块语言、示例语法、接口清单都在那里校验）。
 * **日志**：每个模块 `createLogger("<模块名>")`，**日志文案一律英文**（面向排查，不参与 i18n），源码注释
   仍用中文。`debug` 记过程细节、`info` 记用户可见动作、`warn` 记能继续跑但不符合预期的情况、`error` 记
   真正出错；不要直接用 `console.log` 打日志。

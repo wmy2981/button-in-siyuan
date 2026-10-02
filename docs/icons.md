@@ -1,15 +1,15 @@
 # SiYuan icon ids
 
-Reference for the `icon` field of a button block: the field takes the **id** of an SVG icon symbol, exactly as
-written here (for example `iconCirclePlay`). An empty string means "no icon".
+Reference for the `icon` field of a button block: it takes the **id** of an SVG icon symbol, exactly as
+written here (`iconCirclePlay`, for example). An empty string means no icon.
 
 ## How the icon set is resolved
 
 - The button block renders the id with `<svg class="svg"><use xlink:href="#iconXxx"></use></svg>`, so the id must
-  exist as `<symbol id="iconXxx">` in the current page. That is how SiYuan itself draws every icon it ships.
+  exist as `<symbol id="iconXxx">` in the page. SiYuan draws all of its own icons this way.
 - The available symbols are read from the page at runtime (`collectIconNames()`), so the list below is the
-  **built-in** set plus whatever the active icon pack and other plugins have registered. Third-party icon packs
-  therefore add ids that are not listed here.
+  **built-in** set plus whatever the active icon pack and other plugins registered; an icon pack adds ids that
+  are not listed here.
 - An id that is not loaded renders as nothing: the button keeps its text and loses only the icon.
 
 ## Picking by intent
@@ -53,9 +53,9 @@ written here (for example `iconCirclePlay`). An empty string means "no icon".
 
 ## All built-in ids
 
-Every built-in id, in SiYuan's own order inside the built-in set. The id spells out the name (the `icon`
-prefix plus camel case, for example `iconCirclePlay`), so the table is searchable by concept as well as by
-id; use "Picking by intent" above when you only know what the button should do.
+Every built-in id, in SiYuan's own order. Each id spells out its name (`icon` plus camel case,
+`iconCirclePlay` for example), so the table is searchable by concept too; use "Picking by intent" above when you
+know the purpose but not the id.
 
 | id |
 | --- |
