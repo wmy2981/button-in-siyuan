@@ -4,6 +4,7 @@ import {
     confirm,
     Constants,
     Dialog,
+    exitSiYuan,
     expandDocTree,
     fetchGet,
     fetchPost,
@@ -21,6 +22,7 @@ import {
     isBottomDockVisible,
     isLeftDockVisible,
     isRightDockVisible,
+    lockScreen,
     Menu,
     openAssetPicker,
     openAttributePanel,
@@ -83,10 +85,12 @@ const scriptFetchGet = (url: string, cb?: (response: TKernelResponse | string) =
 /**
  * 按钮的 JavaScript 操作能直接调用的思源接口。
  *
- * 注入的是插件 API（宿主 plugin/API.ts 里的 getAPI()）中除「退出思源」「锁屏」之外的全部能力，
- * 也就是思源允许插件使用的接口；插件之外的全局对象（document、window、window.siyuan、Lute 等）
- * 本来就是脚本所在页面的全局，脚本同样可以直接用。
- * 新增注入项时请同步 docs/javascript.md 里的清单。
+ * 注入的是插件 API（宿主 plugin/API.ts 里的 getAPI()）的全部能力，也就是思源允许插件使用的接口；
+ * 其中 `exitSiYuan`（退出思源）与 `lockScreen`（锁屏）默认由思源留给插件自己调用，本插件一并注入，
+ * 脚本点错了不可撤销，文档里对这两项有单独的提醒。
+ * 插件之外的全局对象（document、window、window.siyuan、Lute 等）本来就是脚本所在页面的全局，
+ * 脚本同样可以直接用。
+ * 新增或删除注入项时请同步 docs/javascript.md 与 docs/javascript.zh-CN.md 里的清单。
  */
 export interface IScriptScope {
     /** 注入的名字，按顺序对应 values，作为 new Function 的形参 */
@@ -157,6 +161,9 @@ export const createScriptScope = (options: {
         // 运行平台
         getFrontend,
         getBackend,
+        // 退出与锁屏（宿主 processSystem.ts；lockScreen 的实现不取参数，petal 声明里的 app 参数是遗留）
+        exitSiYuan,
+        lockScreen,
         // 本次点击的上下文
         protyle,
         blockID: options.blockID,
