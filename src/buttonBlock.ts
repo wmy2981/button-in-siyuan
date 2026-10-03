@@ -2,6 +2,7 @@ import {showMessage} from "siyuan";
 import type {IContext} from "./context";
 import {createIconElement} from "./icon";
 import {createLogger} from "./logger";
+import {bindMobileSwipe} from "./mobileSwipe";
 import {openLink} from "./openLink";
 import {isRemoteScript, loadActionScript} from "./scriptFile";
 import {runScript} from "./scriptRunner";
@@ -281,6 +282,19 @@ export const renderButtonBlock = (context: IContext, options: {
         button.addEventListener("touchmove", cancelPress);
         button.addEventListener("touchcancel", cancelPress);
     }
+    // 块内的触摸被宿主隔离，横滑拉不出侧面板，这里转发给宿主的侧栏手势（见 mobileSwipe.ts）。
+    // 监听挂在挂载元素上（而不是按钮上）：按钮四周的空白也算「在按钮块上滑动」
+    const unbindSwipe = context.isMobile && blockElement ? bindMobileSwipe({
+        element: options.element,
+        forwardTo: blockElement,
+        onSwipe: () => {
+            // 滑动之后浏览器有时还会补一次 click，别把它当成按钮操作
+            suppressClick = true;
+            window.setTimeout(() => {
+                suppressClick = false;
+            }, 800);
+        },
+    }) : undefined;
     options.element.append(button);
     return () => {
         button.removeEventListener("click", click);
@@ -289,6 +303,7 @@ export const renderButtonBlock = (context: IContext, options: {
         button.removeEventListener("touchend", cancelPress);
         button.removeEventListener("touchmove", cancelPress);
         button.removeEventListener("touchcancel", cancelPress);
+        unbindSwipe?.();
         cancelPress();
         if (blockID && contentSetters.get(blockID) === options.setContent) {
             contentSetters.delete(blockID);

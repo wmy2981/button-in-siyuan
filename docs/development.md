@@ -17,6 +17,14 @@
   带 `bis-slash-item` 标记，`index.scss` 在该槽位把 flex 补回来。
 * **编辑入口**：块菜单 > 插件 > 编辑按钮块、按钮上右键（桌面端）、按钮上长按（移动端）。三条路都走
   `context.openEditor(blockID, config)`（插件入口注入），免得渲染器直接依赖对话框模块而成环。
+* **移动端侧栏滑动**：宿主的自定义块渲染器给挂载元素挂了一组阻断冒泡的触摸监听
+  （`app/src/plugin/customBlockRender.ts` 的 `isolateEditorEvents`，含 touchstart / touchmove /
+  touchend），而侧栏滑动是挂在 `document` 上的冒泡监听（`app/src/mobile/util/touch.ts`），块内容上的
+  滑动到不了那里 —— 任何自定义块都滑不出侧面板。`src/mobileSwipe.ts` 在看出是横向滑动之后，照宿主
+  自己的桥接写法（`mobile/util/mousePointerTouchBridge.ts`）合成触摸事件派发到自定义块元素上（在隔离
+  之外），方向判断、跟手位移与松手提交仍全部交给宿主；点击与长按不转发，宿主的点选与长按多选不会因为
+  块内的按钮被误触发。**移动端插件 API 打不开侧面板**（`toggleLeftDock` / `toggleRightDock` 在移动端
+  构建里直接返回 false），别改走那条路。
 * **外观**：只用思源样式类与 `--b3-*` 变量；自有类统一 `bis-` 前缀，自有对话框的定位属性用 `data-bis`
   （`data-type` 是思源自己的派发键，不要占用）。
 * **按钮外观**：类名与思源设置面板的原生按钮一致，只额外用一条作用域规则把字号对齐界面字号、把
