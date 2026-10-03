@@ -56,7 +56,7 @@ Requires SiYuan 3.8.6 or later.
 | --- | --- |
 | JavaScript output dialog | When the result dialog opens after a script runs: `Always`, `With output` (default), `Console output only`, `On warning (and error)`, `On error`, `Never`. |
 | Provide the button block skill to the agent | On by default: writes a skill explaining button blocks into the workspace skill directory; switching it off deletes that skill. |
-| Download the skill file | The "Download SKILL.md" button saves the bundled skill text to disk through SiYuan's own save dialog. |
+| Download the skill | The "Download skill" button saves the whole skill as one zip file through SiYuan's own save dialog. |
 
 ## Link addresses
 
@@ -107,19 +107,30 @@ Full guide with ready-to-paste examples: [docs/javascript.md](./docs/javascript.
 
 ## Agent skill
 
-The plugin writes a skill for SiYuan's agent: `button-block`, installed at
-`data/storage/ai/agent/skills/button-block/SKILL.md`. It explains what a button block is, how the
-block payload (`{"text","icon","color","action"}`) is filled in, how to create and change one through
-SiYuan's block APIs, and it points at the two documents shipped with the plugin:
+The plugin writes a skill for SiYuan's agent: `button-block`, installed as a directory at
+`data/storage/ai/agent/skills/button-block/`:
 
-* [docs/javascript.md](./docs/javascript.md) — the SiYuan APIs a script may call, how output and errors
-  are shown, and ready-to-run examples;
-* [docs/icons.md](./docs/icons.md) — every built-in SiYuan icon id, plus a table for picking one by intent.
+| File | Holds |
+| --- | --- |
+| `SKILL.md` | What a button block is, how the block payload (`{"text","icon","color","action"}`) is filled in, and how to create and change one through SiYuan's block APIs. |
+| `references/javascript.md` | The script action: the injected APIs, what `return`, `console` and `showMessage` each do, where the official endpoint reference lives, and ready-to-run examples. |
+| `references/icons.md` | Every built-in SiYuan icon id, plus a table for picking one by intent. |
 
-Every plugin load rewrites that file from the copy bundled in the package, so a hand edit or an older
-version cannot leave a stale skill behind. The skill is written by default; switching it off in the plugin
-settings removes it again, and so does disabling the plugin or removing it from the workspace — an agent
-never picks up a skill whose plugin is not running. Those APIs need SiYuan's AI features to be enabled.
+The reference documents live inside the skill instead of being pointed at from the plugin directory, so the
+skill stays complete wherever it is read from: the agent loads one with the `skill` tool
+(`name: "button-block/references/javascript.md"`), and SiYuan lists them as the skill's resources anyway. The
+javascript document also carries the address of SiYuan's own API reference — `docs/API.md` and
+`kernel/api/router.go`, on a China-friendly CDN, pinned to the SiYuan version you are running — so an agent
+looks an endpoint up in the official reference rather than in a copy bundled here.
+
+Every plugin load rewrites all three files from the copies bundled in the package, so a hand edit or an older
+version cannot leave a stale skill behind. "Download skill" in the plugin settings saves them as a single zip
+(`button-block/SKILL.md` and `button-block/references/…`). The skill is written by default; switching it off in
+the plugin settings removes it again, and so does disabling the plugin or removing it from the workspace — an
+agent never picks up a skill whose plugin is not running. Those APIs need SiYuan's AI features to be enabled.
+
+The same two documents are kept in the repository for reading outside the skill:
+[docs/javascript.md](./docs/javascript.md) and [docs/icons.md](./docs/icons.md).
 
 ## Development
 

@@ -86,21 +86,35 @@
   没有脚本文件（README 的「限制」写明了，需要时用 HTML/Word 导出）；`.sy.zip` 按思源自身的设计不带资源。
 * **i18n**：面向用户的文案都走 `src/i18n/*.json`（键类型在 `src/i18nKeys.ts`），思源自带的取
   `window.siyuan.languages`；`scripts/check-i18n.mjs` 要求两份文案同键、非空，加键别忘另一份。
-* **Agent 技能**：`src/agentSkill.ts` 把 `docs/skill.md`（构建时内嵌）写成
-  `data/storage/ai/agent/skills/button-block/SKILL.md`。技能正文要求 Agent 去读包内的
-  `docs/javascript.md` 与 `docs/icons.md`，所以包内 `docs/` 的位置不能改。写入与下载时都会在正文的
-  frontmatter 里补一段 `metadata.skill_version`，版本现读安装目录的 `data/plugins/<插件名>/plugin.json`，
-  不写死在代码里（思源只从 frontmatter 取 `name` / `description`，多这一段不影响索引）。
+* **Agent 技能**：技能是**一个目录**，由 `src/agentSkill.ts` 写成
+  `data/storage/ai/agent/skills/button-block/`：正文来自 `docs/skill.md`，两份参考文档来自
+  `docs/javascript.md` 与 `docs/icons.md`（与内置文档同一套做法，构建时内嵌进 index.js）。正文走内核的
+  `/api/ai/agent/saveSkill`（它只肯写 `SKILL.md`，会顺手建好技能目录），附件走 `/api/file/putFile`
+  （自动建出 `references/`，对已存在的文件是无条件覆盖）。内核加载技能正文时会把附件列成资源清单
+  （`kernel/util/skill.go` 的 `listSkillResources`，单文件上限 64 KiB），Agent 用 `skill` 工具按
+  「技能名/相对路径」读其中一份。写入与打包下载共用 `buildSkill()` 一处渲染，两个出口的正文不会各自漂移。
+  文档里的 `{{siyuan-ref}}`（常量在 `src/siyuanRef.ts`）是官方 API 文档链接的版本占位符：写技能与渲染
+  文档弹窗时都替换成 `v<内核版本>`（优先 `window.siyuan.config.system.kernelVersion`，回落
+  `/api/system/version`），两条路都取不到时换成 `dev`，`scripts/check-docs.mjs` 会校验两份文档都带着它。
+  写入时还会在正文的 frontmatter 里补一段 `metadata.skill_version`，版本现读安装目录的
+  `data/plugins/<插件名>/plugin.json`，不写死在代码里（思源只从 frontmatter 取 `name` / `description`，
+  多这一段不影响索引）。
   每次加载都**无条件覆盖写入**
   （技能由插件维护，目录里的副本可能是旧版本或被手改过）。删除只写在 `onunload` 一处：禁用、重载与卸载
-  都会先跑它，只有卸载才接着补跑 `uninstall`。AI 功能被关掉时接口直接失败，只记日志、不弹提示。
-  设置面板里的「下载 SKILL.md」走宿主的 `saveExportFile`，而它只肯复制 `<工作空间>/temp/export/` 下的
-  文件，所以先把正文 `putFile` 到那里再交给它 —— 保存对话框里的默认文件名就是那个文件名。
+  都会先跑它，只有卸载才接着补跑 `uninstall`。内核的 `removeSkill` 是整目录 `RemoveAll`，但它按「目录里
+  有没有 SKILL.md」认技能，正文被手删过就只会报 `skill not found`、附件留在盘上，所以失败后确认目录还在时
+  先补写正文再删一次。AI 功能被关掉时接口直接失败，只记日志、不弹提示。
+  设置面板里的「下载技能」先用 `/api/archive/zip` 把三个文件压成 `button-block.zip`（内核按源目录名建顶层
+  目录），再交给宿主的 `saveExportFile`；而它只肯复制 `<工作空间>/temp/export/` 下的文件，所以那三个文件与
+  压缩包都先写进那个目录 —— 保存对话框里的默认文件名就是压缩包名。内容取包内自带的那份而不是工作区里已
+  落盘的技能，技能开关关着也能导出。
 * **内置文档**：`docs/*.md` 由 webpack 的 `asset/source` 内嵌进 index.js，入口用 Lute 的富文本预览渲染器
   转成 HTML（代码块靠 `ProtyleMethod.highlightRender` 上色），按界面语言选文档。**代码块语言统一写
   `javascript`**；预览输出的代码块结构是 `<pre class="code-block" data-language="javascript">`，
-  `scriptDocs.ts` 按这个结构给每个示例套一层并加「载入 / 复制」按钮。改了文档跑
-  `node scripts/check-docs.mjs`（代码块语言、示例语法、接口清单都在那里校验）。
+  `scriptDocs.ts` 按这个结构给每个示例套一层并加「载入 / 复制」按钮。渲染前会把正文里的
+  `{{siyuan-ref}}` 换成实际标签（`src/siyuanRef.ts`），与写进技能目录的那份保持一致 —— 官方 API 文档地址
+  要指向本机思源版本。改了文档跑
+  `node scripts/check-docs.mjs`（代码块语言、示例语法、接口清单、版本占位符都在那里校验）。
 * **日志**：每个模块 `createLogger("<模块名>")`，**日志文案一律英文**（面向排查，不参与 i18n），源码注释
   仍用中文。`debug` 记过程细节、`info` 记用户可见动作、`warn` 记能继续跑但不符合预期的情况、`error` 记
   真正出错；不要直接用 `console.log` 打日志。

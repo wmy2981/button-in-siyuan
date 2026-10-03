@@ -117,7 +117,7 @@ export default class ButtonInSiYuan extends Plugin {
         // 禁用、重载与卸载都会走到这里：宿主的 teardown 一定先跑 onunload，只有卸载时才接着补跑
         // uninstall（siyuan 的 app/src/plugin/lifecycle.ts）。所以技能在这里删一次就覆盖了「禁用」
         // 与「卸载」两种情况，不会留下一个指向已停用插件的技能让 Agent 白调一趟。
-        return removeAgentSkill();
+        return removeAgentSkill(this.name);
     }
 
     private async initSettings() {
@@ -188,7 +188,7 @@ export default class ButtonInSiYuan extends Plugin {
     }
 
     /**
-     * 设置面板里的「下载 SKILL.md」：把内置的技能正文交给思源原生的保存流程（见 agentSkill.ts）。
+     * 设置面板里的「下载技能」：把内置的整份技能打包交给思源原生的保存流程（见 agentSkill.ts）。
      * 保存对话框由宿主弹出，用户在对话框里取消不算失败，所以这里只在真正出错时提示。
      */
     private async downloadSkill(button: HTMLButtonElement) {
@@ -225,7 +225,7 @@ export default class ButtonInSiYuan extends Plugin {
         if (next.agentSkill) {
             await installAgentSkill(this.name);
         } else {
-            await removeAgentSkill();
+            await removeAgentSkill(this.name);
         }
     }
 

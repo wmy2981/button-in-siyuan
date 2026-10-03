@@ -50,7 +50,7 @@
 | --- | --- |
 | JavaScript 输出弹窗 | 点按钮执行脚本后什么时候弹结果弹窗：`总是显示`、`有输出时显示`（默认）、`仅 console 输出时显示`、`警告时显示（也包含错误）`、`错误时显示`、`始终不显示`。 |
 | 向 Agent 提供按钮块技能 | 默认开：把说明按钮块用法的技能写进工作空间的技能目录；关掉时会删除这个技能。 |
-| 下载技能文件 | 点「下载 SKILL.md」用思源原生的保存对话框把插件内置的技能正文存到本地。 |
+| 下载技能 | 点「下载技能」用思源原生的保存对话框把整份技能打包成一个 zip 存到本地。 |
 
 ## 链接地址
 
@@ -91,17 +91,28 @@
 
 ## Agent 技能
 
-插件会把一份技能（Skill）写给思源的 Agent：`button-block`，落在工作空间的
-`data/storage/ai/agent/skills/button-block/SKILL.md`。技能里说明按钮块是什么、块内容
-（`{"text","icon","color","action"}`）怎么填、怎么用思源的块接口创建与修改，并指向插件自带的
-两份文档：
+插件会把一份技能（Skill）写给思源的 Agent：`button-block`，以目录形式落在工作空间的
+`data/storage/ai/agent/skills/button-block/`：
 
-* [docs/javascript.md](./docs/javascript.md)：JavaScript 操作能直接调用的思源接口、输出与错误规则、可直接运行的示例；
-* [docs/icons.md](./docs/icons.md)：思源内置图标的全部 id，以及按用途挑图标的对照表。
+| 文件 | 内容 |
+| --- | --- |
+| `SKILL.md` | 按钮块是什么、块内容（`{"text","icon","color","action"}`）怎么填、怎么用思源的块接口创建与修改。 |
+| `references/javascript.md` | JavaScript 操作：注入的接口、`return` / `console` / `showMessage` 各自的作用、官方端点文档在哪、可直接运行的示例。 |
+| `references/icons.md` | 思源内置图标的全部 id，以及按用途挑图标的对照表。 |
 
-每次加载插件都会用包内自带的那份重写这个文件，手改过或旧版本留下的内容都不会保留。
+两份参考文档随技能一起发布、而不是让 Agent 去插件目录里找，所以技能无论从哪里被读到都是完整的：
+Agent 用 `skill` 工具按 `name: "button-block/references/javascript.md"` 载入其中一份，思源加载技能正文时
+本来也会把它们列成技能的资源。javascript 文档里还给出了思源自己的 API 文档地址 —— `docs/API.md` 与
+`kernel/api/router.go`，走国内可访问的 CDN，并钉在你正在用的思源版本上 —— Agent 因此查的是官方文档，
+而不是这里随包带的一份副本。
+
+每次加载插件都会用包内自带的那三份重写技能目录，手改过或旧版本留下的内容都不会保留。插件设置里的
+「下载技能」会把它们打成一个 zip（`button-block/SKILL.md` 与 `button-block/references/…`）。
 技能默认写入；在插件设置里关掉、禁用插件或从工作空间移除插件时都会删掉这个技能 ——
 插件没在运行时，Agent 不会读到失效的技能。这几个接口需要思源启用 AI 功能。
+
+同样这两份文档在仓库里也保留了一份，方便技能之外阅读：
+[docs/javascript.md](./docs/javascript.md) 与 [docs/icons.md](./docs/icons.md)。
 
 ## 开发
 
