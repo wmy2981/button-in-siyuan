@@ -9,16 +9,16 @@ Insert native SiYuan buttons into documents, with text, a built-in icon and a li
 ## Features
 
 * The button is a SiYuan custom block, saved, synced, undone and exported with the document.
-* The button uses the native button styling — the UI font size, hover and pressed effects all come
-  from SiYuan's own CSS; the plugin does not restyle the button.
-* The icon is picked from the SVG icons available in the current interface (the built-in icon set,
-  plus icons provided by icon packages and plugins), with search.
+* The button keeps SiYuan's native styling: font size, hover and pressed effects come from SiYuan's
+  CSS, and the plugin does not restyle it.
+* The icon is picked with search from the SVG icons available in the current interface: the built-in
+  set plus icons from icon packages and plugins.
 * The button colour is optional: the frame, the text and the icon share one colour taken from
   SiYuan's built-in palette; the default stays SiYuan's native blue.
 * A button action is optional and is one of: open a link, run JavaScript, or run a JavaScript file
   (a local file under `assets/`, or an http(s) address).
-* The JavaScript editor is CodeMirror, with line numbers, syntax highlighting, bracket matching and
-  completion; its colors follow SiYuan's code highlighting setting.
+* The JavaScript editor is CodeMirror with line numbers, syntax highlighting, bracket matching and
+  completion; its colors follow SiYuan's code highlighting scheme.
 
 ## Install
 
@@ -56,11 +56,11 @@ Requires SiYuan 3.8.6 or later.
 | --- | --- |
 | JavaScript output dialog | When the result dialog opens after a script runs: `Always`, `With output` (default), `Console output only`, `On warning (and error)`, `On error`, `Never`. |
 | Provide the button block skill to the agent | On by default: writes a skill explaining button blocks into the workspace skill directory; switching it off deletes that skill. |
-| Download the skill file | The "Download SKILL.md" button saves the bundled skill text to disk through SiYuan's own save dialog. |
+| Download the skill | The "Download skill" button saves the whole skill as one zip file through SiYuan's own save dialog. |
 
 ## Link addresses
 
-A link address behaves exactly like the same link inside a document — SiYuan's own link handling does the work:
+A link address behaves like the same link inside a document, because SiYuan's link handling does the work:
 
 | Link | Behavior |
 | --- | --- |
@@ -70,17 +70,16 @@ A link address behaves exactly like the same link inside a document — SiYuan's
 
 ## JavaScript
 
-The code editor is CodeMirror: line numbers, syntax highlighting, bracket matching and completion.
-Its colors follow the scheme selected in <kbd>Settings</kbd> > <kbd>Appearance</kbd> >
-<kbd>Code highlighting</kbd> (one scheme for light and one for dark mode), and the code block
-line-wrap setting is honored as well. The font size matches SiYuan's code snippet input, the box can
-be resized vertically, and right-clicking opens SiYuan's own native text menu (undo, redo, copy,
-cut, paste, paste as plain text, select all).
+The editor's colors follow the scheme in <kbd>Settings</kbd> > <kbd>Appearance</kbd> >
+<kbd>Code highlighting</kbd> (one for light, one for dark), and it honors the code block line-wrap
+setting. The font size matches SiYuan's code snippet input, the box resizes vertically, and
+right-clicking opens SiYuan's text menu (undo, redo, copy, cut, paste, paste as plain text, select
+all).
 
-The code runs in the page context when the button is clicked; `await` is supported. The `return`
-value, everything written to `console` while it runs and any thrown error are shown in the result
-dialog, which can copy the whole output as plain text. When that dialog opens is decided by the
-"JavaScript output dialog" plugin setting (default: "With output").
+The code runs in the page context when the button is clicked, and `await` works. The `return` value,
+the console output and any thrown error appear in the result dialog, which can copy the output as
+plain text. When that dialog opens is decided by the "JavaScript output dialog" setting (default:
+"With output").
 
 Scripts can call every API SiYuan exposes to plugins.
 
@@ -91,32 +90,47 @@ Full guide with ready-to-paste examples: [docs/javascript.md](./docs/javascript.
 * The plugin is disabled on the publish service (`disabledInPublish`), so published pages show the
   raw block content instead of a button.
 * PDF/HTML export has no custom block renderer: exported documents contain the raw content.
+* For a button whose action runs a JavaScript file, mind the script file itself when exporting: **the HTML
+  and Word exports copy it to `assets/` under the export directory, at the relative path the block
+  references**, while a **Markdown `.zip` does not carry it** (SiYuan collects resources from the exported
+  Markdown text, where block attributes take no part and a plugin cannot hook in). Use the HTML or Word
+  export there, or copy the script along yourself.
 * The JavaScript action is not sandboxed; it runs with the same privileges as the user's own code
   snippets. Only run code you trust.
 * The icon list comes from the icons loaded in the current interface, so a third-party icon package
   changes what you can pick.
-* There is **no button block entry while editing inside a table cell on desktop**: SiYuan then uses a
-  cell editor that does not load plugin extensions (`tableCellRichEditor` sets
-  `pluginExtensions: false`), so its slash menu never lists plugin entries. That is a host
-  limitation — insert the block in the normal editor instead. A cell can only hold inline content,
-  so a button block inserted from a cell would land right after the table.
+* There is **no button block entry while editing inside a table cell on desktop**: SiYuan uses a cell
+  editor that does not load plugin extensions (`tableCellRichEditor` sets `pluginExtensions: false`),
+  so its slash menu never lists plugin entries. This is a host limitation; insert the block in the
+  normal editor. A cell holds inline content only, so a block inserted from a cell lands after the
+  table.
 
-## For agent
+## Agent skill
 
-The plugin writes a skill for SiYuan's agent: `button-block`, installed at
-`data/storage/ai/agent/skills/button-block/SKILL.md`. It explains what a button block is, how the
-block payload (`{"text","icon","color","action"}`) is filled in, how to create and change one through
-SiYuan's block APIs, and it points at the two documents shipped with the plugin:
+The plugin writes a skill for SiYuan's agent: `button-block`, installed as a directory at
+`data/storage/ai/agent/skills/button-block/`:
 
-* [docs/javascript.md](./docs/javascript.md) — the SiYuan APIs a script may call, how output and errors
-  are shown, and ready-to-run examples;
-* [docs/icons.md](./docs/icons.md) — every built-in SiYuan icon id, plus a table for picking one by intent.
+| File | Holds |
+| --- | --- |
+| `SKILL.md` | What a button block is, how the block payload (`{"text","icon","color","action"}`) is filled in, and how to create and change one through SiYuan's block APIs. |
+| `references/javascript.md` | The script action: the injected APIs, what `return`, `console` and `showMessage` each do, where the official endpoint reference lives, and ready-to-run examples. |
+| `references/icons.md` | Every built-in SiYuan icon id, plus a table for picking one by intent. |
 
-Every plugin load rewrites that file from the copy bundled in the package, so a hand edit or an older
-version cannot leave a stale skill behind. The skill is written by default; switching it off in the plugin
-settings removes it again, and so does disabling the plugin or removing it from the workspace — an agent
-never picks up a skill whose plugin is not running. When SiYuan's AI features are unavailable those
-APIs are not available.
+The reference documents live inside the skill instead of being pointed at from the plugin directory, so the
+skill stays complete wherever it is read from: the agent loads one with the `skill` tool
+(`name: "button-block/references/javascript.md"`), and SiYuan lists them as the skill's resources anyway. The
+javascript document also carries the address of SiYuan's own API reference — `docs/API.md` and
+`kernel/api/router.go`, on a China-friendly CDN, pinned to the SiYuan version you are running — so an agent
+looks an endpoint up in the official reference rather than in a copy bundled here.
+
+Every plugin load rewrites all three files from the copies bundled in the package, so a hand edit or an older
+version cannot leave a stale skill behind. "Download skill" in the plugin settings saves them as a single zip
+(`button-block/SKILL.md` and `button-block/references/…`). The skill is written by default; switching it off in
+the plugin settings removes it again, and so does disabling the plugin or removing it from the workspace — an
+agent never picks up a skill whose plugin is not running. Those APIs need SiYuan's AI features to be enabled.
+
+The same two documents are kept in the repository for reading outside the skill:
+[docs/javascript.md](./docs/javascript.md) and [docs/icons.md](./docs/icons.md).
 
 ## Development
 

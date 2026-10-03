@@ -17,12 +17,20 @@
   带 `bis-slash-item` 标记，`index.scss` 在该槽位把 flex 补回来。
 * **编辑入口**：块菜单 > 插件 > 编辑按钮块、按钮上右键（桌面端）、按钮上长按（移动端）。三条路都走
   `context.openEditor(blockID, config)`（插件入口注入），免得渲染器直接依赖对话框模块而成环。
+* **移动端侧栏滑动**：宿主的自定义块渲染器给挂载元素挂了一组阻断冒泡的触摸监听
+  （`app/src/plugin/customBlockRender.ts` 的 `isolateEditorEvents`，含 touchstart / touchmove /
+  touchend），而侧栏滑动是挂在 `document` 上的冒泡监听（`app/src/mobile/util/touch.ts`），块内容上的
+  滑动到不了那里 —— 任何自定义块都滑不出侧面板。`src/mobileSwipe.ts` 在看出是横向滑动之后，照宿主
+  自己的桥接写法（`mobile/util/mousePointerTouchBridge.ts`）合成触摸事件派发到自定义块元素上（在隔离
+  之外），方向判断、跟手位移与松手提交仍全部交给宿主；点击与长按不转发，宿主的点选与长按多选不会因为
+  块内的按钮被误触发。**移动端插件 API 打不开侧面板**（`toggleLeftDock` / `toggleRightDock` 在移动端
+  构建里直接返回 false），别改走那条路。
 * **外观**：只用思源样式类与 `--b3-*` 变量；自有类统一 `bis-` 前缀，自有对话框的定位属性用 `data-bis`
   （`data-type` 是思源自己的派发键，不要占用）。
 * **按钮外观**：类名与思源设置面板的原生按钮一致，只额外用一条作用域规则把字号对齐界面字号、把
   `fn__size200` 的固定宽度改成宽度下限（文档里的自定义块字号是编辑器字号）。
 * **按钮颜色**：存了颜色才加 `bis-button-color` 类并设 `--bis-button-color`，不存就与原生
-  `.b3-button--outline` 逐像素一致。色板全部走主题变量，明暗主题与换主题都会跟着变，因此不提供任意取色的
+  `.b3-button--outline` 逐像素一致。色板全走主题变量，换明暗主题时会跟着变，因此不提供任意取色的
   取色器；编号跳过 13（daylight 下等于页面底色）与 6（与默认的原生蓝同色）。
 * **关窗前的「放弃修改」确认**：不是逐条拦取消 / × / `Esc` / 点遮罩，而是把实例上的 `dialog.destroy`
   换成自己的函数（宿主的四条路最后都调它）。**`disableClose` 只挡遮罩与 ×，挡不住 `Esc`**；判断
@@ -34,10 +42,10 @@
 * **图标**：从文档里的 `<symbol id="icon…">` 现取现用，元素带思源的 `.svg` 类以跟随 `currentColor`。
   选择器里**不要改 `color`**：悬浮与选中只换底色 / 描边，否则靠 `currentColor` 上色的图标会显示成主色。
 * **JavaScript 操作**：在页面上下文执行，整段包成 async 函数；执行期间接管 `console` 收集输出。接口以
-  形参注入（清单在 `src/scriptApi.ts`），新增注入项要同步 `docs/javascript*.md` 的接口表。**注入的
+  形参注入（清单在 `src/scriptApi.ts`），增删注入项要同步 `docs/javascript*.md` 第 2 节的接口清单。**注入的
   `fetchPost` / `fetchGet` 是包装过的**：宿主的实现是回调式的，不给回调时 Promise 解析成 `undefined`，
   脚本里 `await fetchPost(...)` 会直接报错 —— 别把包装去掉。**没有 `return`、没有 console 输出、也没有
-  报错时不弹结果弹窗**（默认策略），改动要同步 `docs/javascript*.md` 的 4.15。
+  报错时不弹结果弹窗**（默认策略），改动要同步 `docs/javascript*.md` 第 4 节的弹窗策略。
 * **JavaScript 文件操作**：每次点击都重新取代码（本地走 `/api/file/getFile`，云端用 `fetch` 重新下载），
   再交给与内联脚本同一个 `runScript`；取不到只提示、不执行。**这几个内核文件接口没有用宿主的
   `fetchPost`**：`getFile` 成功时回裸字节、出错才是 JSON 信封，而宿主对 `code < 0` 只弹提示、不调回调，
@@ -48,7 +56,7 @@
   云端再无关系；只有本地文件才提供编辑 / 改名 / 删除。脚本文件读写一律不走 `plugin.loadData`（那是插件
   私有数据）。**按钮里存的 `assets/xxx.js` 不能直接喂给 `/api/file/*`**：`assets/…` 相对的是数据目录，
   而文件接口的 path 相对工作空间根，所以统一用 `toWorkspacePath()` 补 `data/` 前缀；少了它文件会落到
-  工作空间根下另建的 `assets/`，插件自己读写正常，但那个目录不在数据目录里，不进资源索引、也不会被同步。
+  工作空间根下另建的 `assets/`，插件自己读写正常，但那个目录不在数据目录里，不进资源索引，也不会同步。
 * **链接操作**（`src/openLink.ts`）：效果要与文档里点 `[]()` 链接一致，即对齐宿主的
   `app/src/editor/openLink.ts`。非本地地址一律交给 `platformUtils.openByMobile`（宿主 `openLink` 用的
   同一个函数，`siyuan://` 与插件事件也在里面处理）；本地路径按 `window.siyuan.config.editor.assetOpen`
@@ -59,7 +67,7 @@
   会被接管、从按钮点却不会」。两个已知差距：`new-window` 回落成当前页签（宿主的实现走 Electron 专用通道，
   插件 API 没有入口）；远端内核（`--remote`）下宿主认为不是本地文件系统，插件仍按前端判断。
 * **资源页签的坑**：`openTab({asset})` 只在资源是图片 / 音视频 / PDF 且不带 `download=true` 时建页签，
-  其他资源会让宿主的 `newTab` 返回 `undefined`，`wnd.addTab(undefined)` 直接把页签布局搞坏。所以交给
+  其他资源会让宿主的 `newTab` 返回 `undefined`，`wnd.addTab(undefined)` 会弄坏页签布局。所以交给
   `openTab` 前先按同样的条件判断（`openLink.ts` 的 `isPreviewableAsset`）；不能建页签的经
   `Constants.SIYUAN_CMD` 的 `openPath` 交给系统。**不要用 `window.open`**：会被浏览器类插件接管，思源
   本身也打不开这类资源。
@@ -70,24 +78,43 @@
   建的块、别的设备同步过来的文档都不经过编辑窗口，只有渲染器当场看得见它们）、插件加载时再整库补一次
   （`syncAssetReferences()`，与 `ial` 比对、只在不一致时写回，稳定状态下没有写操作）。补写那条 SQL 必须带
   显式 `LIMIT`：内核给 `/api/query/sql` 套了用户设置的搜索条数上限（默认 64），不写会被静默截断。属性值以
-  块内容为准。
+  块内容为准。**导出时这个属性只在部分格式里生效**：从原始树收集资源的有 HTML（SiYuan）、HTML（Markdown）
+  与 Word（`exportHTMLWithTitle` / `exportMarkdownHTML` 都调 `getAssetsLinkDests`），它们会把脚本按相对路径
+  复制到导出目录的 `assets/` 下；Markdown `.zip` 与 Pandoc 走的是「导出后重新解析 Markdown 正文」再收集
+  （`kernel/model/export.go` 的 `exportPandocConvertZip0`），而正文里的块属性已被 `SetKramdownIAL(false)`
+  丢掉、自定义块正文又是原样 JSON，插件也没有导出钩子（`IEventBusMap` 里没有任何导出事件），所以 `.zip` 里
+  没有脚本文件（README 的「限制」写明了，需要时用 HTML/Word 导出）；`.sy.zip` 按思源自身的设计不带资源。
 * **i18n**：面向用户的文案都走 `src/i18n/*.json`（键类型在 `src/i18nKeys.ts`），思源自带的取
   `window.siyuan.languages`；`scripts/check-i18n.mjs` 要求两份文案同键、非空，加键别忘另一份。
-* **Agent 技能**：`src/agentSkill.ts` 把 `docs/skill.md`（构建时内嵌）写成
-  `data/storage/ai/agent/skills/button-block/SKILL.md`。技能正文要求 Agent 去读包内的
-  `docs/javascript.md` 与 `docs/icons.md`，所以包内 `docs/` 的位置不能改。写入与下载时都会在正文的
-  frontmatter 里补一段 `metadata.skill_version`，版本现读安装目录的 `data/plugins/<插件名>/plugin.json`，
-  不写死在代码里（思源只从 frontmatter 取 `name` / `description`，多这一段不影响索引）。
+* **Agent 技能**：技能是**一个目录**，由 `src/agentSkill.ts` 写成
+  `data/storage/ai/agent/skills/button-block/`：正文来自 `docs/skill.md`，两份参考文档来自
+  `docs/javascript.md` 与 `docs/icons.md`（与内置文档同一套做法，构建时内嵌进 index.js）。正文走内核的
+  `/api/ai/agent/saveSkill`（它只肯写 `SKILL.md`，会顺手建好技能目录），附件走 `/api/file/putFile`
+  （自动建出 `references/`，对已存在的文件是无条件覆盖）。内核加载技能正文时会把附件列成资源清单
+  （`kernel/util/skill.go` 的 `listSkillResources`，单文件上限 64 KiB），Agent 用 `skill` 工具按
+  「技能名/相对路径」读其中一份。写入与打包下载共用 `buildSkill()` 一处渲染，两个出口的正文不会各自漂移。
+  文档里的 `{{siyuan-ref}}`（常量在 `src/siyuanRef.ts`）是官方 API 文档链接的版本占位符：写技能与渲染
+  文档弹窗时都替换成 `v<内核版本>`（优先 `window.siyuan.config.system.kernelVersion`，回落
+  `/api/system/version`），两条路都取不到时换成 `dev`，`scripts/check-docs.mjs` 会校验两份文档都带着它。
+  写入时还会在正文的 frontmatter 里补一段 `metadata.skill_version`，版本现读安装目录的
+  `data/plugins/<插件名>/plugin.json`，不写死在代码里（思源只从 frontmatter 取 `name` / `description`，
+  多这一段不影响索引）。
   每次加载都**无条件覆盖写入**
   （技能由插件维护，目录里的副本可能是旧版本或被手改过）。删除只写在 `onunload` 一处：禁用、重载与卸载
-  都会先跑它，只有卸载才接着补跑 `uninstall`。AI 功能被关掉时接口直接失败，只记日志、不弹提示。
-  设置面板里的「下载 SKILL.md」走宿主的 `saveExportFile`，而它只肯复制 `<工作空间>/temp/export/` 下的
-  文件，所以先把正文 `putFile` 到那里再交给它 —— 保存对话框里的默认文件名就是那个文件名。
+  都会先跑它，只有卸载才接着补跑 `uninstall`。内核的 `removeSkill` 是整目录 `RemoveAll`，但它按「目录里
+  有没有 SKILL.md」认技能，正文被手删过就只会报 `skill not found`、附件留在盘上，所以失败后确认目录还在时
+  先补写正文再删一次。AI 功能被关掉时接口直接失败，只记日志、不弹提示。
+  设置面板里的「下载技能」先用 `/api/archive/zip` 把三个文件压成 `button-block.zip`（内核按源目录名建顶层
+  目录），再交给宿主的 `saveExportFile`；而它只肯复制 `<工作空间>/temp/export/` 下的文件，所以那三个文件与
+  压缩包都先写进那个目录 —— 保存对话框里的默认文件名就是压缩包名。内容取包内自带的那份而不是工作区里已
+  落盘的技能，技能开关关着也能导出。
 * **内置文档**：`docs/*.md` 由 webpack 的 `asset/source` 内嵌进 index.js，入口用 Lute 的富文本预览渲染器
   转成 HTML（代码块靠 `ProtyleMethod.highlightRender` 上色），按界面语言选文档。**代码块语言统一写
   `javascript`**；预览输出的代码块结构是 `<pre class="code-block" data-language="javascript">`，
-  `scriptDocs.ts` 按这个结构给每个示例套一层并加「载入 / 复制」按钮。改了文档跑
-  `node scripts/check-docs.mjs`（代码块语言、示例语法、接口表都在那里校验）。
+  `scriptDocs.ts` 按这个结构给每个示例套一层并加「载入 / 复制」按钮。渲染前会把正文里的
+  `{{siyuan-ref}}` 换成实际标签（`src/siyuanRef.ts`），与写进技能目录的那份保持一致 —— 官方 API 文档地址
+  要指向本机思源版本。改了文档跑
+  `node scripts/check-docs.mjs`（代码块语言、示例语法、接口清单、版本占位符都在那里校验）。
 * **日志**：每个模块 `createLogger("<模块名>")`，**日志文案一律英文**（面向排查，不参与 i18n），源码注释
   仍用中文。`debug` 记过程细节、`info` 记用户可见动作、`warn` 记能继续跑但不符合预期的情况、`error` 记
   真正出错；不要直接用 `console.log` 打日志。

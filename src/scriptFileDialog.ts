@@ -53,7 +53,7 @@ export const openScriptFileEditor = async (context: IContext, options: {
         dialog.destroy();
     });
     // 与内联脚本一样可以从文档里载入示例，只是这里改的是文件内容，保存后才落盘
-    field<HTMLButtonElement>("docs")?.addEventListener("click", () => openScriptDocs(context, {
+    field<HTMLButtonElement>("docs")?.addEventListener("click", () => void openScriptDocs(context, {
         onLoad: (code) => {
             editor.setValue(code);
             editor.focus();
