@@ -12,7 +12,9 @@
   后者每次点击都重新读文件，改文件就等于改按钮行为。
 - **async 包装**：整段代码被包进 async 函数，可以直接 `await`，也可以用 `return` 结束。
 - **输出**：`return` 的值、`console.log / info / debug / warn / error / table / dir` 的输出和抛出的错误都显示在结果弹窗里，
-  弹窗可一键复制纯文本；三者都没有时**不弹窗**（静默执行）。弹窗时机见第 4 节。
+  弹窗可一键复制纯文本；三者都没有时**不弹窗**（静默执行）。弹窗时机见第 4 节。另外还有两条通道 ——
+  Toast（`showMessage`，见 2.2）和自己建的窗口（见 3.7）—— 一个按钮该用哪条是逐按钮的决定：结果弹窗用来
+  一次看全，Toast 适合长期留在笔记里的按钮，窗口用于点击后还得先问点什么的情况。
 - **每次都重新执行**：脚本不保存状态，要记住东西用 `plugin.saveData()` 或写进笔记。
 - **调用内核接口**：`const response = await fetchPost("/api/…", {…})`，响应的 `code` 为 `0` 才算成功。
 
@@ -23,6 +25,18 @@
 在移动端不存在（值为 `undefined`），§2.4 的停靠栏接口返回 `false`。
 
 ### 2.1 内核 HTTP 接口
+
+下面三个函数是调用方式。**端点目录不在本文维护**：思源提供的每条路由都注册在内核的 `kernel/api/router.go`，
+其中契约稳定的一批写在它的 `docs/API.zh-CN.md` 里。要查某个端点，读这两份 —— 插件会把链接里的标签换成你
+正在用的思源版本，所以它们描述的就是本机这一版：
+
+| 要查什么 | 读哪份 |
+| --- | --- |
+| 端点的路径、参数与返回体 | `https://gcore.jsdelivr.net/gh/siyuan-note/siyuan@{{siyuan-ref}}/docs/API.zh-CN.md` |
+| 某条路由是否存在、用什么方法、挂了哪些中间件 | `https://gcore.jsdelivr.net/gh/siyuan-note/siyuan@{{siyuan-ref}}/kernel/api/router.go` |
+
+用 `http_request` 工具取：`action` 是 HTTP 方法、`url` 是地址，单纯读取就是
+`http_request(action: "get", url: "…")`。
 
 | 名字 | 签名 | 说明 |
 | --- | --- | --- |
@@ -210,6 +224,59 @@ confirm("退出思源？", "未保存的输入可能丢失。", () => exitSiYuan
 return "等待确认";
 ```
 
+### 3.7 自建窗口
+
+Toast 带不了问题，结果弹窗也不是输入框：点击后要做的不止是提示一句时，就用思源自己的类把窗口建出来。
+`new Dialog({…})` 返回的对象上 `element` 就是窗口的 DOM，用 `dialog.destroy()` 关掉；给自己的节点加
+`data-bis` 属性，取节点时就不会撞上思源自己的 `data-type` 派发键。
+
+```javascript
+const dialog = new Dialog({
+    title: "追加一行",
+    width: "520px",
+    content: `<div class="b3-dialog__content">
+    <div class="ft__on-surface">要追加的文本</div>
+    <div class="fn__hr--small"></div>
+    <input class="b3-text-field fn__block" data-bis="text" value="来自按钮">
+    <div class="fn__hr"></div>
+    <label class="fn__flex">
+        <span class="fn__flex-1 ft__on-surface">完成后弹一条 Toast</span>
+        <input type="checkbox" class="b3-switch fn__flex-center" data-bis="toast" checked>
+    </label>
+</div>
+<div class="b3-dialog__action">
+    <button class="b3-button b3-button--cancel" data-bis="cancel">取消</button>
+    <div class="fn__space"></div>
+    <button class="b3-button b3-button--text" data-bis="confirm">追加</button>
+</div>`,
+});
+const field = (type) => dialog.element.querySelector(`[data-bis="${type}"]`);
+field("cancel").addEventListener("click", () => dialog.destroy());
+field("confirm").addEventListener("click", async () => {
+    const rootID = (protyle || getActiveEditor())?.protyle?.block?.rootID;
+    if (!rootID) {
+        showMessage("没有找到当前文档", 7000, "error");
+        return;
+    }
+    const response = await fetchPost("/api/block/appendBlock", {
+        dataType: "markdown",
+        data: field("text").value,
+        parentID: rootID,
+    });
+    dialog.destroy();
+    if (response.code !== 0) {
+        showMessage(response.msg, 7000, "error");
+        return;
+    }
+    if (field("toast").checked) {
+        showMessage("已追加");
+    }
+});
+```
+
+点击处理函数在用户作答之前就返回了：这时脚本的「结果」是这个窗口本身，而不是某个值。这也是唯一一种
+「每次点击都该在屏幕上留点东西」的按钮 —— 插件设置里的「JavaScript 输出弹窗」管不到它。
+
 ## 4. 注意事项
 
 - **写操作要幂等**：按钮每次点击都执行，追加、新建之类最好带时间戳或先判断。
@@ -224,4 +291,4 @@ return "等待确认";
   停靠栏接口不可用。
 - **插件存储**：`plugin.loadData` 可能拿到字符串而不是对象，见 3.4。
 - **破坏性接口**：`/api/block/deleteBlock`、`/api/filetree/removeDoc` 之类点错无法撤销。
-- **调试**：`console` 输出被弹窗收走，不会留在开发者工具里；需要时用 `showMessage` 或 `debugger`。
+- **调试**：`console` 输出被弹窗收走，不会留在开发者工具里；要在开发者工具里停下来就加 `debugger`。

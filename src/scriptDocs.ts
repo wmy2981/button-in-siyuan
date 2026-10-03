@@ -3,6 +3,7 @@ import docsEn from "../docs/javascript.md";
 import docsZh from "../docs/javascript.zh-CN.md";
 import type {IContext} from "./context";
 import {createLogger} from "./logger";
+import {fillSiyuanRef, resolveSiyuanRef} from "./siyuanRef";
 
 const log = createLogger("scriptDocs");
 
@@ -66,13 +67,16 @@ const decorateCodeBlocks = (context: IContext, container: HTMLElement, onLoad?: 
  * 渲染用思源自己的 markdown 渲染器：Lute.ProtylePreviewStr（思源的富文本预览、Agent 消息都是这一套），
  * 外面套 .b3-typography，排版与思源自己的预览一致。
  *
+ * 正文里的思源版本占位符（`{{siyuan-ref}}`）在这里换成实际标签，与写进技能目录的那份保持一致：
+ * 文档里的官方 API 文档地址要指向本机思源版本。
+ *
  * 传了 onLoad 时每个示例右上角多一个「载入」按钮：把示例交给调用方（编辑窗口里的代码编辑器），
  * 然后关掉文档弹窗 —— 找到示例后不用手动选中再复制。
  */
-export const openScriptDocs = (context: IContext, options: {
+export const openScriptDocs = async (context: IContext, options: {
     onLoad?: (code: string) => void,
 } = {}) => {
-    const markdown = pickMarkdown();
+    const markdown = fillSiyuanRef(pickMarkdown(), await resolveSiyuanRef());
     const lute = window.Lute?.New?.();
     const html = lute ? lute.ProtylePreviewStr("", markdown) : "";
     if (!html) {

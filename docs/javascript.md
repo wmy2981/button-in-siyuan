@@ -15,7 +15,10 @@ section 3 contains a few full examples.
 - **async wrapper**: the whole script is wrapped in an async function, so `await` works and `return` ends it.
 - **Output**: the `return` value, whatever `console.log / info / debug / warn / error / table / dir` writes, and
   any thrown error appear in the result dialog, which can copy the text as plain text. With none of the three,
-  **no dialog opens** (a silent run); when it opens is decided in section 4.
+  **no dialog opens** (a silent run); when it opens is decided in section 4. Two other channels exist — a toast
+  (`showMessage`, 2.2) and a window you build yourself (3.7) — and which one a button should use is a decision
+  per button: the output dialog is for seeing everything, a toast for a button that stays on the note, a window
+  when the click has to ask something first.
 - **Fresh on every click**: the script keeps no state; use `plugin.saveData()` or write into a note when you need
   to remember something.
 - **Calling the kernel**: `const response = await fetchPost("/api/…", {…})`; `code === 0` means success.
@@ -28,6 +31,19 @@ implementation. Entries marked "desktop only" exist there only — `getActiveTab
 are `undefined` on mobile, and the dock helpers of 2.4 return `false` there.
 
 ### 2.1 Kernel HTTP API
+
+The three functions below are the calling convention. **The endpoint catalogue itself is not maintained here**:
+every route SiYuan serves is registered in the kernel's `kernel/api/router.go`, and the ones with a stable
+contract are documented in its `docs/API.md`. Read those for the endpoint you are about to call — the plugin
+writes the tag of the SiYuan version you are running into the addresses below, so they describe your build:
+
+| What you need | Where to read it |
+| --- | --- |
+| An endpoint's path, parameters and response body | `https://gcore.jsdelivr.net/gh/siyuan-note/siyuan@{{siyuan-ref}}/docs/API.md` |
+| Whether a route exists, and which method and middleware it carries | `https://gcore.jsdelivr.net/gh/siyuan-note/siyuan@{{siyuan-ref}}/kernel/api/router.go` |
+
+Fetch them with the `http_request` tool — `action` is the HTTP method and `url` the address, so a plain read is
+`http_request(action: "get", url: "…")`.
 
 | Name | Signature | Notes |
 | --- | --- | --- |
@@ -218,6 +234,61 @@ confirm("Quit SiYuan?", "Unsaved input may be lost.", () => exitSiYuan());
 return "waiting for confirmation";
 ```
 
+### 3.7 Building a window
+
+A toast cannot carry a question and the output dialog is not an input: when a click needs more than a message,
+build the window yourself out of SiYuan's own classes. `new Dialog({…})` returns an object whose `element` is
+the dialog's DOM; close it with `dialog.destroy()`, and give your nodes `data-bis` attributes so the lookups
+never collide with SiYuan's own `data-type` dispatch.
+
+```javascript
+const dialog = new Dialog({
+    title: "Append a line",
+    width: "520px",
+    content: `<div class="b3-dialog__content">
+    <div class="ft__on-surface">Text to append</div>
+    <div class="fn__hr--small"></div>
+    <input class="b3-text-field fn__block" data-bis="text" value="from the button">
+    <div class="fn__hr"></div>
+    <label class="fn__flex">
+        <span class="fn__flex-1 ft__on-surface">Show a toast when it is done</span>
+        <input type="checkbox" class="b3-switch fn__flex-center" data-bis="toast" checked>
+    </label>
+</div>
+<div class="b3-dialog__action">
+    <button class="b3-button b3-button--cancel" data-bis="cancel">Cancel</button>
+    <div class="fn__space"></div>
+    <button class="b3-button b3-button--text" data-bis="confirm">Append</button>
+</div>`,
+});
+const field = (type) => dialog.element.querySelector(`[data-bis="${type}"]`);
+field("cancel").addEventListener("click", () => dialog.destroy());
+field("confirm").addEventListener("click", async () => {
+    const rootID = (protyle || getActiveEditor())?.protyle?.block?.rootID;
+    if (!rootID) {
+        showMessage("no current document", 7000, "error");
+        return;
+    }
+    const response = await fetchPost("/api/block/appendBlock", {
+        dataType: "markdown",
+        data: field("text").value,
+        parentID: rootID,
+    });
+    dialog.destroy();
+    if (response.code !== 0) {
+        showMessage(response.msg, 7000, "error");
+        return;
+    }
+    if (field("toast").checked) {
+        showMessage("appended");
+    }
+});
+```
+
+The click handler returns before the user has answered: the script's own "result" is the window, not a value.
+This is the one case where a button legitimately leaves something on screen every time it is clicked — the
+plugin's "JavaScript output dialog" setting does not touch it.
+
 ## 4. Caveats
 
 - **Keep writes idempotent**: the script runs on every click, so appending or creating should be guarded by a
@@ -236,5 +307,5 @@ return "waiting for confirmation";
   dock helpers of 2.4 are unavailable.
 - **Plugin storage**: `plugin.loadData` may resolve with a string instead of an object — see 3.4.
 - **Destructive calls**: `/api/block/deleteBlock`, `/api/filetree/removeDoc` and friends cannot be undone.
-- **Debugging**: `console` output is captured by the dialog and does not stay in DevTools; use `showMessage` or a
-  `debugger` statement instead.
+- **Debugging**: `console` output is captured by the result dialog and does not stay in DevTools; add a
+  `debugger` statement when you need DevTools itself.
