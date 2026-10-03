@@ -90,6 +90,11 @@ Full guide with ready-to-paste examples: [docs/javascript.md](./docs/javascript.
 * The plugin is disabled on the publish service (`disabledInPublish`), so published pages show the
   raw block content instead of a button.
 * PDF/HTML export has no custom block renderer: exported documents contain the raw content.
+* For a button whose action runs a JavaScript file, mind the script file itself when exporting: **the HTML
+  and Word exports copy it to `assets/` under the export directory, at the relative path the block
+  references**, while a **Markdown `.zip` does not carry it** (SiYuan collects resources from the exported
+  Markdown text, where block attributes take no part and a plugin cannot hook in). Use the HTML or Word
+  export there, or copy the script along yourself.
 * The JavaScript action is not sandboxed; it runs with the same privileges as the user's own code
   snippets. Only run code you trust.
 * The icon list comes from the icons loaded in the current interface, so a third-party icon package

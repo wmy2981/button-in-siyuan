@@ -78,7 +78,12 @@
   建的块、别的设备同步过来的文档都不经过编辑窗口，只有渲染器当场看得见它们）、插件加载时再整库补一次
   （`syncAssetReferences()`，与 `ial` 比对、只在不一致时写回，稳定状态下没有写操作）。补写那条 SQL 必须带
   显式 `LIMIT`：内核给 `/api/query/sql` 套了用户设置的搜索条数上限（默认 64），不写会被静默截断。属性值以
-  块内容为准。
+  块内容为准。**导出时这个属性只在部分格式里生效**：从原始树收集资源的有 HTML（SiYuan）、HTML（Markdown）
+  与 Word（`exportHTMLWithTitle` / `exportMarkdownHTML` 都调 `getAssetsLinkDests`），它们会把脚本按相对路径
+  复制到导出目录的 `assets/` 下；Markdown `.zip` 与 Pandoc 走的是「导出后重新解析 Markdown 正文」再收集
+  （`kernel/model/export.go` 的 `exportPandocConvertZip0`），而正文里的块属性已被 `SetKramdownIAL(false)`
+  丢掉、自定义块正文又是原样 JSON，插件也没有导出钩子（`IEventBusMap` 里没有任何导出事件），所以 `.zip` 里
+  没有脚本文件（README 的「限制」写明了，需要时用 HTML/Word 导出）；`.sy.zip` 按思源自身的设计不带资源。
 * **i18n**：面向用户的文案都走 `src/i18n/*.json`（键类型在 `src/i18nKeys.ts`），思源自带的取
   `window.siyuan.languages`；`scripts/check-i18n.mjs` 要求两份文案同键、非空，加键别忘另一份。
 * **Agent 技能**：`src/agentSkill.ts` 把 `docs/skill.md`（构建时内嵌）写成
