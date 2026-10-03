@@ -42,6 +42,8 @@ writes the tag of the SiYuan version you are running into the addresses below, s
 | An endpoint's path, parameters and response body | `https://gcore.jsdelivr.net/gh/siyuan-note/siyuan@{{siyuan-ref}}/docs/API.md` |
 | Whether a route exists, and which method and middleware it carries | `https://gcore.jsdelivr.net/gh/siyuan-note/siyuan@{{siyuan-ref}}/kernel/api/router.go` |
 
+When the jsdelivr CDN is unreachable or cannot serve the file, use the GitHub raw addresses instead: `https://raw.githubusercontent.com/siyuan-note/siyuan/{{siyuan-ref}}/` and leave the rest of the path unchanged.
+
 Fetch them with the `http_request` tool — `action` is the HTTP method and `url` the address, so a plain read is
 `http_request(action: "get", url: "…")`.
 

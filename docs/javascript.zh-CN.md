@@ -35,6 +35,8 @@
 | 端点的路径、参数与返回体 | `https://gcore.jsdelivr.net/gh/siyuan-note/siyuan@{{siyuan-ref}}/docs/API.zh-CN.md` |
 | 某条路由是否存在、用什么方法、挂了哪些中间件 | `https://gcore.jsdelivr.net/gh/siyuan-note/siyuan@{{siyuan-ref}}/kernel/api/router.go` |
 
+jsdelivr CDN连不上或取不到文件时，改用 GitHub 原文件地址：`https://raw.githubusercontent.com/siyuan-note/siyuan/{{siyuan-ref}}/`，路径其余部分不变。
+
 用 `http_request` 工具取：`action` 是 HTTP 方法、`url` 是地址，单纯读取就是
 `http_request(action: "get", url: "…")`。
 
