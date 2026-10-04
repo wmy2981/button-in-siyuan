@@ -130,12 +130,14 @@ const createTheme = (base: ITextStyle, background: string) => EditorView.theme({
         // 描边、悬浮与聚焦效果照抄 .b3-text-field：代码块底色和对话框底色相同时也能看出输入区边界
         outline: "1px solid var(--b3-border-color)",
         outlineOffset: "-1px",
-        // 高度由 createCodeEditor 里的拖动抓手改：起手 100px、上限 55vh，与思源的代码片段
-        // 输入框一致。不用 CSS 的 resize: vertical —— 它的命中区只有右下角几个像素，
-        // 触屏上几乎抓不住（issue #5）
-        height: "100px",
-        minHeight: "80px",
-        maxHeight: "55vh",
+        // 高度交给外层 .bis-code 的 flex 链（index.scss）：编辑区填满对话框正文里剩下的空间，
+        // 对话框自己拖动改尺寸时跟着变；用户拖过右下角之后浏览器会在这里写行内 height，
+        // .bis-code--manual 让这一层退出填充、高度就此固定 —— 与思源原生 textarea 一致
+        flex: "1 1 0",
+        // 改高的方式与思源的代码片段输入框相同：右下角那个原生的拖拽角。min-height 既是拖拽下限，
+        // 也是对话框按内容自适应时的编辑区高度；拖得比对话框还高时正文自己滚动，与原生 textarea 一致
+        minHeight: "100px",
+        resize: "vertical",
         overflow: "hidden",
     },
     "&.cm-focused": {
@@ -254,64 +256,71 @@ const openNativeTextMenu = (event: MouseEvent) => {
     log.debug("opened the native context menu of the code editor");
 };
 
-/** 抓手拖动的高度区间：与 createTheme 里的 min-height / max-height 保持一致。 */
-const MIN_EDITOR_HEIGHT = 80;
-const MAX_EDITOR_HEIGHT_RATIO = 0.55;
-
-const clampEditorHeight = (height: number) => Math.min(
-    Math.round(window.innerHeight * MAX_EDITOR_HEIGHT_RATIO),
-    Math.max(MIN_EDITOR_HEIGHT, Math.round(height)),
-);
-
 /**
- * 编辑区下方的拖动抓手。CSS 的 `resize: vertical` 只在元素右下角留几个像素的命中区，
- * 鼠标要正好压在那几条斜线上，手指则完全抓不住；这里照思源自己块把手（.protyle-block-resize）
- * 的做法：命中条做宽（触屏再加宽），装饰线只占中间一小段，鼠标与手指共用同一套指针事件。
+ * 编辑区右下角的补充命中区。原生拖拽角的命中区由浏览器给定：鼠标 **16×16**、触屏约 **30×30**
+ * （本机 Chromium 实测；`::-webkit-resizer` 的宽高与滚动条宽度都改不动它）。触屏那份够手指用，
+ * 鼠标那份从角外擦过就抓不住，所以这里在角的外侧再挂一块 16×16 的透明区（位置见 index.scss 的
+ * `.bis-code__corner`），原生角本身一点不动。拖动逻辑与浏览器一致：在编辑区上写行内 height，
+ * 下限交给 min-height。
  */
-const createResizeGrip = (view: EditorView) => {
-    const grip = document.createElement("div");
-    grip.className = "bis-code__resize";
-    // 纯拖拽把手（原生 resize 同样不可聚焦），不进无障碍树
-    grip.setAttribute("aria-hidden", "true");
+const createCornerPad = (view: EditorView) => {
+    const pad = document.createElement("div");
+    pad.className = "bis-code__corner";
+    // 纯命中区，不进无障碍树
+    pad.setAttribute("aria-hidden", "true");
     let dragging = false;
     let startY = 0;
     let startHeight = 0;
-    const onPointerDown = (event: PointerEvent) => {
+    pad.addEventListener("pointerdown", (event) => {
         if (event.pointerType === "mouse" && event.button !== 0) {
             return;
         }
         dragging = true;
         startY = event.clientY;
         startHeight = view.dom.getBoundingClientRect().height;
-        // 捕获指针：手指/鼠标移出抓手范围也继续收到 move，拖拽不会中途丢
-        grip.setPointerCapture(event.pointerId);
-        grip.classList.add("bis-code__resize--active");
+        // 捕获指针：手指/鼠标移出这块小区域也继续收到 move，拖拽不会中途丢
+        pad.setPointerCapture(event.pointerId);
         // 触屏上别把这次拖动当成滚动
         event.preventDefault();
-    };
-    const onPointerMove = (event: PointerEvent) => {
+    });
+    pad.addEventListener("pointermove", (event) => {
         if (!dragging) {
             return;
         }
-        view.dom.style.height = `${clampEditorHeight(startHeight + event.clientY - startY)}px`;
+        view.dom.style.height = `${Math.max(0, Math.round(startHeight + event.clientY - startY))}px`;
         // 高度写在行内样式上，CodeMirror 要重新测量才知道行高与滚动条变了
         view.requestMeasure();
-    };
-    const onPointerUp = (event: PointerEvent) => {
+    });
+    const stopDragging = (event: PointerEvent) => {
         if (!dragging) {
             return;
         }
         dragging = false;
-        grip.classList.remove("bis-code__resize--active");
-        if (grip.hasPointerCapture(event.pointerId)) {
-            grip.releasePointerCapture(event.pointerId);
+        if (pad.hasPointerCapture(event.pointerId)) {
+            pad.releasePointerCapture(event.pointerId);
         }
     };
-    grip.addEventListener("pointerdown", onPointerDown);
-    grip.addEventListener("pointermove", onPointerMove);
-    grip.addEventListener("pointerup", onPointerUp);
-    grip.addEventListener("pointercancel", onPointerUp);
-    return grip;
+    pad.addEventListener("pointerup", stopDragging);
+    pad.addEventListener("pointercancel", stopDragging);
+    return pad;
+};
+
+/**
+ * 浏览器把行内 height 写到编辑区上，就说明用户拖过右下角（原生角或上面那块补充命中区）。
+ * 此后整条 flex 链退出填充模式（index.scss 的 `.bis-code--manual`），高度只由那个行内值决定，
+ * 与思源原生 textarea 一样：拖过之后不再跟着对话框大小变。
+ */
+const observeManualHeight = (view: EditorView) => {
+    const observer = new MutationObserver(() => {
+        if (!view.dom.style.height) {
+            return;
+        }
+        // 只关心第一次：没有回到填充模式的路
+        observer.disconnect();
+        view.dom.parentElement?.classList.add("bis-code--manual");
+        log.debug("the editor height is now fixed by the resize corner", {height: view.dom.style.height});
+    });
+    observer.observe(view.dom, {attributes: true, attributeFilter: ["style"]});
 };
 
 export const createCodeEditor = (options: {
@@ -340,7 +349,8 @@ export const createCodeEditor = (options: {
         parent: element,
     });
     element.addEventListener("contextmenu", openNativeTextMenu);
-    element.append(createResizeGrip(view));
+    element.append(createCornerPad(view));
+    observeManualHeight(view);
     log.debug("created the code editor", {chars: view.state.doc.length, dark, lineWrap, tokens: specs.length});
     return {
         element,

@@ -92,7 +92,8 @@ const askAboutRemoteScript = (context: IContext, url: string) => new Promise<str
  * 在新建脚本文件的输入框后面补一个固定的 `.js`：用户只填文件名，后缀由 `toAssetScriptPath` 补全。
  *
  * 宿主的 `openInputDialog` 没有后缀槽位（`extraContent` 只能放在输入框下方），所以这里把它的输入框
- * 挪进一个 `fn__flex` 行里、后面挂上后缀；挪动会让输入框失焦，所以最后要重新 focus。
+ * 挪进一个 `fn__flex` 行里、后面挂上后缀；宿主的实现会在返回前聚焦并全选输入框，插件不要这个效果，
+ * 所以最后把它 blur 掉（挪动本来也会失焦，这里只是不把焦点找回来）。
  */
 const appendScriptFileSuffix = (dialog: Dialog) => {
     const input = dialog.element.querySelector<HTMLInputElement>("[data-dialog-input]");
@@ -111,7 +112,7 @@ const appendScriptFileSuffix = (dialog: Dialog) => {
     // fn__block 的 100% 宽度在 flex 行里会把后缀挤出容器，换成 fn__flex-1
     input.classList.replace("fn__block", "fn__flex-1");
     row.append(input, space, suffix);
-    input.focus();
+    input.blur();
 };
 
 /** 打开「编辑按钮块」对话框，确定后由宿主的自定义块渲染器写回并重新渲染。 */
@@ -135,8 +136,9 @@ export const openButtonBlockEditor = (context: IContext, options: {
     });
     const dialog = new Dialog({
         title: i18n.editButtonBlock,
-        width: context.isMobile ? "92vw" : "640px",
-        content: `<div class="b3-dialog__content">
+        // 比原来的 640px 宽一圈；宽度用 min() 收在视口内（思源自己也给容器留了 88vw 的上限）
+        width: "min(760px, 92vw)",
+        content: `<div class="b3-dialog__content" data-bis="editor-body">
     <div class="ft__on-surface">${i18n.buttonText}</div>
     <div class="fn__hr--small"></div>
     <input class="b3-text-field fn__block" data-bis="text" spellcheck="false" placeholder="${i18n.defaultButtonText}">
@@ -211,6 +213,8 @@ export const openButtonBlockEditor = (context: IContext, options: {
         }
         return element;
     };
+    // 窗口高度由 updateActionFields 按「JavaScript 字段有没有展开」来给
+    const containerElement = dialog.element.querySelector<HTMLElement>(".b3-dialog__container");
     const textElement = field<HTMLInputElement>("text");
     const iconElement = field<HTMLButtonElement>("icon");
     const clearIconElement = field<HTMLButtonElement>("clear-icon");
@@ -260,9 +264,15 @@ export const openButtonBlockEditor = (context: IContext, options: {
         });
     };
     const updateActionFields = () => {
+        const isScript = actionElement.value === "script";
         linkFieldElement.classList.toggle("fn__none", actionElement.value !== "link");
-        scriptFieldElement.classList.toggle("fn__none", actionElement.value !== "script");
+        scriptFieldElement.classList.toggle("fn__none", !isScript);
         fileFieldElement.classList.toggle("fn__none", actionElement.value !== "file");
+        // 写 JavaScript 时才给窗口一个默认高度：编辑区会填满正文剩下的空间，窗口拖动改尺寸它也跟着变
+        // （见 src/codeEditor.ts）。其余操作的字段很少，窗口按内容自适应就好，固定高度只会留一片空白
+        if (containerElement) {
+            containerElement.style.height = isScript ? "min(84vh, 720px)" : "";
+        }
     };
     /**
      * 表单当前值 → 块内容配置。保存与「有没有改过」的判断共用它，两处口径必须一致：
@@ -500,6 +510,6 @@ export const openButtonBlockEditor = (context: IContext, options: {
         saved = true;
         dialog.destroy();
     });
-    textElement.focus();
-    textElement.select();
+    // 打开窗口时不聚焦任何输入框（原来是聚焦并全选按钮文字，顺手敲键盘就把它改掉了），要改哪一项用户自己点：
+    // 焦点留在宿主的对话框容器上，Tab 与 Esc 照常
 };

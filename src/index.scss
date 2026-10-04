@@ -50,38 +50,73 @@
     }
 }
 
-// 代码编辑区的拖动抓手（src/codeEditor.ts）。尺寸与配色照思源自己的块把手
-// （business/protyle/_block-resize.scss）：命中条足够宽，装饰线只占中间一小段，
-// 触屏上再把命中区加高，手指才好落点。
-.bis-code {
-    &__resize {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 16px;
-        cursor: ns-resize;
-        touch-action: none;
-        user-select: none;
-        color: var(--b3-theme-on-surface-light);
+// 代码编辑弹窗（编辑按钮块 / 编辑 JS 文件）的正文：纵向 flex，让编辑区填满剩下的空间。
+// 对话框自己拖动改尺寸时正文高度跟着变，编辑区也就跟着变。字段比正文高时（窗口被拖得很矮）
+// 不压缩各字段，让正文自己滚动。
+[data-bis="editor-body"] {
+    display: flex;
+    flex-direction: column;
 
-        &::after {
-            content: "";
-            width: 40px;
-            height: 3px;
-            border-radius: 2px;
-            background-color: currentColor;
-        }
-
-        &:hover,
-        &--active {
-            color: var(--b3-theme-primary);
-        }
+    > * {
+        flex-shrink: 0;
     }
 }
 
-@media (any-pointer: coarse) {
-    .bis-code__resize {
-        height: 24px;
+// 编辑区的挂载点只是占位 div，不参与布局，好让 .bis-code 直接成为上面那个 flex 容器的子项
+[data-bis="file-editor"],
+[data-bis="script-editor"] {
+    display: contents;
+}
+
+// 「JavaScript」操作里的代码字段：展开时占满剩余空间；收起时整段带 fn__none（display: none），
+// 不参与布局
+[data-bis="script-field"] {
+    display: flex;
+    flex: 1 0 0;
+    flex-direction: column;
+
+    > * {
+        flex-shrink: 0;
+    }
+}
+
+// 代码编辑区（src/codeEditor.ts）。改高沿用思源原生 textarea 那套：`.cm-editor` 上的
+// `resize: vertical`（右下角那个原生拖拽角），这里只管它外面这一层与补充命中区。
+.bis-code {
+    position: relative;
+    display: flex;
+    flex: 1 0 0;
+    flex-direction: column;
+    min-height: 100px;
+
+    // 用户拖过右下角之后（浏览器在 .cm-editor 上写了行内 height），整条链退出填充：
+    // 高度只由那个行内值决定，与原生 textarea 一样拖过就不再跟着对话框大小变
+    &--manual {
+        flex: 0 0 auto;
+
+        > .cm-editor {
+            flex: 0 0 auto;
+        }
+    }
+
+    // 原生拖拽角的命中区只有右下角 16×16（触屏由浏览器放大到约 30×30，实测见 docs/development.md），
+    // 鼠标从角外擦过抓不住。这里在角的外侧补一块同样大小的透明命中区，拖动逻辑见 createCornerPad；
+    // 原生角本身一点不动，两块区域也不重叠
+    &__corner {
+        position: absolute;
+        right: -16px;
+        bottom: -16px;
+        width: 16px;
+        height: 16px;
+        cursor: ns-resize;
+        touch-action: none;
+    }
+}
+
+// 触屏上原生那份本来就够大，补丁不必存在，藏掉免得凭空多拦一层
+@media (pointer: coarse) {
+    .bis-code__corner {
+        display: none;
     }
 }
 

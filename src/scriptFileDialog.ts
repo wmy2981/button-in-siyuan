@@ -12,7 +12,7 @@ const log = createLogger("scriptFileDialog");
  * 编辑 assets/ 下的 JavaScript 文件。
  *
  * 编辑器和「JavaScript」操作里那个是同一个（`createCodeEditor`）：同样的行号、语法高亮、
- * 跟随思源代码高亮主题的配色、同样的文档入口与拖拽改高；区别只是保存走内核的文件接口。
+ * 跟随思源代码高亮主题的配色、同样的文档入口与右下角拖拽改高；区别只是保存走内核的文件接口。
  */
 export const openScriptFileEditor = async (context: IContext, options: {
     path: string,
@@ -29,8 +29,11 @@ export const openScriptFileEditor = async (context: IContext, options: {
     log.info("opened the script file editor", {path: options.path, chars: content.length});
     const dialog = new Dialog({
         title: options.path,
-        width: context.isMobile ? "92vw" : "640px",
-        content: `<div class="b3-dialog__content">
+        // 比原来的 640px 宽一圈、并给一个默认高度：编辑区会填满正文剩下的空间（见 src/codeEditor.ts）。
+        // 两个 min() 一起保证窗口不会顶出屏幕
+        width: "min(880px, 92vw)",
+        height: "min(84vh, 720px)",
+        content: `<div class="b3-dialog__content" data-bis="editor-body">
     <div data-bis="file-editor"></div>
     <div class="fn__hr--small"></div>
     <button type="button" class="bis-docs-link" data-bis="docs">${i18n.scriptDocs}</button>
@@ -73,5 +76,5 @@ export const openScriptFileEditor = async (context: IContext, options: {
         saved = true;
         dialog.destroy();
     });
-    editor.focus();
+    // 打开窗口时不聚焦编辑区：焦点留在宿主的对话框容器上，要写代码用户自己点（「载入示例」之后才聚焦）
 };
