@@ -1,6 +1,6 @@
 {
   "name": "button-in-siyuan",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Insert native SiYuan button blocks into documents",
   "scripts": {
     "dev": "webpack --mode development",
