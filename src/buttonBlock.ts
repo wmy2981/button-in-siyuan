@@ -45,8 +45,8 @@ export interface IButtonConfig {
 
 export const serializeButtonConfig = (config: IButtonConfig) => JSON.stringify(config);
 
-/** 解析按钮操作；不是本插件支持的操作时返回 undefined。 */
-const parseButtonAction = (value: TButtonAction | undefined): TButtonAction | undefined => {
+/** 解析按钮操作；不是本插件支持的操作时返回 undefined。面包屑按钮也要用它，所以导出。 */
+export const parseButtonAction = (value: TButtonAction | undefined): TButtonAction | undefined => {
     if (value?.type === "link" && typeof value.link === "string") {
         return {type: "link", link: value.link};
     }
@@ -146,10 +146,14 @@ const runScriptFile = async (context: IContext, options: {
     });
 };
 
-const runAction = (context: IContext, options: {
+/**
+ * 执行一个按钮配置里的操作。按钮块（渲染器）与文档面包屑按钮（breadcrumbButton.ts）共用这一条路：
+ * 两者的配置字段不同，但「有 action 就执行」的语义一致。
+ */
+export const runAction = (context: IContext, options: {
     blockID: string;
     blockElement?: HTMLElement;
-    config: IButtonConfig;
+    config: {action?: TButtonAction};
     /** 本次点击事件：链接跳转要按修饰键决定资源的打开方式（与点文档里的链接一致）。 */
     event?: MouseEvent;
 }) => {

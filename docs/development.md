@@ -17,6 +17,24 @@
   带 `bis-slash-item` 标记，`index.scss` 在该槽位把 flex 补回来。
 * **编辑入口**：块菜单 > 插件 > 编辑按钮块、按钮上右键（桌面端）、按钮上长按（移动端）。三条路都走
   `context.openEditor(blockID, config)`（插件入口注入），免得渲染器直接依赖对话框模块而成环。
+* **文档面包屑按钮**：宿主的 API（`plugin.addBreadcrumbButton`）是**一个插件一个按钮、插进所有面包屑**
+  （`app/src/plugin/breadcrumbButton.ts` 的 `mountBreadcrumbButtons`，由 `Breadcrumb` 构造时调用），
+  没有按文档区分的能力，所以注册时给一个空图标，显示什么由 `syncBreadcrumbButtons()` 按每个文档自己的
+  配置决定：`enabled` 为真就画图标，否则清空 —— 空按钮靠 `index.scss` 的 `:empty` 规则不占位。**配置存在
+  文档块的属性 `custom-button-in-siyuan-breadcrumb` 里**（与块内容同一套 JSON，但没有 `text` / `color`，
+  也不支持 `file` 操作）：只有这样才跟随思源同步，插件私有的 `data/storage/petal/…` 不同步。**属性在不在
+  不代表开关状态**：文档菜单里那个开关是配置里的 `enabled` 字段，关掉只写这个字段，图标与操作照旧留在
+  属性里（缺这个字段的旧配置按开启处理）。属性与文档 ID 直接读 `.protyle` 元素：思源的 `renderCustom`
+  会把文档的 `custom-*` 属性与 `data-node-id` 镜像到那里（`app/src/protyle/util/syncRootAttributes.ts`），
+  文档加载时会调一次，别的设备同步下来（`reloadSync`）、用接口改属性（`updateAttrs` 事务）之后也会再调
+  一次。同步时机只有三处：注册时（把已经打开的文档对齐）、`loaded-protyle-static`（文档与面包屑都渲染完
+  之后才发，见 `app/src/protyle/util/onGet.ts`）、保存之后 —— **内核把属性推回 DOM 是异步的**
+  （`updateAttrs` 事务里才调 `renderCustom`），保存那条路先按刚写下的值画一遍。只有这三处会对齐：在
+  「文档属性」面板里手改这个属性不会立刻刷新按钮，要等这篇文档下一次加载（别为它加 MutationObserver，
+  代价大于收益）。入口在文档菜单（标题、面包屑里的文档图标，以及文档树）> 插件 > 配置按钮块，只读文档与
+  只读模式不提供；文档树那条路文档可能没打开，先按块 ID 读一次属性，**读不到时不打开窗口**（一次读失败
+  被当成「没配置」，用户点确定就把原来的配置冲掉了）。总开关是插件设置里的「文档面包屑按钮」（默认开），
+  关掉即注销并把已经插进去的按钮摘掉。
 * **移动端侧栏滑动**：宿主的自定义块渲染器给挂载元素挂了一组阻断冒泡的触摸监听
   （`app/src/plugin/customBlockRender.ts` 的 `isolateEditorEvents`，含 touchstart / touchmove /
   touchend），而侧栏滑动是挂在 `document` 上的冒泡监听（`app/src/mobile/util/touch.ts`），块内容上的
@@ -130,9 +148,10 @@
 * **日志**：每个模块 `createLogger("<模块名>")`，**日志文案一律英文**（面向排查，不参与 i18n），源码注释
   仍用中文。`debug` 记过程细节、`info` 记用户可见动作、`warn` 记能继续跑但不符合预期的情况、`error` 记
   真正出错；不要直接用 `console.log` 打日志。
-* **生命周期**：`onload` 注册块图标菜单、斜杠菜单项与设置面板，`onunload` 配对注销并删掉写给 Agent 的
-  技能。异步的设置与技能放到 `initSettings()` 里后跑，免得拖慢文档渲染。写盘只有插件设置
-  （`data/storage/petal/button-in-siyuan/settings`）与技能目录两处。
+* **生命周期**：`onload` 注册块图标菜单、文档菜单、斜杠菜单项与设置面板，`onunload` 配对注销并删掉写给
+  Agent 的技能。异步的设置、技能与面包屑按钮放到 `initSettings()` 里后跑（面包屑按钮要等设置读出来才知道
+  开没开），免得拖慢文档渲染。写盘只有插件设置（`data/storage/petal/button-in-siyuan/settings`）与技能
+  目录两处；面包屑按钮的配置写在文档属性里，不算插件的私有数据。
 * **设置**：字段都要过 `mergeSettings`（缺字段 / 非法值回落默认），`saveSettings` 写完读回校验（宿主的
   `saveData` 在落盘前就可能 resolve，也不看 `response.code`），失败提示用户重试。面板**不传
   `openInWindow`**（当前窗口里的面板）；`addItem` 没有 `type` 字段，控件自己造 —— 输出策略是

@@ -19,6 +19,9 @@ Insert native SiYuan buttons into documents, with text, a built-in icon and a li
   (a local file under `assets/`, or an http(s) address).
 * The JavaScript editor is CodeMirror with line numbers, syntax highlighting, bracket matching and
   completion; its colors follow SiYuan's code highlighting scheme.
+* A document can also carry a button in its breadcrumb: icon and action are set from the document
+  menu ("Configure the button block"), it is **enabled per document**, and its configuration lives in
+  the document's own attributes, so it travels with the document.
 
 ## Install
 
@@ -38,6 +41,22 @@ Requires SiYuan 3.8.6 or later.
    <kbd>Edit button block</kbd>, or right-click the button (desktop) / long-press it (mobile).
 3. Set the text, the icon and the action in the dialog, then confirm.
 
+## Document breadcrumb button
+
+Every document can show a button in its breadcrumb. It is off by default and enabled one document at a
+time: open the document menu from the title or from the document icon in the breadcrumb (right-clicking
+a document in the document tree works too), choose <kbd>Plugin</kbd> >
+<kbd>Configure the button block</kbd>, switch it on, set the icon and the action, then confirm.
+
+* Only an icon and an action (`None`, `Open link`, `JavaScript`) can be set: a breadcrumb has no room
+  for text, so there is no text or colour, and a JavaScript file is not offered either.
+* The icon is required; `iconCirclePlay`, a built-in SiYuan icon, is used until you pick another one.
+* The configuration is stored in the document's own attributes
+  (`custom-button-in-siyuan-breadcrumb`) and syncs with the document. Switching the button off only
+  hides it: the icon and the action stay in those attributes and come back when it is switched on.
+* "Document breadcrumb button" in the plugin settings is the master switch (on by default): switching
+  it off hides the breadcrumb button of every document.
+
 ## Settings
 
 | Field | Description |
@@ -56,6 +75,7 @@ Requires SiYuan 3.8.6 or later.
 | --- | --- |
 | JavaScript output dialog | When the result dialog opens after a script runs: `Always`, `With output` (default), `Console output only`, `On warning (and error)`, `On error`, `Never`. |
 | Provide the button block skill to the agent | On by default: writes a skill explaining button blocks into the workspace skill directory; switching it off deletes that skill. |
+| Document breadcrumb button | On by default: allows a button in the breadcrumb of a document; every document still opts in from its own document menu. Switching it off hides every breadcrumb button. |
 | Download the skill | The "Download skill" button saves the whole skill as one zip file through SiYuan's own save dialog. |
 
 ## Link addresses

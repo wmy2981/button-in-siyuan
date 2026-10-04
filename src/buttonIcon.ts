@@ -89,8 +89,11 @@ export const BUTTON_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="$
 /**
  * 斜杠菜单（以及任何按思源列表图标显示的地方）用的图标：同一份图形，改成跟随主题文字色，
  * viewBox 收紧到图形本身，不填面板（列表底色可能是深色，填了会露馅）。
+ *
+ * 类名按用途给：斜杠菜单是思源的列表项图标 `b3-list-item__graphic`（默认），菜单项是
+ * `b3-menu__icon`（两个类各自带着思源的尺寸与间距）。
  */
-export const createButtonBlockIconHtml = () => {
+export const createButtonBlockIconHtml = (className = "b3-list-item__graphic") => {
     const box = GLYPH_BOX;
-    return `<svg class="b3-list-item__graphic" viewBox="${box.x} ${box.y} ${box.width} ${box.height}">${glyph({color: "currentColor"})}</svg>`;
+    return `<svg class="${className}" viewBox="${box.x} ${box.y} ${box.width} ${box.height}">${glyph({color: "currentColor"})}</svg>`;
 };

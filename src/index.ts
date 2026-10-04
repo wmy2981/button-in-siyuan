@@ -4,6 +4,13 @@ import {downloadAgentSkill, installAgentSkill, removeAgentSkill} from "./agentSk
 import {syncAssetReferences, syncRenderedAssetReference} from "./assetReference";
 import {createButtonBlockIconHtml} from "./buttonIcon";
 import {BUTTON_BLOCK_TYPE, DEFAULT_BUTTON_ICON, parseButtonConfig, renderButtonBlock, serializeButtonConfig} from "./buttonBlock";
+import {
+    BREADCRUMB_ATTR,
+    loadBreadcrumbConfig,
+    parseBreadcrumbConfig,
+    registerBreadcrumbButton,
+} from "./breadcrumbButton";
+import {openBreadcrumbEditor} from "./breadcrumbDialog";
 import type {IContext} from "./context";
 import {openButtonBlockEditor} from "./editDialog";
 import type {II18n} from "./i18nKeys";
@@ -66,6 +73,8 @@ const parseBlockInfo = (info: string) => {
 export default class ButtonInSiYuan extends Plugin {
     private isMobile = false;
     private settings: ISettings = {...DEFAULT_SETTINGS};
+    /** 注销面包屑按钮（注销事件监听 + 摘掉已经插进各面包屑的按钮）；没注册时为 undefined。 */
+    private removeBreadcrumb: (() => void) | undefined;
 
     /** 每次取值都反映当前的 app 与 i18n，避免在生命周期之外持有宿主对象。 */
     private get context(): IContext {
@@ -89,6 +98,9 @@ export default class ButtonInSiYuan extends Plugin {
             render: (options) => renderButtonBlock(context, options),
         };
         this.eventBus.on("click-blockicon", this.blockIconMenu);
+        // 面包屑按钮的配置入口：文档标题（面包屑里那个文档图标）的菜单，以及文档树的菜单
+        this.eventBus.on("click-editortitleicon", this.titleIconMenu);
+        this.eventBus.on("open-menu-doctree", this.docTreeMenu);
         this.protyleSlash = [{
             // filter 是斜杠菜单的搜索关键字（不显示给用户，所以不放进 i18n）：
             // 中文界面按「按钮块」、英文界面按 button / btn 都能搜到
@@ -113,6 +125,9 @@ export default class ButtonInSiYuan extends Plugin {
 
     onunload() {
         this.eventBus.off("click-blockicon", this.blockIconMenu);
+        this.eventBus.off("click-editortitleicon", this.titleIconMenu);
+        this.eventBus.off("open-menu-doctree", this.docTreeMenu);
+        this.removeBreadcrumb?.();
         log.info("plugin unloaded");
         // 禁用、重载与卸载都会走到这里：宿主的 teardown 一定先跑 onunload，只有卸载时才接着补跑
         // uninstall（siyuan 的 app/src/plugin/lifecycle.ts）。所以技能在这里删一次就覆盖了「禁用」
@@ -127,6 +142,18 @@ export default class ButtonInSiYuan extends Plugin {
         }
         // 补齐按钮块上的资源引用属性：脚本文件不该出现在「未引用的资源文件」里被清理掉
         await syncAssetReferences(this.context);
+        // 面包屑按钮要等设置读出来才知道开没开；注册时会把已经打开的文档同步一遍
+        this.applyBreadcrumbSetting(this.settings.breadcrumbButton);
+    }
+
+    /**
+     * 应用「文档面包屑按钮」总开关：开着就注册（各文档是否显示由它们自己的配置决定），
+     * 关着就注销并把按钮从所有面包屑里摘掉。
+     */
+    private applyBreadcrumbSetting(enabled: boolean) {
+        this.removeBreadcrumb?.();
+        this.removeBreadcrumb = enabled ? registerBreadcrumbButton(this.context) : undefined;
+        log.debug("applied the breadcrumb button setting", {enabled});
     }
 
     /**
@@ -150,6 +177,9 @@ export default class ButtonInSiYuan extends Plugin {
         const skillSwitch = document.createElement("input");
         skillSwitch.type = "checkbox";
         skillSwitch.className = "b3-switch fn__flex-center";
+        const breadcrumbSwitch = document.createElement("input");
+        breadcrumbSwitch.type = "checkbox";
+        breadcrumbSwitch.className = "b3-switch fn__flex-center";
         // 下载按钮与思源自己的设置按钮同款：b3-button--outline，尺寸交给面板里的 fn__size200
         const skillDownload = document.createElement("button");
         skillDownload.className = "b3-button b3-button--outline";
@@ -158,7 +188,7 @@ export default class ButtonInSiYuan extends Plugin {
         this.setting = new Setting({
             confirmCallback: () => {
                 // 保存按钮不等待回调：这里自己把结果落盘、必要时提示
-                void this.saveSetting(outputSelect.value as TOutputMode, skillSwitch.checked);
+                void this.saveSetting(outputSelect.value as TOutputMode, skillSwitch.checked, breadcrumbSwitch.checked);
             },
         });
         this.setting.addItem({
@@ -177,6 +207,14 @@ export default class ButtonInSiYuan extends Plugin {
             createActionElement: () => {
                 skillSwitch.checked = this.settings.agentSkill;
                 return skillSwitch;
+            },
+        });
+        this.setting.addItem({
+            title: i18n.settingsBreadcrumbButton,
+            description: i18n.settingsBreadcrumbButtonTip,
+            createActionElement: () => {
+                breadcrumbSwitch.checked = this.settings.breadcrumbButton;
+                return breadcrumbSwitch;
             },
         });
         this.setting.addItem({
@@ -203,10 +241,10 @@ export default class ButtonInSiYuan extends Plugin {
         }
     }
 
-    /** 保存设置并应用副作用：技能开关变化时立刻写入或删除技能。 */
-    private async saveSetting(outputMode: TOutputMode, agentSkill: boolean) {
+    /** 保存设置并应用副作用：技能开关变化时立刻写入或删除技能，面包屑开关变化时注册或注销按钮。 */
+    private async saveSetting(outputMode: TOutputMode, agentSkill: boolean, breadcrumbButton: boolean) {
         const previous = this.settings;
-        const next: ISettings = {outputMode, agentSkill};
+        const next: ISettings = {outputMode, agentSkill, breadcrumbButton};
         let saved = false;
         try {
             saved = await saveSettings(this, next);
@@ -219,6 +257,9 @@ export default class ButtonInSiYuan extends Plugin {
             return;
         }
         this.settings = next;
+        if (next.breadcrumbButton !== previous.breadcrumbButton) {
+            this.applyBreadcrumbSetting(next.breadcrumbButton);
+        }
         if (next.agentSkill === previous.agentSkill) {
             return;
         }
@@ -284,6 +325,58 @@ export default class ButtonInSiYuan extends Plugin {
             icon: "iconEdit",
             label: i18n.editButtonBlock,
             click: () => openButtonBlockEditor(this.context, {blockID, config}),
+        });
+    };
+
+    /**
+     * 文档菜单 > 插件 > 配置按钮块：给这篇文档面包屑处的按钮做配置。
+     *
+     * 这个菜单在文档标题（面包屑里那个文档图标）上打开，`data.ial` 就是文档属性，配置直接从里面取，
+     * 不用再打一次内核接口。只读文档写不进属性，不提供入口。
+     */
+    private readonly titleIconMenu = (event: CustomEvent<IEventBusMap["click-editortitleicon"]>) => {
+        if (!this.settings.breadcrumbButton) {
+            return;
+        }
+        const {menu, protyle, data} = event.detail;
+        if (protyle.disabled) {
+            log.debug("document menu: the document is read-only, no breadcrumb entry");
+            return;
+        }
+        menu.addItem({
+            id: "button-in-siyuan-breadcrumb",
+            // 菜单里的图标用本插件自绘的按钮块图形（src/buttonIcon.ts），与斜杠菜单同一份线稿
+            iconHTML: createButtonBlockIconHtml("b3-menu__icon"),
+            label: this.context.i18n.configureButtonBlock,
+            click: () => openBreadcrumbEditor(this.context, {
+                blockID: data.id,
+                config: parseBreadcrumbConfig(data.ial[BREADCRUMB_ATTR]),
+            }),
+        });
+    };
+
+    /** 文档树菜单 > 插件 > 配置按钮块：同样的配置窗口，文档没打开时先按块 ID 读一次它的属性。 */
+    private readonly docTreeMenu = (event: CustomEvent<IEventBusMap["open-menu-doctree"]>) => {
+        // 只处理「右键一个文档」：多选与笔记本上没有「这一篇文档的面包屑按钮」可言
+        if (!this.settings.breadcrumbButton || window.siyuan?.config?.readonly) {
+            return;
+        }
+        const {menu, type, items} = event.detail;
+        if (type !== "doc" || items.length !== 1) {
+            return;
+        }
+        const blockID = items[0].id;
+        menu.addItem({
+            id: "button-in-siyuan-breadcrumb",
+            iconHTML: createButtonBlockIconHtml("b3-menu__icon"),
+            label: this.context.i18n.configureButtonBlock,
+            click: () => void loadBreadcrumbConfig(this.context, blockID).then((loaded) => {
+                if (!loaded) {
+                    // 读不到属性，提示已经由 loadBreadcrumbConfig 给过，这里不把窗口打开
+                    return;
+                }
+                openBreadcrumbEditor(this.context, {blockID, config: loaded.config});
+            }),
         });
     };
 }

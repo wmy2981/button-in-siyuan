@@ -6,6 +6,9 @@
 export type II18n = {
     insertButtonBlock: string;
     editButtonBlock: string;
+    configureButtonBlock: string;
+    breadcrumbButtonEnable: string;
+    breadcrumbButton: string;
     defaultButtonText: string;
     buttonText: string;
     buttonIcon: string;
@@ -70,11 +73,15 @@ export type II18n = {
     outputModeNever: string;
     settingsAgentSkill: string;
     settingsAgentSkillTip: string;
+    settingsBreadcrumbButton: string;
+    settingsBreadcrumbButtonTip: string;
     settingsDownloadSkill: string;
     settingsDownloadSkillTip: string;
     downloadSkill: string;
     downloadSkillFailed: string;
     settingsSaveFailed: string;
+    breadcrumbReadFailed: string;
+    breadcrumbSaveFailed: string;
     blockNotEditable: string;
     discardChangesTitle: string;
     discardChangesTip: string;

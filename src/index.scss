@@ -188,6 +188,13 @@
     gap: 12px;
 }
 
+// 面包屑按钮（src/breadcrumbButton.ts）：宿主的 API 会把插件按钮插进每一个面包屑
+// （.protyle-breadcrumb__plugin），显示什么图标由每个文档自己的属性决定，所以同步之前那个按钮是空的。
+// 空按钮在这里不占位，未开启按钮的文档上完全看不到它（图标画上之后就不再匹配 :empty）。
+.protyle-breadcrumb__plugin > button[data-plugin-name="button-in-siyuan"]:empty {
+    display: none;
+}
+
 .bis-icon-picker {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));

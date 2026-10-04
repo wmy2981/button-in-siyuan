@@ -21,11 +21,17 @@ export interface ISettings {
     outputMode: TOutputMode;
     /** 是否把「操作按钮块」的技能写给 Agent（见 agentSkill.ts），默认开。 */
     agentSkill: boolean;
+    /**
+     * 是否允许在文档面包屑处添加按钮（见 breadcrumbButton.ts），默认开。
+     * 这只是总开关：每个文档还要在它自己的文档菜单里单独开启。
+     */
+    breadcrumbButton: boolean;
 }
 
 export const DEFAULT_SETTINGS: ISettings = {
     outputMode: "output",
     agentSkill: true,
+    breadcrumbButton: true,
 };
 
 /**
@@ -39,6 +45,9 @@ export const mergeSettings = (saved: unknown): ISettings => {
             ? source.outputMode as TOutputMode
             : DEFAULT_SETTINGS.outputMode,
         agentSkill: typeof source.agentSkill === "boolean" ? source.agentSkill : DEFAULT_SETTINGS.agentSkill,
+        breadcrumbButton: typeof source.breadcrumbButton === "boolean"
+            ? source.breadcrumbButton
+            : DEFAULT_SETTINGS.breadcrumbButton,
     };
 };
 
