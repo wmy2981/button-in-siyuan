@@ -201,6 +201,13 @@
         flex: 1;
     }
 
+    .b3-dialog__body {
+        overflow: auto;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
     .b3-dialog__action {
         padding: 7px 24px;
         border-top: 1px solid var(--b3-theme-surface-lighter);
@@ -531,24 +538,33 @@
         color: var(--b3-theme-on-background);
     }
 
-    /* 编辑窗口里的拖动抓手（见 src/index.scss 的 .bis-code__resize） */
-    .bis-code__resize {
+    /* 代码编辑弹窗的正文与编辑区（见 src/index.scss 的 [data-bis="editor-body"] 与 .bis-code）：
+       正文是纵向 flex，编辑区填满剩下的空间，窗口多大编辑区就多大 */
+    [data-bis="editor-body"] {
         display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 16px;
-        cursor: ns-resize;
-        touch-action: none;
-        user-select: none;
-        color: var(--b3-theme-on-surface-light);
+        flex-direction: column;
     }
 
-    .bis-code__resize::after {
-        content: "";
-        width: 40px;
-        height: 3px;
-        border-radius: 2px;
-        background-color: currentColor;
+    [data-bis="editor-body"] > * {
+        flex-shrink: 0;
+    }
+
+    .bis-code {
+        position: relative;
+        display: flex;
+        flex: 1 0 0;
+        flex-direction: column;
+        min-height: 100px;
+    }
+
+    /* 原生拖拽角外侧补的那一小块命中区（不可见，只影响鼠标能不能抓住角） */
+    .bis-code__corner {
+        position: absolute;
+        right: -16px;
+        bottom: -16px;
+        width: 16px;
+        height: 16px;
+        cursor: ns-resize;
     }
 
     /* 编辑窗口里的色板（见 src/index.scss 的 .bis-button-colors）；
@@ -719,7 +735,7 @@
 .ͼ1.cm-focused .cm-nonmatchingBracket {background-color: #bb555544;}
 .ͼ1 .cm-foldPlaceholder {background-color: #eee; border: 1px solid #ddd; color: #888; border-radius: .2em; margin: 0 1px; padding: 0 1px; cursor: pointer;}
 .ͼ1 .cm-foldGutter span {padding: 0 1px; cursor: pointer;}
-.ͼ1q {color: rgb(36, 41, 46); background-color: rgb(255, 255, 255); font-family: var(--b3-font-family-code); font-size: 14px; border-radius: var(--b3-border-radius); outline: 1px solid var(--b3-border-color); outline-offset: -1px; height: 100px; min-height: 80px; max-height: 55vh; overflow: hidden;}
+.ͼ1q {color: rgb(36, 41, 46); background-color: rgb(255, 255, 255); font-family: var(--b3-font-family-code); font-size: 14px; border-radius: var(--b3-border-radius); outline: 1px solid var(--b3-border-color); outline-offset: -1px; flex: 1 1 0; min-height: 100px; resize: vertical; overflow: hidden;}
 .ͼ1q.cm-focused {outline-color: var(--b3-theme-primary-light); box-shadow: 0 0 0 .6px var(--b3-theme-primary-lighter);}
 .ͼ1q .cm-scroller {font-family: inherit; line-height: 1.625; height: 100%; overflow: auto;}
 .ͼ1q .cm-content {caret-color: rgb(36, 41, 46);}
@@ -977,11 +993,11 @@
 <!-- 「编辑按钮块」对话框（src/editDialog.ts + src/codeEditor.ts 渲染的真实结构，操作选的是 JavaScript） -->
 <div class="b3-dialog">
     <div class="b3-dialog__scrim"></div>
-    <div role="dialog" aria-modal="true" tabindex="-1" class="b3-dialog__container" style="width:640px;height:auto;left:auto;top:auto">
+    <div role="dialog" aria-modal="true" tabindex="-1" class="b3-dialog__container" style="width:min(760px, 92vw);height:min(84vh, 720px);left:auto;top:auto">
         <svg class="b3-dialog__close fn__none"><use xlink:href="#iconCloseRound"></use></svg>
         <div class="resize__move b3-dialog__header">编辑按钮块</div>
         <div class="b3-dialog__body">
-            <div class="b3-dialog__content">
+            <div class="b3-dialog__content" data-bis="editor-body">
                 <div class="ft__on-surface">按钮文本</div>
                 <div class="fn__hr--small"></div>
                 <input class="b3-text-field fn__block" value="统计当前文档字数" spellcheck="false">
@@ -1024,7 +1040,7 @@
                 <div class="fn__hr--small"></div>
                 <!-- JavaScript 代码编辑器：真实 CodeMirror 的 DOM 快照 -->
 <!-- editor-dom:start 由 scripts/snapshot-editor.mjs 生成，勿手改 -->
-                <div class="bis-code"><div class="cm-editor ͼ1 ͼ2 ͼ4 ͼ1q"><div class="cm-announced" aria-live="polite"></div><div tabindex="-1" class="cm-scroller"><div class="cm-gutters cm-gutters-before" aria-hidden="true" style="min-height: 99px; position: sticky;"><div class="cm-gutter cm-lineNumbers"><div class="cm-gutterElement" style="height: 0px; visibility: hidden; pointer-events: none;">9</div><div class="cm-gutterElement cm-activeLineGutter" style="height: 22.75px; margin-top: 4px;">1</div><div class="cm-gutterElement" style="height: 22.75px;">2</div><div class="cm-gutterElement" style="height: 22.75px;">3</div><div class="cm-gutterElement" style="height: 22.75px;">4</div></div><div class="cm-gutter cm-foldGutter"><div class="cm-gutterElement" style="height: 0px; visibility: hidden; pointer-events: none;"><span title="Unfold line">›</span></div><div class="cm-gutterElement cm-activeLineGutter" style="height: 22.75px; margin-top: 4px;"></div></div></div><div spellcheck="false" autocorrect="off" autocapitalize="off" writingsuggestions="false" translate="no" contenteditable="true" class="cm-content" role="textbox" aria-multiline="true" data-language="javascript" style="tab-size: 4;"><div class="cm-line cm-activeLine"><span class="ͼs">const</span> <span class="ͼ1g">el</span> <span class="ͼ1n">=</span> <span class="ͼ1g">document</span><span class="ͼ1o">.</span><span class="ͼ19">querySelector</span>(<span class="ͼt">".protyle-wysiwyg"</span>);</div><div class="cm-line"><span class="ͼs">const</span> <span class="ͼ1g">text</span> <span class="ͼ1n">=</span> <span class="ͼ1g">el</span><span class="ͼ1o">.</span><span class="ͼ1i">innerText</span><span class="ͼ1o">.</span><span class="ͼ19">replace</span>(<span class="ͼw">/\s/g</span>, <span class="ͼt">""</span>);</div><div class="cm-line"><span class="ͼ1g">console</span><span class="ͼ1o">.</span><span class="ͼ19">log</span>(<span class="ͼt">"字数："</span> <span class="ͼ1n">+</span> <span class="ͼ1g">text</span><span class="ͼ1o">.</span><span class="ͼ1i">length</span>);</div><div class="cm-line"><span class="ͼp">return</span> <span class="ͼt">"统计完成"</span>;</div></div><div class="cm-layer cm-layer-above cm-cursorLayer" aria-hidden="true" style="z-index: 150; animation-duration: 1200ms;"><div class="cm-cursor cm-cursor-primary" style="left: 39.7031px; top: 6px; height: 17px;"></div></div><div class="cm-layer cm-selectionLayer" aria-hidden="true" style="z-index: -2;"></div></div></div><div class="bis-code__resize" aria-hidden="true"></div></div>
+                <div class="bis-code"><div class="cm-editor ͼ1 ͼ2 ͼ4 ͼ1q"><div class="cm-announced" aria-live="polite"></div><div tabindex="-1" class="cm-scroller"><div class="cm-gutters cm-gutters-before" aria-hidden="true" style="min-height: 99px; position: sticky;"><div class="cm-gutter cm-lineNumbers"><div class="cm-gutterElement" style="height: 0px; visibility: hidden; pointer-events: none;">9</div><div class="cm-gutterElement cm-activeLineGutter" style="height: 22.75px; margin-top: 4px;">1</div><div class="cm-gutterElement" style="height: 22.75px;">2</div><div class="cm-gutterElement" style="height: 22.75px;">3</div><div class="cm-gutterElement" style="height: 22.75px;">4</div></div><div class="cm-gutter cm-foldGutter"><div class="cm-gutterElement" style="height: 0px; visibility: hidden; pointer-events: none;"><span title="Unfold line">›</span></div><div class="cm-gutterElement cm-activeLineGutter" style="height: 22.75px; margin-top: 4px;"></div></div></div><div spellcheck="false" autocorrect="off" autocapitalize="off" writingsuggestions="false" translate="no" contenteditable="true" class="cm-content" role="textbox" aria-multiline="true" data-language="javascript" style="tab-size: 4;"><div class="cm-line cm-activeLine"><span class="ͼs">const</span> <span class="ͼ1g">el</span> <span class="ͼ1n">=</span> <span class="ͼ1g">document</span><span class="ͼ1o">.</span><span class="ͼ19">querySelector</span>(<span class="ͼt">".protyle-wysiwyg"</span>);</div><div class="cm-line"><span class="ͼs">const</span> <span class="ͼ1g">text</span> <span class="ͼ1n">=</span> <span class="ͼ1g">el</span><span class="ͼ1o">.</span><span class="ͼ1i">innerText</span><span class="ͼ1o">.</span><span class="ͼ19">replace</span>(<span class="ͼw">/\s/g</span>, <span class="ͼt">""</span>);</div><div class="cm-line"><span class="ͼ1g">console</span><span class="ͼ1o">.</span><span class="ͼ19">log</span>(<span class="ͼt">"字数："</span> <span class="ͼ1n">+</span> <span class="ͼ1g">text</span><span class="ͼ1o">.</span><span class="ͼ1i">length</span>);</div><div class="cm-line"><span class="ͼp">return</span> <span class="ͼt">"统计完成"</span>;</div></div><div class="cm-layer cm-layer-above cm-cursorLayer" aria-hidden="true" style="z-index: 150; animation-duration: 1200ms;"><div class="cm-cursor cm-cursor-primary" style="left: 39.7031px; top: 6px; height: 17px;"></div></div><div class="cm-layer cm-selectionLayer" aria-hidden="true" style="z-index: -2;"></div></div></div><div class="bis-code__corner" aria-hidden="true"></div></div>
                 <!-- editor-dom:end -->
                 <div class="fn__hr--small"></div>
                 <div class="ft__on-surface ft__smaller">点击按钮时执行，可以用 return 返回结果、使用 await；console 输出会一起显示在弹窗里。</div>

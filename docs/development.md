@@ -35,10 +35,21 @@
 * **关窗前的「放弃修改」确认**：不是逐条拦取消 / × / `Esc` / 点遮罩，而是把实例上的 `dialog.destroy`
   换成自己的函数（宿主的四条路最后都调它）。**`disableClose` 只挡遮罩与 ×，挡不住 `Esc`**；判断
   「有没有改过」与保存必须共用同一个 `currentConfig()` 口径，否则会出现「什么都没改也弹确认」。
-* **代码编辑器**：CodeMirror 6，配色从思源已加载的代码高亮主题上实测后映射，不写死。**没用 CSS 的
-  `resize: vertical`**：命中区只在右下角几个像素，触摸屏抓不住，改高由编辑区下方的抓手负责。行号栏底色
-  必须**不透明**：`.cm-gutters` 是 sticky 的，否则横向滚动时代码会从行号下面透出来。右键菜单把菜单项发到
-  `Constants.SIYUAN_CONTEXT_MENU` 通道，与宿主对 `.b3-text-field` 的做法一致。
+* **代码编辑器**：CodeMirror 6，配色从思源已加载的代码高亮主题上实测后映射，不写死。**改高就用思源原生
+  textarea 那套**：`.cm-editor` 上的 `resize: vertical`，命中区由浏览器给定 —— 鼠标在右下角 **16×16**、
+  触屏约 **30×30**（本机 Chromium 实测；`::-webkit-resizer` 的宽高与滚动条宽度都改不动它）。鼠标那一份
+  从角外擦过就抓不住，所以 `.bis-code__corner` 在角的外侧补了一块同样大小的透明命中区，拖动逻辑在
+  `createCornerPad` 里（指针事件 + `setPointerCapture`），**原生角本身一点不动**，两块区域不重叠；
+  触屏原生命中区已经够大，按 `(pointer: coarse)` 把补丁藏掉。编辑区默认**填满对话框正文剩下的空间**
+  （`[data-bis="editor-body"]` 那几层 flex），对话框自己拖动改尺寸时跟着变；用户拖过右下角之后浏览器会
+  在编辑区上写行内 `height`，`observeManualHeight` 随即挂上 `.bis-code--manual`，整条链退出填充、高度就此
+  固定 —— 与原生 textarea 一致。行号栏底色必须**不透明**：`.cm-gutters` 是 sticky 的，否则横向滚动时
+  代码会从行号下面透出来。右键菜单把菜单项发到 `Constants.SIYUAN_CONTEXT_MENU` 通道，与宿主对
+  `.b3-text-field` 的做法一致。
+* **弹窗不抢焦点**：插件自己的对话框打开时不聚焦输入框或编辑区（宿主 `Dialog` 本来只聚焦容器，Tab 与
+  `Esc` 照常），免得顺手敲键盘就改掉了原来的内容。**新建 / 重命名脚本文件那两个窗口例外**：它们用的是
+  宿主的 `openInputDialog`，那个函数在返回前会聚焦并全选输入框，`appendScriptFileSuffix` 里必须把它
+  `blur()` 掉。校验不通过时的 `focus()`（提示用户改哪一项）与「载入示例」之后的聚焦是用户点出来的，保留。
 * **图标**：从文档里的 `<symbol id="icon…">` 现取现用，元素带思源的 `.svg` 类以跟随 `currentColor`。
   选择器里**不要改 `color`**：悬浮与选中只换底色 / 描边，否则靠 `currentColor` 上色的图标会显示成主色。
 * **JavaScript 操作**：在页面上下文执行，整段包成 async 函数；执行期间接管 `console` 收集输出。接口以
@@ -52,9 +63,10 @@
   403/404 拿不到 —— 那正是判断「文件不存在」要用的。写接口用 `fetchSyncPost` 并关掉 `processMessage`。
   文件名先在本地按内核 `FilterUploadFileName` 的规则拦一遍；新建 / 重命名窗口的输入框只填名字，后缀由
   `toAssetScriptPath` 补（宿主的 `openInputDialog` 没有后缀槽位，是把输入框挪进 `fn__flex` 行里挂的，
-  挪动会失焦，最后要重新 focus）。**云端脚本必须二次确认**：可放弃、直接使用，或下载到 `assets/` 之后与
-  云端再无关系；只有本地文件才提供编辑 / 改名 / 删除。脚本文件读写一律不走 `plugin.loadData`（那是插件
-  私有数据）。**按钮里存的 `assets/xxx.js` 不能直接喂给 `/api/file/*`**：`assets/…` 相对的是数据目录，
+  挪动会失焦，这里不再把焦点找回来 —— 见上面的「弹窗不抢焦点」）。**云端脚本必须二次确认**：可放弃、
+  直接使用，或下载到 `assets/` 之后与云端再无关系；只有本地文件才提供编辑 / 改名 / 删除。脚本文件读写
+  一律不走 `plugin.loadData`（那是插件私有数据）。**按钮里存的 `assets/xxx.js` 不能直接喂给 `/api/file/*`**：
+  `assets/…` 相对的是数据目录，
   而文件接口的 path 相对工作空间根，所以统一用 `toWorkspacePath()` 补 `data/` 前缀；少了它文件会落到
   工作空间根下另建的 `assets/`，插件自己读写正常，但那个目录不在数据目录里，不进资源索引，也不会同步。
 * **链接操作**（`src/openLink.ts`）：效果要与文档里点 `[]()` 链接一致，即对齐宿主的
