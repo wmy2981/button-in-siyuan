@@ -135,11 +135,12 @@
   （`data/storage/petal/button-in-siyuan/settings`）与技能目录两处。
 * **设置**：字段都要过 `mergeSettings`（缺字段 / 非法值回落默认），`saveSettings` 写完读回校验（宿主的
   `saveData` 在落盘前就可能 resolve，也不看 `response.code`），失败提示用户重试。面板**不传
-  `openInWindow`**（当前窗口里的面板）；`addItem` 没有 `type` 字段，控件自己造 —— 输出策略是
-  `direction: "row"` 的 `<select class="b3-select">`（row 模式占满整行，长选项不会被切掉），技能开关是
-  `b3-switch`；代码编辑器的换行与连字同样是 row 的 `<select>`，取值 `auto` / `on` / `off`，`auto` 跟随思源
-  （`resolveCodeMode`）。`confirmCallback` 不等异步逻辑就关窗，保存与副作用都在 `saveSetting()` 里自己处理。输出
-  策略在 `shouldShowOutput` 里生效，设置每次现取、不持有快照（渲染器与菜单项是加载时注册的）。**设置必须
+  `openInWindow`**（当前窗口里的面板）；`addItem` 没有 `type` 字段，控件自己造 —— 三个下拉列表都是
+  `<select class="b3-select">` 且**不传 `direction`**：思源对 `<select>` 自己判成 column（标题在左、
+  控件在右），窗口窄于 750px 时再由它的响应式规则换成标题下面占满整行；技能开关是 `b3-switch`。
+  代码编辑器的换行与连字取值 `auto` / `on` / `off`，`auto` 跟随思源（`resolveCodeMode`）。
+  `confirmCallback` 不等异步逻辑就关窗，保存与副作用都在 `saveSetting()` 里自己处理。输出策略在
+  `shouldShowOutput` 里生效，设置每次现取、不持有快照（渲染器与菜单项是加载时注册的）。**设置必须
   存成对象**：插件存储文件没有扩展名，内核按内容嗅探 Content-Type，只有 `{…}` / `[…]` 才解析回对象，
   裸数字会变成字符串。
 

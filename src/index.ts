@@ -143,6 +143,9 @@ export default class ButtonInSiYuan extends Plugin {
      * 控件要插件自己造 —— 思源按类名判断布局（`b3-switch` 放进 label，其余元素加
      * `fn__flex-center fn__size200`），所以这里只用思源自己的控件类。
      * `createActionElement` 在每次打开面板时调用，那时读 `this.settings` 就是最新值。
+     *
+     * 下拉列表不传 `direction`：思源对 `<select>` 自己判成 column，标题在左、控件在右，
+     * 与它自己的设置面板一致；窗口窄于 750px 时再由思源的响应式规则把控件换到标题下面占满整行。
      */
     private registerSetting() {
         const i18n = this.i18n as II18n;
@@ -186,8 +189,6 @@ export default class ButtonInSiYuan extends Plugin {
         this.setting.addItem({
             title: i18n.settingsOutputMode,
             description: i18n.settingsOutputModeTip,
-            // row：标题与说明在上、下拉列表占满整行，长选项文案才不会被 200px 切掉
-            direction: "row",
             createActionElement: () => {
                 outputSelect.value = this.settings.outputMode;
                 return outputSelect;
@@ -196,7 +197,6 @@ export default class ButtonInSiYuan extends Plugin {
         this.setting.addItem({
             title: i18n.settingsCodeWrap,
             description: i18n.settingsCodeWrapTip,
-            direction: "row",
             createActionElement: () => {
                 wrapSelect.value = this.settings.codeWrap;
                 return wrapSelect;
@@ -205,7 +205,6 @@ export default class ButtonInSiYuan extends Plugin {
         this.setting.addItem({
             title: i18n.settingsCodeLigatures,
             description: i18n.settingsCodeLigaturesTip,
-            direction: "row",
             createActionElement: () => {
                 ligatureSelect.value = this.settings.codeLigatures;
                 return ligatureSelect;
