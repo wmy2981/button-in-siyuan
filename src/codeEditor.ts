@@ -119,11 +119,13 @@ const isDarkMode = () => {
 };
 
 /** 编辑器外壳沿用思源变量：边框、悬浮底色、补全弹层都按思源对话框的观感来。 */
-const createTheme = (base: ITextStyle, background: string) => EditorView.theme({
+const createTheme = (base: ITextStyle, background: string, ligatures: boolean) => EditorView.theme({
     "&": {
         color: base.color,
         backgroundColor: background,
         fontFamily: "var(--b3-font-family-code)",
+        // 连字与思源的代码块用同一个开关：关掉时写字形不会合成（需要代码字体本身带连字才看得出来）
+        fontVariantLigatures: ligatures ? "normal" : "none",
         // 字号与思源的代码片段输入框一致：那边的 .b3-text-field 固定 14px（component/_text-field.scss），
         // 编辑器字号（--b3-font-size-editor）会明显偏大
         fontSize: "14px",
@@ -329,15 +331,18 @@ export const createCodeEditor = (options: {
     placeholder?: string;
     /** 换行方式：跟随思源、强制启用、强制禁用（见 settings.ts 的 TCodeMode）。 */
     codeWrap?: TCodeMode;
+    /** 连字方式，取值与 codeWrap 相同。 */
+    codeLigatures?: TCodeMode;
 } = {}): ICodeEditor => {
     const {base, background, specs} = readCodeTheme();
     const dark = isDarkMode();
     const lineWrap = resolveCodeMode(options.codeWrap, window.siyuan?.config?.editor?.codeLineWrap);
+    const ligatures = resolveCodeMode(options.codeLigatures, window.siyuan?.config?.editor?.codeLigatures);
     const extensions: Extension[] = [
         basicSetup,
         javascript(),
         syntaxHighlighting(HighlightStyle.define(specs)),
-        createTheme(base, background),
+        createTheme(base, background, ligatures),
     ];
     if (lineWrap) {
         extensions.push(EditorView.lineWrapping);
@@ -354,7 +359,7 @@ export const createCodeEditor = (options: {
     element.addEventListener("contextmenu", openNativeTextMenu);
     element.append(createCornerPad(view));
     observeManualHeight(view);
-    log.debug("created the code editor", {chars: view.state.doc.length, dark, lineWrap, tokens: specs.length});
+    log.debug("created the code editor", {chars: view.state.doc.length, dark, lineWrap, ligatures, tokens: specs.length});
     return {
         element,
         getValue: () => view.state.doc.toString(),

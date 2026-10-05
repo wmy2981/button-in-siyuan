@@ -73,6 +73,8 @@ export type II18n = {
     codeModeOff: string;
     settingsCodeWrap: string;
     settingsCodeWrapTip: string;
+    settingsCodeLigatures: string;
+    settingsCodeLigaturesTip: string;
     settingsAgentSkill: string;
     settingsAgentSkillTip: string;
     settingsDownloadSkill: string;

@@ -68,6 +68,8 @@
   "codeModeOff": "Off",
   "settingsCodeWrap": "JavaScript editor line wrap",
   "settingsCodeWrapTip": "When enabled, content that exceeds the editor width wraps automatically. \"Follow SiYuan\" (the default) follows SiYuan's \"Code block wraps\" setting",
+  "settingsCodeLigatures": "JavaScript editor ligatures",
+  "settingsCodeLigaturesTip": "When enabled, the editor shows ligatures (the code font has to bring them). \"Follow SiYuan\" (the default) follows SiYuan's \"Code block ligature\" setting",
   "settingsAgentSkill": "Provide the button block skill to the agent",
   "settingsAgentSkillTip": "Writes a skill explaining how button blocks work (payload format, icon list, script APIs) into the workspace skill directory for SiYuan's agent; switching it off deletes that skill",
   "settingsDownloadSkill": "Download the skill",

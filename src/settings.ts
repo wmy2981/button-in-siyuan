@@ -29,6 +29,8 @@ export interface ISettings {
     outputMode: TOutputMode;
     /** 代码编辑器超出宽度时是否换行（见 codeEditor.ts）。 */
     codeWrap: TCodeMode;
+    /** 代码编辑器是否显示连字（见 codeEditor.ts）。 */
+    codeLigatures: TCodeMode;
     /** 是否把「操作按钮块」的技能写给 Agent（见 agentSkill.ts），默认开。 */
     agentSkill: boolean;
 }
@@ -36,6 +38,7 @@ export interface ISettings {
 export const DEFAULT_SETTINGS: ISettings = {
     outputMode: "output",
     codeWrap: "auto",
+    codeLigatures: "auto",
     agentSkill: true,
 };
 
@@ -63,6 +66,9 @@ export const mergeSettings = (saved: unknown): ISettings => {
         codeWrap: CODE_MODES.includes(source.codeWrap as TCodeMode)
             ? source.codeWrap as TCodeMode
             : DEFAULT_SETTINGS.codeWrap,
+        codeLigatures: CODE_MODES.includes(source.codeLigatures as TCodeMode)
+            ? source.codeLigatures as TCodeMode
+            : DEFAULT_SETTINGS.codeLigatures,
         agentSkill: typeof source.agentSkill === "boolean" ? source.agentSkill : DEFAULT_SETTINGS.agentSkill,
     };
 };

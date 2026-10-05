@@ -156,12 +156,14 @@ export default class ButtonInSiYuan extends Plugin {
         });
         const wrapSelect = document.createElement("select");
         wrapSelect.className = "b3-select";
-        CODE_MODES.forEach((mode) => {
+        const ligatureSelect = document.createElement("select");
+        ligatureSelect.className = "b3-select";
+        [wrapSelect, ligatureSelect].forEach((select) => CODE_MODES.forEach((mode) => {
             const option = document.createElement("option");
             option.value = mode;
             option.textContent = i18n[CODE_MODE_KEYS[mode]];
-            wrapSelect.append(option);
-        });
+            select.append(option);
+        }));
         const skillSwitch = document.createElement("input");
         skillSwitch.type = "checkbox";
         skillSwitch.className = "b3-switch fn__flex-center";
@@ -176,6 +178,7 @@ export default class ButtonInSiYuan extends Plugin {
                 void this.saveSetting({
                     outputMode: outputSelect.value as TOutputMode,
                     codeWrap: wrapSelect.value as TCodeMode,
+                    codeLigatures: ligatureSelect.value as TCodeMode,
                     agentSkill: skillSwitch.checked,
                 });
             },
@@ -197,6 +200,15 @@ export default class ButtonInSiYuan extends Plugin {
             createActionElement: () => {
                 wrapSelect.value = this.settings.codeWrap;
                 return wrapSelect;
+            },
+        });
+        this.setting.addItem({
+            title: i18n.settingsCodeLigatures,
+            description: i18n.settingsCodeLigaturesTip,
+            direction: "row",
+            createActionElement: () => {
+                ligatureSelect.value = this.settings.codeLigatures;
+                return ligatureSelect;
             },
         });
         this.setting.addItem({

@@ -225,10 +225,12 @@ export const openButtonBlockEditor = (context: IContext, options: {
     const scriptFieldElement = field<HTMLElement>("script-field");
     const fileFieldElement = field<HTMLElement>("file-field");
     const fileElement = field<HTMLInputElement>("file");
+    const editorSettings = context.getSettings();
     const scriptEditor = createCodeEditor({
         value: config.action?.type === "script" ? config.action.script : "",
         placeholder: i18n.scriptCodePlaceholder,
-        codeWrap: context.getSettings().codeWrap,
+        codeWrap: editorSettings.codeWrap,
+        codeLigatures: editorSettings.codeLigatures,
     });
     field<HTMLElement>("script-editor").append(scriptEditor.element);
 

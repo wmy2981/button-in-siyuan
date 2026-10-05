@@ -68,6 +68,8 @@
   "codeModeOff": "禁用",
   "settingsCodeWrap": "JavaScript 编辑器自动换行",
   "settingsCodeWrapTip": "启用后超出编辑器宽度的内容将自动换行。「跟随思源设置」（默认）跟随思源的「代码块换行」设置",
+  "settingsCodeLigatures": "JavaScript 编辑器连字",
+  "settingsCodeLigaturesTip": "启用后编辑器显示连字（需要代码字体本身带连字）。「跟随思源设置」（默认）跟随思源的「代码块连字」设置",
   "settingsAgentSkill": "向 Agent 提供按钮块技能",
   "settingsAgentSkillTip": "把一份说明按钮块用法（块内容格式、图表清单、脚本接口）的技能写进工作空间的技能目录，供思源的 Agent 使用；关掉时会把这个技能删掉",
   "settingsDownloadSkill": "下载技能",
