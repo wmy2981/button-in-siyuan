@@ -29,7 +29,7 @@ path inside it:
 | `references/javascript.md` | The script action: which SiYuan APIs a script may call, what `return`, `console` and `showMessage` each do, where the official endpoint reference lives, runnable examples. **Read it before writing any script.** |
 | `references/icons.md` | Every built-in SiYuan icon id plus a "pick by intent" table. **Read it before setting `icon`** so you never invent an id. |
 
-```text
+```
 skill action=load name=button-block/references/javascript.md
 ```
 
@@ -44,7 +44,7 @@ In Markdown and in `get_kramdown` output the block is a `;;;` fence whose info s
 the block type, with a **single-line JSON payload** as its body (in the database the same fence is the block's
 `markdown`, while its `content` is just that payload):
 
-```text
+```
 ;;;button-in-siyuan/button
 {"text":"Open home","icon":"iconCirclePlay","action":{"type":"link","link":"siyuan://blocks/20240101000000-abcdefg"}}
 ;;;
@@ -103,7 +103,7 @@ Insert it with the `block` tool, writing the whole fence as Markdown:
 - `append` / `prepend` with `parentID` to put it at the end / start of that container instead.
 - Keep the block ID the call returns: it is what you need to find and change the button later.
 
-```text
+```
 block action=insert previousID=<block ID to insert after> dataType=markdown
 data=;;;button-in-siyuan/button
 {"text":"Play","icon":"iconCirclePlay","action":{"type":"script","script":"console.log(\"clicked\"); return 1 + 1;"}}
