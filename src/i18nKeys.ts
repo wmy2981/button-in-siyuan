@@ -68,6 +68,11 @@ export type II18n = {
     outputModeWarn: string;
     outputModeError: string;
     outputModeNever: string;
+    codeModeAuto: string;
+    codeModeOn: string;
+    codeModeOff: string;
+    settingsCodeWrap: string;
+    settingsCodeWrapTip: string;
     settingsAgentSkill: string;
     settingsAgentSkillTip: string;
     settingsDownloadSkill: string;

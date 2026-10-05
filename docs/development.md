@@ -137,7 +137,8 @@
   `saveData` 在落盘前就可能 resolve，也不看 `response.code`），失败提示用户重试。面板**不传
   `openInWindow`**（当前窗口里的面板）；`addItem` 没有 `type` 字段，控件自己造 —— 输出策略是
   `direction: "row"` 的 `<select class="b3-select">`（row 模式占满整行，长选项不会被切掉），技能开关是
-  `b3-switch`。`confirmCallback` 不等异步逻辑就关窗，保存与副作用都在 `saveSetting()` 里自己处理。输出
+  `b3-switch`；代码编辑器换行同样是 row 的 `<select>`，取值 `auto` / `on` / `off`，`auto` 跟随思源
+  （`resolveCodeMode`）。`confirmCallback` 不等异步逻辑就关窗，保存与副作用都在 `saveSetting()` 里自己处理。输出
   策略在 `shouldShowOutput` 里生效，设置每次现取、不持有快照（渲染器与菜单项是加载时注册的）。**设置必须
   存成对象**：插件存储文件没有扩展名，内核按内容嗅探 Content-Type，只有 `{…}` / `[…]` 才解析回对象，
   裸数字会变成字符串。

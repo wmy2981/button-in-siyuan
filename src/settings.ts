@@ -17,15 +17,37 @@ export type TOutputMode = "always" | "output" | "console" | "warn" | "error" | "
 
 export const OUTPUT_MODES: TOutputMode[] = ["always", "output", "console", "warn", "error", "never"];
 
+/**
+ * 代码编辑器的三态设置：`auto` 跟随思源自己的那份设置，`on` / `off` 强制开关。
+ * 编辑器每次打开时取值，所以改完设置重新打开编辑器就生效。
+ */
+export type TCodeMode = "auto" | "on" | "off";
+
+export const CODE_MODES: TCodeMode[] = ["auto", "on", "off"];
+
 export interface ISettings {
     outputMode: TOutputMode;
+    /** 代码编辑器超出宽度时是否换行（见 codeEditor.ts）。 */
+    codeWrap: TCodeMode;
     /** 是否把「操作按钮块」的技能写给 Agent（见 agentSkill.ts），默认开。 */
     agentSkill: boolean;
 }
 
 export const DEFAULT_SETTINGS: ISettings = {
     outputMode: "output",
+    codeWrap: "auto",
     agentSkill: true,
+};
+
+/** 三态设置落到具体开关上：`auto` 用思源那份设置（取不到时按关），其余两个值强制开关。 */
+export const resolveCodeMode = (mode: TCodeMode | undefined, siyuanValue: unknown) => {
+    if (mode === "on") {
+        return true;
+    }
+    if (mode === "off") {
+        return false;
+    }
+    return Boolean(siyuanValue);
 };
 
 /**
@@ -38,6 +60,9 @@ export const mergeSettings = (saved: unknown): ISettings => {
         outputMode: OUTPUT_MODES.includes(source.outputMode as TOutputMode)
             ? source.outputMode as TOutputMode
             : DEFAULT_SETTINGS.outputMode,
+        codeWrap: CODE_MODES.includes(source.codeWrap as TCodeMode)
+            ? source.codeWrap as TCodeMode
+            : DEFAULT_SETTINGS.codeWrap,
         agentSkill: typeof source.agentSkill === "boolean" ? source.agentSkill : DEFAULT_SETTINGS.agentSkill,
     };
 };

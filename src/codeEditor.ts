@@ -7,6 +7,7 @@ import {basicSetup} from "codemirror";
 import {Constants} from "siyuan";
 import {getIpcRenderer} from "./electron";
 import {createLogger} from "./logger";
+import {resolveCodeMode, type TCodeMode} from "./settings";
 
 const log = createLogger("codeEditor");
 
@@ -326,10 +327,12 @@ const observeManualHeight = (view: EditorView) => {
 export const createCodeEditor = (options: {
     value?: string;
     placeholder?: string;
+    /** 换行方式：跟随思源、强制启用、强制禁用（见 settings.ts 的 TCodeMode）。 */
+    codeWrap?: TCodeMode;
 } = {}): ICodeEditor => {
     const {base, background, specs} = readCodeTheme();
     const dark = isDarkMode();
-    const lineWrap = Boolean(window.siyuan?.config?.editor?.codeLineWrap);
+    const lineWrap = resolveCodeMode(options.codeWrap, window.siyuan?.config?.editor?.codeLineWrap);
     const extensions: Extension[] = [
         basicSetup,
         javascript(),

@@ -55,6 +55,7 @@ Requires SiYuan 3.8.6 or later.
 | Setting | Description |
 | --- | --- |
 | JavaScript output dialog | When the result dialog opens after a script runs: `Always`, `With output` (default), `Console output only`, `On warning (and error)`, `On error`, `Never`. |
+| JavaScript editor line wrap | Whether content wider than the editor wraps: `Follow SiYuan` (default, the same as <kbd>Settings</kbd> > <kbd>Editor</kbd> > <kbd>Code block wraps</kbd>), `On`, `Off`. |
 | Provide the button block skill to the agent | On by default: writes a skill explaining button blocks into the workspace skill directory; switching it off deletes that skill. |
 | Download the skill | The "Download skill" button saves the whole skill as one zip file through SiYuan's own save dialog. |
 
@@ -71,10 +72,10 @@ A link address behaves like the same link inside a document, because SiYuan's li
 ## JavaScript
 
 The editor's colors follow the scheme in <kbd>Settings</kbd> > <kbd>Appearance</kbd> >
-<kbd>Code highlighting</kbd> (one for light, one for dark), and it honors the code block line-wrap
-setting. The font size matches SiYuan's code snippet input, the box resizes vertically, and
-right-clicking opens SiYuan's text menu (undo, redo, copy, cut, paste, paste as plain text, select
-all).
+<kbd>Code highlighting</kbd> (one for light, one for dark), and line wrapping is decided by the
+"JavaScript editor line wrap" plugin setting. The font size matches SiYuan's code snippet input, the
+box resizes vertically, and right-clicking opens SiYuan's text menu (undo, redo, copy, cut, paste,
+paste as plain text, select all).
 
 The code runs in the page context when the button is clicked, and `await` works. The `return` value,
 the console output and any thrown error appear in the result dialog, which can copy the output as

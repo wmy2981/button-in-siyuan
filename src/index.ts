@@ -8,8 +8,8 @@ import type {IContext} from "./context";
 import {openButtonBlockEditor} from "./editDialog";
 import type {II18n} from "./i18nKeys";
 import {createLogger} from "./logger";
-import type {ISettings, TOutputMode} from "./settings";
-import {DEFAULT_SETTINGS, loadSettings, OUTPUT_MODES, saveSettings} from "./settings";
+import type {ISettings, TCodeMode, TOutputMode} from "./settings";
+import {CODE_MODES, DEFAULT_SETTINGS, loadSettings, OUTPUT_MODES, saveSettings} from "./settings";
 import "./index.scss";
 
 const log = createLogger("plugin");
@@ -44,6 +44,13 @@ const OUTPUT_MODE_KEYS: Record<TOutputMode, keyof II18n> = {
     warn: "outputModeWarn",
     error: "outputModeError",
     never: "outputModeNever",
+};
+
+/** 代码编辑器三态设置 → 文案键。 */
+const CODE_MODE_KEYS: Record<TCodeMode, keyof II18n> = {
+    auto: "codeModeAuto",
+    on: "codeModeOn",
+    off: "codeModeOff",
 };
 
 /** 解析块信息；格式不合法时返回 undefined。 */
@@ -147,6 +154,14 @@ export default class ButtonInSiYuan extends Plugin {
             option.textContent = i18n[OUTPUT_MODE_KEYS[mode]];
             outputSelect.append(option);
         });
+        const wrapSelect = document.createElement("select");
+        wrapSelect.className = "b3-select";
+        CODE_MODES.forEach((mode) => {
+            const option = document.createElement("option");
+            option.value = mode;
+            option.textContent = i18n[CODE_MODE_KEYS[mode]];
+            wrapSelect.append(option);
+        });
         const skillSwitch = document.createElement("input");
         skillSwitch.type = "checkbox";
         skillSwitch.className = "b3-switch fn__flex-center";
@@ -158,7 +173,11 @@ export default class ButtonInSiYuan extends Plugin {
         this.setting = new Setting({
             confirmCallback: () => {
                 // 保存按钮不等待回调：这里自己把结果落盘、必要时提示
-                void this.saveSetting(outputSelect.value as TOutputMode, skillSwitch.checked);
+                void this.saveSetting({
+                    outputMode: outputSelect.value as TOutputMode,
+                    codeWrap: wrapSelect.value as TCodeMode,
+                    agentSkill: skillSwitch.checked,
+                });
             },
         });
         this.setting.addItem({
@@ -169,6 +188,15 @@ export default class ButtonInSiYuan extends Plugin {
             createActionElement: () => {
                 outputSelect.value = this.settings.outputMode;
                 return outputSelect;
+            },
+        });
+        this.setting.addItem({
+            title: i18n.settingsCodeWrap,
+            description: i18n.settingsCodeWrapTip,
+            direction: "row",
+            createActionElement: () => {
+                wrapSelect.value = this.settings.codeWrap;
+                return wrapSelect;
             },
         });
         this.setting.addItem({
@@ -204,9 +232,8 @@ export default class ButtonInSiYuan extends Plugin {
     }
 
     /** 保存设置并应用副作用：技能开关变化时立刻写入或删除技能。 */
-    private async saveSetting(outputMode: TOutputMode, agentSkill: boolean) {
+    private async saveSetting(next: ISettings) {
         const previous = this.settings;
-        const next: ISettings = {outputMode, agentSkill};
         let saved = false;
         try {
             saved = await saveSettings(this, next);

@@ -45,7 +45,11 @@ export const openScriptFileEditor = async (context: IContext, options: {
 </div>`,
     });
     const field = <T extends HTMLElement>(type: string) => dialog.element.querySelector<T>(`[data-bis="${type}"]`);
-    const editor = createCodeEditor({value: content, placeholder: i18n.scriptCodePlaceholder});
+    const editor = createCodeEditor({
+        value: content,
+        placeholder: i18n.scriptCodePlaceholder,
+        codeWrap: context.getSettings().codeWrap,
+    });
     field<HTMLElement>("file-editor")?.append(editor.element);
     // 与「编辑按钮块」一样：改了内容还没保存时，关窗前先问一次（取消、×、Esc、点遮罩都拦）
     const openedWith = content;
