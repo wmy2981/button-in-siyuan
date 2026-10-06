@@ -81,7 +81,7 @@ export default class ButtonInSiYuan extends Plugin {
             plugin: this,
             i18n: this.i18n as II18n,
             isMobile: this.isMobile,
-            openEditor: (blockID, config) => openButtonBlockEditor(this.context, {blockID, config}),
+            openEditor: (blockID, config, editable) => openButtonBlockEditor(this.context, {blockID, config, editable}),
             syncAssetReference: (element, blockID, config) => syncRenderedAssetReference(element, blockID, config),
             getSettings: () => this.settings,
         };
@@ -290,11 +290,16 @@ export default class ButtonInSiYuan extends Plugin {
         log.debug("inserted markdown", markdown);
     }
 
-    /** 块菜单 > 插件 > 编辑按钮块：只对本插件的按钮块显示，只读文档不提供编辑。 */
+    /**
+     * 块菜单 > 插件 > 编辑按钮块：只对本插件的按钮块显示。
+     *
+     * 笔记锁定（或只读）时这里**不出现**：编辑按钮块会写回块内容，锁定的笔记不该有这条入口。
+     * 要查看配置仍然可以右键（桌面端）或长按（移动端）按钮，那时打开的是只读预览（见 issue #19）。
+     */
     private readonly blockIconMenu = (event: CustomEvent<IEventBusMap["click-blockicon"]>) => {
         const {menu, protyle, blockElements} = event.detail;
         if (protyle.disabled) {
-            log.debug("block menu: the document is read-only, no edit entry");
+            log.debug("block menu: the note is locked or read-only, no edit entry");
             return;
         }
         const blockElement = blockElements.find(item => {

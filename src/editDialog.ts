@@ -119,10 +119,16 @@ const appendScriptFileSuffix = (dialog: Dialog) => {
 export const openButtonBlockEditor = (context: IContext, options: {
     blockID: string,
     config: IButtonConfig,
+    /**
+     * 是否允许编辑。笔记锁定时传 false：窗口退化成预览 —— 所有编辑控件禁用、没有「确定」按钮，
+     * 也完全不写回块内容（见 issue #19）。
+     */
+    editable?: boolean,
 }) => {
     const {i18n} = context;
     const blockID = options.blockID;
     const config = options.config;
+    const editable = options.editable !== false;
     let icon = config.icon;
     /** 0 表示不覆写颜色（思源原生蓝），见 BUTTON_COLOR_INDEXES。 */
     let color = config.color || 0;
@@ -133,12 +139,14 @@ export const openButtonBlockEditor = (context: IContext, options: {
         color: color || "default",
         action: config.action?.type || "none",
         isMobile: context.isMobile,
+        editable,
     });
     const dialog = new Dialog({
         title: i18n.editButtonBlock,
         // 比原来的 640px 宽一圈；宽度用 min() 收在视口内（思源自己也给容器留了 88vw 的上限）
         width: "min(760px, 92vw)",
         content: `<div class="b3-dialog__content" data-bis="editor-body">
+    <div class="ft__on-surface ft__breakword fn__none" data-bis="readonly-tip">${i18n.readonlyPreviewTip}</div>
     <div class="ft__on-surface">${i18n.buttonText}</div>
     <div class="fn__hr--small"></div>
     <input class="b3-text-field fn__block" data-bis="text" spellcheck="false" placeholder="${i18n.defaultButtonText}">
@@ -203,7 +211,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
 <div class="b3-dialog__action">
     <button class="b3-button b3-button--cancel" data-bis="cancel">${i18n.cancel}</button>
     <div class="fn__space"></div>
-    <button class="b3-button b3-button--text" data-bis="save">${i18n.save}</button>
+    <button class="b3-button b3-button--text fn__none" data-bis="save">${i18n.save}</button>
 </div>`,
     });
     const field = <T extends HTMLElement>(type: string) => {
@@ -231,6 +239,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
         placeholder: i18n.scriptCodePlaceholder,
         codeWrap: editorSettings.codeWrap,
         codeLigatures: editorSettings.codeLigatures,
+        editable,
     });
     field<HTMLElement>("script-editor").append(scriptEditor.element);
 
@@ -240,7 +249,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
             iconElement.append(createIconElement(icon));
         }
         iconElement.append(document.createTextNode(icon || i18n.chooseIcon));
-        clearIconElement.disabled = !icon;
+        clearIconElement.disabled = !editable || !icon;
     };
     // 色板用思源自己的 .color__square（正文颜色面板就是这些方块）：0 表示不覆写、用原生蓝，
     // 其余是 --b3-font-colorN 的序号，方块里显示一个「A」预览它的颜色。
@@ -252,6 +261,7 @@ export const openButtonBlockEditor = (context: IContext, options: {
         square.setAttribute("aria-label", index === 0 ? i18n.buttonColorDefault : `${i18n.buttonColor} ${index}`);
         square.style.color = index === 0 ? "var(--b3-theme-primary)" : `var(--b3-font-color${index})`;
         square.textContent = "A";
+        square.disabled = !editable;
         square.addEventListener("click", () => {
             color = index;
             updateColorElement();
@@ -305,11 +315,28 @@ export const openButtonBlockEditor = (context: IContext, options: {
     updateIconElement();
     updateColorElement();
     updateActionFields();
-    // 改了东西且还没保存时，关窗前先问一次（取消、×、Esc、点遮罩四条路都拦，见 discardChanges.ts）
+    if (!editable) {
+        // 预览模式（笔记锁定）：只读，字段与操作按钮全部禁用，「确定」不出现，只留「取消」关窗。
+        // 路径输入框用 readonly 而不是 disabled —— 值要能读出来，「编辑」才能拿它去开只读预览
+        textElement.disabled = true;
+        actionElement.disabled = true;
+        linkElement.disabled = true;
+        fileElement.readOnly = true;
+        iconElement.disabled = true;
+        // 脚本文件的四个按钮里只有「编辑」留到预览模式（下面单独放行）：它打开的是只读窗口，不写盘
+        ["file-create", "file-rename", "file-remove"].forEach((type) => {
+            field<HTMLButtonElement>(type).disabled = true;
+        });
+        dialog.element.querySelector('[data-bis="readonly-tip"]')?.classList.remove("fn__none");
+    } else {
+        field<HTMLButtonElement>("save").classList.remove("fn__none");
+    }
+    // 改了东西且还没保存时，关窗前先问一次（取消、×、Esc、点遮罩四条路都拦，见 discardChanges.ts）。
+    // 预览模式下没有任何东西可以改，不用拦
     const openedWith = serializeButtonConfig(currentConfig());
     let saved = false;
     guardUnsavedChanges(context, dialog, {blockID}, () =>
-        !saved && serializeButtonConfig(currentConfig()) !== openedWith);
+        editable && !saved && serializeButtonConfig(currentConfig()) !== openedWith);
     actionElement.addEventListener("change", updateActionFields);
     iconElement.addEventListener("click", () => {
         openIconPicker(context, {
@@ -390,9 +417,10 @@ export const openButtonBlockEditor = (context: IContext, options: {
         appendScriptFileSuffix(dialog);
     });
     field<HTMLButtonElement>("file-edit").addEventListener("click", () => {
+        // 这一条在预览模式下也留着：脚本文件窗口是只读的，看一眼文件内容不会改动任何东西
         const path = localScriptPath();
         if (path) {
-            void openScriptFileEditor(context, {path});
+            void openScriptFileEditor(context, {path, editable});
         }
     });
     field<HTMLButtonElement>("file-rename").addEventListener("click", () => {
@@ -458,8 +486,14 @@ export const openButtonBlockEditor = (context: IContext, options: {
             scriptEditor.setValue(code);
             scriptEditor.focus();
         },
+        // 预览模式下「载入」按钮没有意义：编辑区不可写，载进来也只能看看
+        editable,
     }));
     field<HTMLButtonElement>("save").addEventListener("click", async () => {
+        if (!editable) {
+            log.warn("save rejected: the note is locked, the editor is a preview", {blockID});
+            return;
+        }
         // 先逐项校验（并处理云端脚本的二次确认），确认无误后由 currentConfig() 统一取值
         if (actionElement.value === "link" && !linkElement.value.trim()) {
             log.warn("save rejected: the link is empty", {blockID});

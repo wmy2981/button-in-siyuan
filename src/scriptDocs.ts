@@ -75,6 +75,11 @@ const decorateCodeBlocks = (context: IContext, container: HTMLElement, onLoad?: 
  */
 export const openScriptDocs = async (context: IContext, options: {
     onLoad?: (code: string) => void,
+    /**
+     * 调用方当前能不能改代码。笔记锁定时传 false：示例只留「复制」，不给「载入」——
+     * 载进一个不可写的编辑区没有意义（见 issue #19）。默认 true。
+     */
+    editable?: boolean,
 } = {}) => {
     const markdown = fillSiyuanRef(pickMarkdown(), await resolveSiyuanRef());
     const lute = window.Lute?.New?.();
@@ -106,7 +111,7 @@ export const openScriptDocs = async (context: IContext, options: {
     // 按代码块的 data-language 用 hljs 上色，并从 /stage/protyle 载入代码主题（离线可用）。
     // 文档里的代码块语言统一写 javascript，就是这个 data-language。
     ProtyleMethod.highlightRender(docsElement);
-    const onLoad = options.onLoad;
+    const onLoad = options.editable === false ? undefined : options.onLoad;
     decorateCodeBlocks(context, docsElement, onLoad ? (code) => {
         onLoad(code);
         dialog.destroy();

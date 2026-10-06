@@ -78,6 +78,7 @@
   "downloadSkillFailed": "下载失败，详情见控制台",
   "settingsSaveFailed": "设置没能保存，请重试",
   "blockNotEditable": "按钮块当前不可编辑",
+  "readonlyPreviewTip": "当前笔记已锁定，无法编辑",
   "discardChangesTitle": "放弃未保存的修改？",
   "discardChangesTip": "关闭后这次的改动不会写回按钮块。",
   "discardChangesConfirm": "放弃修改",

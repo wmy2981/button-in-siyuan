@@ -333,9 +333,15 @@ export const createCodeEditor = (options: {
     codeWrap?: TCodeMode;
     /** 连字方式，取值与 codeWrap 相同。 */
     codeLigatures?: TCodeMode;
+    /**
+     * 是否可编辑。笔记锁定时传 false：编辑区只用来查看，不能输入，也没有右下角的改高角
+     * （见 createCornerPad）。默认 true。
+     */
+    editable?: boolean;
 } = {}): ICodeEditor => {
     const {base, background, specs} = readCodeTheme();
     const dark = isDarkMode();
+    const editable = options.editable !== false;
     const lineWrap = resolveCodeMode(options.codeWrap, window.siyuan?.config?.editor?.codeLineWrap);
     const ligatures = resolveCodeMode(options.codeLigatures, window.siyuan?.config?.editor?.codeLigatures);
     const extensions: Extension[] = [
@@ -344,6 +350,10 @@ export const createCodeEditor = (options: {
         syntaxHighlighting(HighlightStyle.define(specs)),
         createTheme(base, background, ligatures),
     ];
+    if (!editable) {
+        // 只读：CodeMirror 自己的 editable facet 关掉输入与光标，正文仍可选中复制
+        extensions.push(EditorView.editable.of(false));
+    }
     if (lineWrap) {
         extensions.push(EditorView.lineWrapping);
     }
@@ -357,9 +367,11 @@ export const createCodeEditor = (options: {
         parent: element,
     });
     element.addEventListener("contextmenu", openNativeTextMenu);
-    element.append(createCornerPad(view));
+    if (editable) {
+        element.append(createCornerPad(view));
+    }
     observeManualHeight(view);
-    log.debug("created the code editor", {chars: view.state.doc.length, dark, lineWrap, ligatures, tokens: specs.length});
+    log.debug("created the code editor", {chars: view.state.doc.length, dark, lineWrap, ligatures, editable, tokens: specs.length});
     return {
         element,
         getValue: () => view.state.doc.toString(),

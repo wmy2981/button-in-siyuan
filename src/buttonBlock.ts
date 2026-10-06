@@ -177,6 +177,18 @@ const runAction = (context: IContext, options: {
     });
 };
 
+/**
+ * 按钮块所在的文档当前是否可以编辑（笔记锁定、只读模式与发布服务都会让它变成不可编辑）。
+ *
+ * 判定信号是宿主自己写在编辑器根元素上的 `data-readonly`：锁定文档时 `disabledProtyle` 经
+ * `disabledWYSIWYG` 把它置为 `"true"`，解除时 `enableProtyle` 置回 `"false"`，宿主的图片操作
+ * （`app/src/protyle/render/imageActions.ts`）与移动端可编辑判定（`app/src/mobile/util/mobileAppUtil.ts`）
+ * 都按这个属性判断。这里不复用渲染器拿到的 `setContent` 返回值：那个只有在真正写入时才为 false，
+ * 而编辑窗口要在打开的那一刻就知道该不该给出编辑控件。
+ */
+export const isBlockEditable = (blockElement: HTMLElement | null) =>
+    blockElement?.closest(".protyle-wysiwyg")?.getAttribute("data-readonly") !== "true";
+
 /** 自定义块渲染器：内容变化时思源会重新调用，返回值用于清理事件监听器。 */
 export const renderButtonBlock = (context: IContext, options: {
     element: HTMLElement,
@@ -240,14 +252,16 @@ export const renderButtonBlock = (context: IContext, options: {
         });
         runAction(context, {blockID, blockElement: options.element, config, event});
     };
-    // 右键（桌面）与长按（移动端）都打开「编辑按钮块」，与块菜单里的入口一致
+    // 右键（桌面）与长按（移动端）都打开「编辑按钮块」，与块菜单里的入口一致。
+    // 文档锁定时照样打开，但只给预览：编辑控件全部禁用，也不写回块内容
     const edit = (source: "contextmenu" | "long-press") => {
         if (!blockID) {
             log.warn("the button block has no block ID, cannot open the editor");
             return;
         }
-        log.info("opening the editor from the button", {blockID, source});
-        context.openEditor(blockID, config);
+        const editable = isBlockEditable(blockElement);
+        log.info("opening the editor from the button", {blockID, source, editable});
+        context.openEditor(blockID, config, editable);
     };
     const contextMenu = (event: MouseEvent) => {
         event.preventDefault();

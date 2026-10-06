@@ -13,11 +13,15 @@ const log = createLogger("scriptFileDialog");
  *
  * 编辑器和「JavaScript」操作里那个是同一个（`createCodeEditor`）：同样的行号、语法高亮、
  * 跟随思源代码高亮主题的配色、同样的文档入口与右下角拖拽改高；区别只是保存走内核的文件接口。
+ *
+ * 笔记锁定时 `editable` 传 false（issue #19）：编辑区只读、没有「确定」，关窗也不写盘。
  */
 export const openScriptFileEditor = async (context: IContext, options: {
     path: string,
+    editable?: boolean,
 }) => {
     const {i18n} = context;
+    const editable = options.editable !== false;
     let content: string;
     try {
         content = await readWorkspaceFile(options.path);
@@ -26,7 +30,7 @@ export const openScriptFileEditor = async (context: IContext, options: {
         showMessage(error instanceof Error && error.message ? error.message : i18n.scriptFileFailed);
         return;
     }
-    log.info("opened the script file editor", {path: options.path, chars: content.length});
+    log.info("opened the script file editor", {path: options.path, chars: content.length, editable});
     const dialog = new Dialog({
         title: options.path,
         // 比原来的 640px 宽一圈、并给一个默认高度：编辑区会填满正文剩下的空间（见 src/codeEditor.ts）。
@@ -34,6 +38,7 @@ export const openScriptFileEditor = async (context: IContext, options: {
         width: "min(880px, 92vw)",
         height: "min(84vh, 720px)",
         content: `<div class="b3-dialog__content" data-bis="editor-body">
+    <div class="ft__on-surface ft__breakword fn__none" data-bis="readonly-tip">${i18n.readonlyPreviewTip}</div>
     <div data-bis="file-editor"></div>
     <div class="fn__hr--small"></div>
     <button type="button" class="bis-docs-link" data-bis="docs">${i18n.scriptDocs}</button>
@@ -41,7 +46,7 @@ export const openScriptFileEditor = async (context: IContext, options: {
 <div class="b3-dialog__action">
     <button class="b3-button b3-button--cancel" data-bis="cancel">${i18n.cancel}</button>
     <div class="fn__space"></div>
-    <button class="b3-button b3-button--text" data-bis="save">${i18n.save}</button>
+    <button class="b3-button b3-button--text fn__none" data-bis="save">${i18n.save}</button>
 </div>`,
     });
     const field = <T extends HTMLElement>(type: string) => dialog.element.querySelector<T>(`[data-bis="${type}"]`);
@@ -51,12 +56,20 @@ export const openScriptFileEditor = async (context: IContext, options: {
         placeholder: i18n.scriptCodePlaceholder,
         codeWrap: editorSettings.codeWrap,
         codeLigatures: editorSettings.codeLigatures,
+        editable,
     });
     field<HTMLElement>("file-editor")?.append(editor.element);
-    // 与「编辑按钮块」一样：改了内容还没保存时，关窗前先问一次（取消、×、Esc、点遮罩都拦）
+    if (!editable) {
+        dialog.element.querySelector('[data-bis="readonly-tip"]')?.classList.remove("fn__none");
+    } else {
+        field<HTMLButtonElement>("save")?.classList.remove("fn__none");
+    }
+    // 与「编辑按钮块」一样：改了内容还没保存时，关窗前先问一次（取消、×、Esc、点遮罩都拦）。
+    // 只读预览没有可丢的改动，不用拦
     const openedWith = content;
     let saved = false;
-    guardUnsavedChanges(context, dialog, {path: options.path}, () => !saved && editor.getValue() !== openedWith);
+    guardUnsavedChanges(context, dialog, {path: options.path}, () =>
+        editable && !saved && editor.getValue() !== openedWith);
     field<HTMLButtonElement>("cancel")?.addEventListener("click", () => {
         log.debug("cancelled the script file editor", {path: options.path});
         dialog.destroy();
@@ -67,8 +80,13 @@ export const openScriptFileEditor = async (context: IContext, options: {
             editor.setValue(code);
             editor.focus();
         },
+        editable,
     }));
     field<HTMLButtonElement>("save")?.addEventListener("click", async () => {
+        if (!editable) {
+            log.warn("save rejected: the note is locked, the editor is a preview", {path: options.path});
+            return;
+        }
         const next = editor.getValue();
         try {
             await writeWorkspaceFile(options.path, next);

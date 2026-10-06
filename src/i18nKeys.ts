@@ -83,6 +83,7 @@ export type II18n = {
     downloadSkillFailed: string;
     settingsSaveFailed: string;
     blockNotEditable: string;
+    readonlyPreviewTip: string;
     discardChangesTitle: string;
     discardChangesTip: string;
     discardChangesConfirm: string;

@@ -68,6 +68,11 @@
     display: contents;
 }
 
+// 预览模式（笔记锁定）下的提示条：与正文之间留一行间距，其余颜色交给思源的 .ft__on-surface
+[data-bis="readonly-tip"] {
+    margin-bottom: 8px;
+}
+
 // 「JavaScript」操作里的代码字段：展开时占满剩余空间；收起时整段带 fn__none（display: none），
 // 不参与布局
 [data-bis="script-field"] {

@@ -78,6 +78,7 @@
   "downloadSkillFailed": "The download failed, see the console for details",
   "settingsSaveFailed": "The settings could not be saved, please retry",
   "blockNotEditable": "The button block cannot be edited right now",
+  "readonlyPreviewTip": "This note is locked and cannot be edited",
   "discardChangesTitle": "Discard the unsaved changes?",
   "discardChangesTip": "Closing now leaves the button block as it is; this edit is lost.",
   "discardChangesConfirm": "Discard",
