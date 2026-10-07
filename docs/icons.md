@@ -59,6 +59,8 @@ know the purpose but not the id.
 
 | id |
 | --- |
+| `iconOCR` |
+| `iconZap` |
 | `iconMindmap` |
 | `iconRoute` |
 | `iconAlignTop` |
@@ -326,5 +328,5 @@ know the purpose but not the id.
 
 ---
 
-264 unique ids, taken from SiYuan 3.8.x's built-in `litheness` icon set
+266 unique ids, taken from SiYuan 3.8.x's built-in `litheness` icon set
 (`app/appearance/icons/litheness/icon.js`). `iconTurnInto` is declared twice in that file.
