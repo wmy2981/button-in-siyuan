@@ -68,6 +68,8 @@ export type II18n = {
     outputModeWarn: string;
     outputModeError: string;
     outputModeNever: string;
+    settingsDebugMode: string;
+    settingsDebugModeTip: string;
     codeModeAuto: string;
     codeModeOn: string;
     codeModeOff: string;

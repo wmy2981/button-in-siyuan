@@ -14,11 +14,12 @@ section 3 contains a few full examples.
   editing the file changes the button's behaviour.
 - **async wrapper**: the whole script is wrapped in an async function, so `await` works and `return` ends it.
 - **Output**: the `return` value, whatever `console.log / info / debug / warn / error / table / dir` writes, and
-  any thrown error appear in the result dialog, which can copy the text as plain text. With none of the three,
-  **no dialog opens** (a silent run); when it opens is decided in section 4. Two other channels exist — a toast
-  (`showMessage`, 2.2) and a window you build yourself (3.7) — and which one a button should use is a decision
-  per button: the output dialog is for seeing everything, a toast for a button that stays on the note, a window
-  when the click has to ask something first.
+  any thrown error appear in the result dialog, which can copy the text as plain text; the console lines are also
+  passed through to the SiYuan console by the plugin (`console.debug` only once the plugin's "Debug mode"
+  setting is on). With none of the three, **no dialog opens** (a silent run); when it opens is decided in
+  section 4. Two other channels exist — a toast (`showMessage`, 2.2) and a window you build yourself (3.7) — and
+  which one a button should use is a decision per button: the output dialog is for seeing everything, a toast for
+  a button that stays on the note, a window when the click has to ask something first.
 - **Fresh on every click**: the script keeps no state; use `plugin.saveData()` or write into a note when you need
   to remember something.
 - **Calling the kernel**: `const response = await fetchPost("/api/…", {…})`; `code === 0` means success.
@@ -309,5 +310,6 @@ plugin's "JavaScript output dialog" setting does not touch it.
   dock helpers of 2.4 are unavailable.
 - **Plugin storage**: `plugin.loadData` may resolve with a string instead of an object — see 3.4.
 - **Destructive calls**: `/api/block/deleteBlock`, `/api/filetree/removeDoc` and friends cannot be undone.
-- **Debugging**: `console` output is captured by the result dialog and does not stay in DevTools; add a
-  `debugger` statement when you need DevTools itself.
+- **Debugging**: the plugin passes `console` output through to the SiYuan console while it still appears in the
+  result dialog; `console.debug` only prints once the plugin's "Debug mode" setting is on. Add a `debugger`
+  statement when you need DevTools itself.

@@ -1,5 +1,5 @@
 import type {IContext} from "./context";
-import {createLogger} from "./logger";
+import {createLogger, isDebugEnabled} from "./logger";
 import {createScriptScope} from "./scriptApi";
 import type {IScriptEntry, TScriptLevel} from "./scriptOutput";
 import {showScriptOutput} from "./scriptOutput";
@@ -57,7 +57,11 @@ export const formatValue = (value: unknown): string => {
 
 type TConsoleMethod = (...args: unknown[]) => void;
 
-/** 接管 console：执行期间所有输出按级别记到 entries，返回恢复函数。 */
+/**
+ * 接管 console：执行期间所有输出按级别记到 entries，并把原始调用放回思源控制台（关掉调试模式时，
+ * 控制台里就只有脚本自己写下的东西），返回恢复函数。`console.debug` 一档受调试模式控制：
+ * 没开就整条丢掉，弹窗与控制台都不出现。
+ */
 const captureConsole = (entries: IScriptEntry[]) => {
     const target = console as unknown as Record<TScriptLevel, TConsoleMethod>;
     const originals = new Map<TScriptLevel, TConsoleMethod>();
@@ -68,7 +72,12 @@ const captureConsole = (entries: IScriptEntry[]) => {
         }
         originals.set(level, original.bind(console));
         target[level] = (...args: unknown[]) => {
+            if (level === "debug" && !isDebugEnabled()) {
+                return;
+            }
             entries.push({level, text: args.map(formatValue).join(" ")});
+            // 原样转回宿主控制台：参数不动，对象照旧可展开，table / dir 也保持各自的呈现
+            originals.get(level)?.(...args);
         };
     });
     return () => {

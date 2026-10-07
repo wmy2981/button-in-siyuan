@@ -7,7 +7,7 @@ import {BUTTON_BLOCK_TYPE, DEFAULT_BUTTON_ICON, parseButtonConfig, renderButtonB
 import type {IContext} from "./context";
 import {openButtonBlockEditor} from "./editDialog";
 import type {II18n} from "./i18nKeys";
-import {createLogger} from "./logger";
+import {createLogger, setDebugEnabled} from "./logger";
 import type {ISettings, TCodeMode, TOutputMode} from "./settings";
 import {CODE_MODES, DEFAULT_SETTINGS, loadSettings, OUTPUT_MODES, saveSettings} from "./settings";
 import "./index.scss";
@@ -91,7 +91,6 @@ export default class ButtonInSiYuan extends Plugin {
         const frontend = getFrontend();
         this.isMobile = frontend === "mobile" || frontend === "browser-mobile";
         const context = this.context;
-        log.info("plugin loaded", {name: this.name, displayName: this.displayName, frontend, isMobile: this.isMobile});
         this.customBlockRenders[BUTTON_BLOCK_TYPE] = {
             render: (options) => renderButtonBlock(context, options),
         };
@@ -108,14 +107,9 @@ export default class ButtonInSiYuan extends Plugin {
             id: SLASH_ITEM_ID,
             callback: (protyle) => this.insertButtonBlock(protyle),
         }];
-        log.debug("registered the custom block renderer, the slash item and the block menu listener", {
-            blockType: BUTTON_BLOCK_TYPE,
-            blockInfo: encodeBlockInfo(this.name, BUTTON_BLOCK_TYPE),
-            slashFilter: this.protyleSlash[0].filter,
-        });
         // 设置与技能都要读盘/走内核，放到注册之后再跑：渲染器与菜单项必须第一时间就位。
         // 设置面板等设置读完再注册，否则面板打开的瞬间可能还拿着默认值，保存就把用户设置冲掉了
-        void this.initSettings().finally(() => this.registerSetting());
+        void this.initSettings(frontend).finally(() => this.registerSetting());
     }
 
     onunload() {
@@ -127,8 +121,16 @@ export default class ButtonInSiYuan extends Plugin {
         return removeAgentSkill(this.name);
     }
 
-    private async initSettings() {
+    private async initSettings(frontend: string) {
+        // 「调试模式」由 loadSettings 在读到设置时应用到 logger
         this.settings = await loadSettings(this);
+        // 启动信息在这里才打：日志受「调试模式」控制，早于设置读出来的调用会被丢掉
+        log.info("plugin loaded", {name: this.name, displayName: this.displayName, frontend, isMobile: this.isMobile});
+        log.debug("registered the custom block renderer, the slash item and the block menu listener", {
+            blockType: BUTTON_BLOCK_TYPE,
+            blockInfo: encodeBlockInfo(this.name, BUTTON_BLOCK_TYPE),
+            slashFilter: this.protyleSlash[0].filter,
+        });
         if (this.settings.agentSkill) {
             await installAgentSkill(this.name);
         }
@@ -170,6 +172,9 @@ export default class ButtonInSiYuan extends Plugin {
         const skillSwitch = document.createElement("input");
         skillSwitch.type = "checkbox";
         skillSwitch.className = "b3-switch fn__flex-center";
+        const debugSwitch = document.createElement("input");
+        debugSwitch.type = "checkbox";
+        debugSwitch.className = "b3-switch fn__flex-center";
         // 下载按钮与思源自己的设置按钮同款：b3-button--outline，尺寸交给面板里的 fn__size200
         const skillDownload = document.createElement("button");
         skillDownload.className = "b3-button b3-button--outline";
@@ -180,6 +185,7 @@ export default class ButtonInSiYuan extends Plugin {
                 // 保存按钮不等待回调：这里自己把结果落盘、必要时提示
                 void this.saveSetting({
                     outputMode: outputSelect.value as TOutputMode,
+                    debug: debugSwitch.checked,
                     codeWrap: wrapSelect.value as TCodeMode,
                     codeLigatures: ligatureSelect.value as TCodeMode,
                     agentSkill: skillSwitch.checked,
@@ -192,6 +198,14 @@ export default class ButtonInSiYuan extends Plugin {
             createActionElement: () => {
                 outputSelect.value = this.settings.outputMode;
                 return outputSelect;
+            },
+        });
+        this.setting.addItem({
+            title: i18n.settingsDebugMode,
+            description: i18n.settingsDebugModeTip,
+            createActionElement: () => {
+                debugSwitch.checked = this.settings.debug;
+                return debugSwitch;
             },
         });
         this.setting.addItem({
@@ -257,6 +271,7 @@ export default class ButtonInSiYuan extends Plugin {
             return;
         }
         this.settings = next;
+        setDebugEnabled(next.debug);
         if (next.agentSkill === previous.agentSkill) {
             return;
         }

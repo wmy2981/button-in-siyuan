@@ -1,5 +1,5 @@
 import type {Plugin} from "siyuan";
-import {createLogger} from "./logger";
+import {createLogger, setDebugEnabled} from "./logger";
 
 const log = createLogger("settings");
 
@@ -27,6 +27,8 @@ export const CODE_MODES: TCodeMode[] = ["auto", "on", "off"];
 
 export interface ISettings {
     outputMode: TOutputMode;
+    /** 调试模式：插件的调试日志与脚本里 `console.debug` 的输出是否写到思源控制台，默认关。 */
+    debug: boolean;
     /** 代码编辑器超出宽度时是否换行（见 codeEditor.ts）。 */
     codeWrap: TCodeMode;
     /** 代码编辑器是否显示连字（见 codeEditor.ts）。 */
@@ -37,6 +39,7 @@ export interface ISettings {
 
 export const DEFAULT_SETTINGS: ISettings = {
     outputMode: "output",
+    debug: false,
     codeWrap: "auto",
     codeLigatures: "auto",
     agentSkill: true,
@@ -63,6 +66,7 @@ export const mergeSettings = (saved: unknown): ISettings => {
         outputMode: OUTPUT_MODES.includes(source.outputMode as TOutputMode)
             ? source.outputMode as TOutputMode
             : DEFAULT_SETTINGS.outputMode,
+        debug: typeof source.debug === "boolean" ? source.debug : DEFAULT_SETTINGS.debug,
         codeWrap: CODE_MODES.includes(source.codeWrap as TCodeMode)
             ? source.codeWrap as TCodeMode
             : DEFAULT_SETTINGS.codeWrap,
@@ -83,6 +87,8 @@ export const loadSettings = async (plugin: Plugin) => {
         return {...DEFAULT_SETTINGS};
     }
     const settings = mergeSettings(saved);
+    // 读出来立刻生效：下面这条日志自己也受「调试模式」控制
+    setDebugEnabled(settings.debug);
     log.debug("loaded the plugin settings", {settings});
     return settings;
 };

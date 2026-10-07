@@ -141,7 +141,8 @@ channels are available, and they are not interchangeable:
 There is no default to fall back on: pick the one that fits, and say which one you picked when you report
 back. The plugin's "JavaScript output dialog" setting only decides whether the *output dialog* opens (default
 `With output`: it opens when there is console output, a return value or an error) — a toast and your own
-window are unaffected by it.
+window are unaffected by it. Console lines also reach the SiYuan console through the plugin; `console.debug`,
+and every log the plugin writes itself, only appear while the plugin's "Debug mode" setting is on.
 
 ```javascript
 // The usual shape of a finished button: a toast per click, and nothing to close.

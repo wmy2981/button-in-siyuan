@@ -55,6 +55,7 @@ Requires SiYuan 3.8.6 or later.
 | Setting | Description |
 | --- | --- |
 | JavaScript output dialog | When the result dialog opens after a script runs: `Always`, `With output` (default), `Console output only`, `On warning (and error)`, `On error`, `Never`. |
+| Debug mode | Off by default: turns on the plugin's own logs (loading, dialogs, failures) in the SiYuan console, plus the script's `console.debug` output (console and result dialog). Off means the plugin prints nothing, and the console only carries what the script itself logs. |
 | JavaScript editor line wrap | Whether content wider than the editor wraps: `Follow SiYuan` (default, the same as <kbd>Settings</kbd> > <kbd>Editor</kbd> > <kbd>Code block wraps</kbd>), `On`, `Off`. |
 | JavaScript editor ligatures | Whether the editor shows ligatures (the code font has to bring them): `Follow SiYuan` (default, the same as <kbd>Settings</kbd> > <kbd>Editor</kbd> > <kbd>Code block ligature</kbd>), `On`, `Off`. |
 | Provide the button block skill to the agent | On by default: writes a skill explaining button blocks into the workspace skill directory; switching it off deletes that skill. |
@@ -80,8 +81,8 @@ text menu (undo, redo, copy, cut, paste, paste as plain text, select all).
 
 The code runs in the page context when the button is clicked, and `await` works. The `return` value,
 the console output and any thrown error appear in the result dialog, which can copy the output as
-plain text. When that dialog opens is decided by the "JavaScript output dialog" setting (default:
-"With output").
+plain text; the plugin also passes the console lines through to the SiYuan console. When that dialog
+opens is decided by the "JavaScript output dialog" setting (default: "With output").
 
 Scripts can call every API SiYuan exposes to plugins.
 
