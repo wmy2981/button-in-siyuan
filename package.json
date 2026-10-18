@@ -1,6 +1,6 @@
 {
   "name": "button-in-siyuan",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Define your notes with in-document buttons and global quick actions. Agents can configure it.",
   "scripts": {
     "dev": "webpack --mode development",
