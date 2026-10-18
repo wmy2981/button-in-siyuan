@@ -1,8 +1,8 @@
 [English](./README.md)
 
-# 按钮块（button-in-siyuan）
+# 快捷操作（button-in-siyuan）
 
-在文档中插入思源原生样式的按钮块，可设置文本、内置图标，支持链接跳转或 JavaScript 操作。
+用文档中的按钮和全局快捷操作定义你的笔记，支持由智能体配置。
 
 ![预览](https://gcore.jsdelivr.net/gh/wmy2981/button-in-siyuan@f6cae6d/assets/preview.png)
 
@@ -19,7 +19,7 @@
 
 ## 安装
 
-1. 集市安装：<kbd>设置</kbd> > <kbd>集市</kbd> > <kbd>插件</kbd>，搜索「按钮块」。
+1. 集市安装：<kbd>设置</kbd> > <kbd>集市</kbd> > <kbd>插件</kbd>，搜索「快捷操作」。
 2. 手动安装：从最新 Release 下载 `package.zip`，解压为
    `{工作空间}/data/plugins/button-in-siyuan/`，然后在
    <kbd>设置</kbd> > <kbd>集市</kbd> > <kbd>已下载</kbd> 中启用。

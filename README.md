@@ -1,8 +1,8 @@
 [简体中文](./README.zh-CN.md)
 
-# Button Block (button-in-siyuan)
+# Quick Actions (button-in-siyuan)
 
-Insert native SiYuan buttons into documents, with text, a built-in icon and a link or JavaScript action.
+Define your notes with in-document buttons and global quick actions. Agents can configure it.
 
 ![preview](https://gcore.jsdelivr.net/gh/wmy2981/button-in-siyuan@f6cae6d/assets/preview.png)
 
@@ -25,7 +25,7 @@ Insert native SiYuan buttons into documents, with text, a built-in icon and a li
 ## Install
 
 1. From the marketplace: <kbd>Settings</kbd> > <kbd>Marketplace</kbd> > <kbd>Plugins</kbd> >
-   search for "Button Block".
+   search for "Quick Actions".
 2. Manually: download `package.zip` from the latest Release, unzip it as
    `{workspace}/data/plugins/button-in-siyuan/`, then enable the plugin in
    <kbd>Settings</kbd> > <kbd>Marketplace</kbd> > <kbd>Downloaded</kbd>.

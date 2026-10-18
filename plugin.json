@@ -12,12 +12,12 @@
   ],
   "disabledInPublish": true,
   "displayName": {
-    "default": "Button Block",
-    "zh-CN": "按钮块"
+    "default": "Quick Actions",
+    "zh-CN": "快捷操作"
   },
   "description": {
-    "default": "Insert native SiYuan buttons into documents, with a link or JavaScript action. It is friendly to AI agents.",
-    "zh-CN": "在文档中插入思源原生样式的按钮块，支持链接跳转或 JavaScript 操作。对 AI Agent 操作友好。"
+    "default": "Define your notes with in-document buttons and global quick actions. Agents can configure it.",
+    "zh-CN": "用文档中的按钮和全局快捷操作定义你的笔记，支持由智能体配置。"
   },
   "readme": {
     "default": "README.md",
