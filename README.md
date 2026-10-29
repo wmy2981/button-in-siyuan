@@ -158,6 +158,10 @@ agent never picks up a skill whose plugin is not running. Those APIs need SiYuan
 The same two documents are kept in the repository for reading outside the skill:
 [docs/javascript.md](./docs/javascript.md) and [docs/icons.md](./docs/icons.md).
 
+## Bazaar Stats Graph
+
+![Bazaar stats graph](https://siyuan-bazaar-stats-graph.sr1.cc.cd/api/chart/wmy2981/button-in-siyuan?metrics=downloads,rating,ratings&range=all&area=true&lang=en)
+
 ## Development
 
 ```bash

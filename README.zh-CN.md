@@ -136,6 +136,10 @@ Agent 用 `skill` 工具按 `name: "button-block/references/javascript.md"` 载�
 同样这两份文档在仓库里也保留了一份，方便技能之外阅读：
 [docs/javascript.md](./docs/javascript.md) 与 [docs/icons.md](./docs/icons.md)。
 
+## 集市趋势图表
+
+![集市趋势图表](https://siyuan-bazaar-stats-graph.sr1.cc.cd/api/chart/wmy2981/button-in-siyuan?metrics=downloads,rating,ratings&range=all&area=true&lang=zh)
+
 ## 开发
 
 ```bash
