@@ -1,7 +1,8 @@
-import {Dialog, fetchSyncPost, Menu, showMessage} from "siyuan";
+import {fetchSyncPost, Menu, showMessage} from "siyuan";
+import {createDialog} from "./dialog";
 import type {APIFormData, IMenu, PutFileRequestInput} from "siyuan";
 import type {IButtonConfig} from "./buttonBlock";
-import {parseButtonConfig, runAction} from "./buttonBlock";
+import {DEFAULT_BUTTON_ICON, parseButtonConfig, runAction} from "./buttonBlock";
 import {describeButtonAction} from "./buttonManager";
 import type {IContext} from "./context";
 import {openButtonBlockEditor} from "./editDialog";
@@ -212,7 +213,7 @@ export const openTopBarMenu = async (context: IContext, target?: HTMLElement) =>
  */
 export const openTopBarManager = (context: IContext) => {
     const {i18n} = context;
-    const dialog = new Dialog({
+    const dialog = createDialog({
         title: i18n.topBarManagerTitle,
         width: context.isMobile ? "100%" : "min(980px, 94vw)",
         height: context.isMobile ? "100%" : "min(82vh, 760px)",
@@ -282,7 +283,7 @@ export const openTopBarManager = (context: IContext) => {
         const edit = document.createElement("button");
         edit.type = "button";
         edit.className = "b3-button b3-button--outline";
-        edit.textContent = i18n.managerEdit;
+        edit.textContent = i18n.topBarEdit;
         edit.addEventListener("click", () => openEditor(action));
         const actions = document.createElement("div");
         actions.className = "bis-manager__actions";
@@ -293,8 +294,11 @@ export const openTopBarManager = (context: IContext) => {
     const openEditor = (action?: ITopBarAction) => {
         openButtonBlockEditor(context, {
             blockID: "",
-            config: action?.config || {text: i18n.topBarDefaultText, icon: ""},
+            // 新建时给一个默认图标：空图标在菜单里只显示文本，用户往往还要再点一次选图标
+            config: action?.config || {text: i18n.topBarDefaultText, icon: DEFAULT_BUTTON_ICON},
             title: action ? i18n.topBarEditTitle : i18n.topBarNewTitle,
+            // 编辑窗口对快捷操作说「快捷操作文本 / 图标 / 操作」，不说「按钮块」（issue #34）
+            quickAction: true,
             colorEditable: false,
             deletable: Boolean(action),
             onSave: async (config) => {
@@ -391,6 +395,9 @@ export const openTopBarManager = (context: IContext) => {
         render();
         if (previous) {
             showPreview(previous);
+        } else {
+            // 选中的快捷操作被删掉了：右侧不能留着那个已经不存在的文件
+            previewElement.replaceChildren();
         }
     };
 

@@ -27,8 +27,8 @@
   绝不覆盖用户数据。
 * **插入块**：斜杠项的 id 借用思源放行清单里的 `code`，否则主编辑器的斜杠菜单会按 id 过滤掉插件项。
   桌面端单元格里仍然没有入口（思源 3.8.6 起的单元格富文本编辑器关掉了 `pluginExtensions`，宿主限制）。
-  移动端思源把插件项 html 整个塞进没有 flex 上下文的 `.keyboard__slash-text`，所以斜杠项 html 必须带
-  `bis-slash-item` 标记，由 `index.scss` 把 flex 补回来。
+  斜杠项 html 与官方插件示例一致（`.b3-list-item__first` + `.b3-list-item__text`），移动端也交给宿主布局：
+  思源修好 issue 20866 后，`.keyboard__slash-text` 里的 `.b3-list-item__first` 自带 flex 行，插件不再自己补。
 * **编辑入口**：三条入口（块菜单、按钮右键、按钮长按）都走 `context.openEditor(...)`，由插件入口注入，
   免得渲染器与对话框模块互相引用成环。
 * **移动端侧栏滑动**：宿主的自定义块渲染器给挂载元素挂了一组阻断冒泡的触摸监听
@@ -47,6 +47,17 @@
 * **关窗前的「放弃修改」确认**：不是逐条拦取消 / × / `Esc` / 点遮罩，而是把实例上的 `dialog.destroy` 换成
   自己的函数（宿主这四条路最后都调它）。**`disableClose` 只挡遮罩与 ×，挡不住 `Esc`**；判断「有没有改过」
   与保存必须共用同一个 `currentConfig()` 口径，否则会出现「什么都没改也弹确认」。
+* **危险操作确认**：删除按钮块、删除快捷操作、删除 JS 文件与「放弃修改」共用 `src/confirmDanger.ts`
+  这一个窗口（确认按钮是红色线框 `b3-button--remove`）。**不要退回宿主的 `confirm`**：它在打开时就
+  `focus()` 确认按钮（`app/src/dialog/confirmDialog.ts` 末尾），而宿主的 `.b3-button--remove` 把
+  `:hover` 与 `:focus` 写成同一套样式，窗口一出现按钮就已经是「悬停」外观。正文可能是脚本路径这类
+  用户数据，走 `textContent` 写入，不拼进 HTML。
+* **点过的按钮不留悬停态**：同样因为宿主把 `:hover` 与 `:focus` 写成同一套，鼠标点完焦点还留在按钮上，
+  按钮看起来一直在悬停。编辑窗口给 `dialog.element` 加了 `bis-editor-dialog`，`index.scss` 只在
+  `:focus:not(:focus-visible)` 时把底色与描边还原成静止态 —— 键盘 Tab 过去的按钮仍保留焦点反馈；
+  描边色用 `currentColor`，不重抄主题变量。**提示气泡同理**：`.b3-tooltips` 的 `::after` 在
+  `:hover` 与 `:focus-within` 时出现，点完按钮提示会一直挂着（删除按钮上方的「删除快捷操作」），
+  所以同一窗口里 `:focus-within:not(:focus-visible)` 时把它 `display: none`。
 * **代码编辑器**：CodeMirror 6，配色从思源已加载的代码高亮主题实测后映射，不写死。改高沿用思源原生
   textarea 那套（`.cm-editor` 上的 `resize: vertical`），命中区由浏览器给定：鼠标 **16×16**、触屏约
   **30×30**（本机 Chromium 实测，`::-webkit-resizer` 的宽高与滚动条宽度都改不动它），鼠标那份从角外擦过
@@ -56,6 +67,30 @@
   `Esc` 照常），免得顺手敲键盘就改掉了原来的内容。**新建 / 重命名脚本文件那两个窗口例外**：它们用的
   `openInputDialog` 返回前会聚焦并全选输入框，`appendScriptFileSuffix` 里必须把它 `blur()` 掉；校验不通过
   时的 `focus()` 与「载入示例」之后的聚焦是用户点出来的，保留。
+  **移动端这一条是硬性的**：App 里 `HTMLElement.prototype.focus` 被宿主重写成直接调 `JSAndroid.showKeyboard()`
+  （`app/src/mobile/index.ts`），键盘引起的 adjustResize 会改 WebView 高度、整页重排，打开的那一刻就闪一帧。
+  所以图标选择窗口在移动端不聚焦搜索框；设置面板是宿主的 `Setting`，它在 `open()` 末尾会对首个
+  `input, textarea` 补一次 `focus()`（`app/src/plugin/Setting.ts`），插件在 `open` 期间临时接管 `focus`
+  把输入控件拦下来。
+* **移动端设置面板用抽屉**：插件设置面板是宿主的 `Setting`，它建的是居中对话框（整屏遮罩淡入 + 面板从
+  `scale(.8)` 放大）。插件在 `Setting.open()` 返回后把那个对话框交给 `useBottomSheet()`，换成与编辑窗口、
+  移动端属性面板同一个抽屉：遮罩透明、只用 `translateY` 滑入。桌面端不动，仍是居中的设置窗口。
+  **别退回居中对话框**：居中那套在 App 上每次打开都会插一帧整屏旧画面（移动端其它面板要么铺满屏幕、
+  要么是抽屉，才躲过了它）。
+* **移动端底部抽屉**：`src/bottomSheet.ts` 只给宿主对话框挂 `mobile-bottom-sheet-dialog` /
+  `mobile-bottom-sheet` 与抓手，移出视口与滑入都交给宿主的 `transform: translateY(100%)` 与它自己的
+  transition（`app/src/assets/scss/main/_mobile.scss`），容器常驻 `bis-bottom-sheet` 的
+  `will-change: transform` 预热图层。**不要用 `visibility`、`display: none` 或延迟挂载来做「先藏、首帧之后再显示」，
+  也不要照抄宿主 `app/src/mobile/util/bindBottomSheetDialog.ts` 里 `visibility` 加两次 `offsetHeight` 的写法**：
+  渲染树一进一出会重建合成层，App 的 WebView 在那一帧只能提交旧纹理。打开前的不可见只靠行内 `opacity: 0`，
+  宿主加上 `b3-dialog--open` 时清掉；清掉之前先用 `getAnimations()` 取消挂抽屉样式时被带起来的那次位移动画，
+  这样打开时的过渡才是宿主自己那份「从屏幕外滑上来」。这一条 web 端复现不出来，`npm run check` 与
+  浏览器验证都证明不了，只能由维护者在移动端 App 上复测。
+* **对话框不重建合成层**：插件自己的对话框一律用 `src/dialog.ts` 的 `createDialog()` 创建（设置面板是宿主的
+  `Setting`，在 `open` 返回后补同一个类），给外壳挂 `bis-dialog-warm`；`src/index.scss` 让容器与遮罩常驻
+  `will-change`（`transform` / `opacity`）。宿主的 `scale` + `opacity` 入场过渡在起点与终点都会新建、销毁合成层，
+  App 的 WebView 在那一帧只能提交旧的页面纹理 —— 打开面板时插一帧整屏旧画面。**过渡本身一点不动**：时长、曲线与
+  `b3-dialog--open` 的切换时序都还是宿主那份，只把图层提前准备好。
 * **图标**：从文档里的 `<symbol id="icon…">` 现取现用，元素带思源的 `.svg` 类以跟随 `currentColor`。
   选择器里**不要改 `color`**：悬浮与选中只换底色 / 描边，否则靠 `currentColor` 上色的图标会显示成主色。
 * **JavaScript 操作**：在页面上下文里整段包成 async 函数执行，执行期间接管 `console` 收集输出；弹窗策略
@@ -85,13 +120,27 @@
   新建与编辑都在管理面板里；面板的加号是思源原生图标按钮（`b3-button--outline b3-button--icon`），
   列表与预览只用图标 + 文本，不套按钮外观（`bis-manager__row-icon` / `bis-manager__action`）。
   编辑器复用那个编辑窗口，把保存 / 删除 / 运行换成文件操作，并隐藏配色；新建时 `deletable: false`，
-  编辑时删除会删掉对应文件。执行走同一个 `runAction`，但没有块上下文（`blockID` 为空串、`protyle` 为 undefined）。
+  初始图标用 `DEFAULT_BUTTON_ICON`（`iconCirclePlay`，与新建按钮块一致），编辑时沿用文件里的图标，
+  删除会删掉对应文件。执行走同一个 `runAction`，但没有块上下文（`blockID` 为空串、`protyle` 为 undefined）。
+  **文案口径**：同一个窗口服务两种对象，快捷操作传 `quickAction: true`，字段标题、空文本回落值、「放弃修改」
+  的提示都换成快捷操作那一套（`topBarTextLabel` / `topBarIconLabel` / `topBarActionLabel` /
+  `topBarDiscardChangesTip`），不再出现「按钮块」。保存失败时窗口不再补一条 `blockNotEditable` ——
+  快捷操作的保存出口自己已经给了提示。
 * **按钮块管理**（issue #28）：入口是设置面板里的一个按钮，窗口在 `src/buttonManager.ts`。列表用一条 SQL
   取 `type = 'custom' AND markdown LIKE ';;;button-in-siyuan/button%'` 的块（显式 `LIMIT`，理由同
-  `assetReference.ts`），逐条过 `parseButtonConfig`，不是本插件配置的块跳过；搜索与操作类型筛选都在内存里
-  做。预览复用 `createButtonElement()`，编辑复用同一个编辑窗口。**块可能没在当前窗口渲染**，保存时
+  `assetReference.ts`），同时取 `box` 与 `hpath`：`hpath` 是内核按文档整篇写进每个块的
+  （`kernel/sql/database.go` 的 `batchUpdateHPath`），笔记本名字去宿主的 `window.siyuan.notebooks` 里按 box
+  换（它本身就是 `lsNotebooks` 的结果），不用再发请求。逐条过 `parseButtonConfig`，不是本插件配置的块跳过；
+  搜索与操作类型筛选都在内存里做。**列表第一行是笔记名字**（不重复按钮上的文本），第二行是「笔记本 · hPath」
+  的灰色小字，行与行之间留 6px 间距。行内的按钮只是外观示意（`pointer-events: none`）：**固定宽度
+  132px、内容靠左，文本单独包一层出省略号** —— 之前允许收缩、又是宿主默认的 `justify-content: center`，
+  溢出部分会被两边一起裁掉，图标先没。详情复用 `createButtonElement()` 造出的**真按钮**，点它等于在
+  文档里点这个块（`runAction`），其余是操作摘要、块 ID、笔记 hPath、所在笔记本，不再显示 `.sy` 路径。
+  **块可能没在当前窗口渲染**，保存时
   `updateButtonContentAsync()` 在拿不到宿主 `setContent` 的情况下回落到 `/api/block/updateBlock`（markdown
-  围栏整体替换，块 ID 不变）；编辑窗口关闭后管理器重新查询一次列表。
+  围栏整体替换，块 ID 不变）。**编辑 / 删除之后的刷新不能先清空列表**：清空再等查询会让窗口闪一下、滚动位置
+  也被带回顶部，所以只有第一次打开才显示「正在读取」，其余刷新在同一个任务里重画并把 `scrollTop` 写回去
+  （issue #34）；原来的块被删掉时右侧回到空状态，不能留着已经不存在的项。
 * **在文档中定位**：跳转走 `siyuan://blocks/<id>`（宿主的 `processSiYuanUri` 负责打开所在文档、滚动到块并
   高亮），但**跳转前要先关掉管理窗口与设置面板**：管理窗口自己 `destroy()`，设置面板由入口通过
   `IButtonBlockManagerOptions.onLocate` 关 —— 插件拿到的 `siyuan` 类型里 `Setting` 还没有 `close()`，入口按
@@ -167,6 +216,14 @@
   保存与副作用都在 `saveSetting()` 里自己处理；设置每次现取、不持有快照（渲染器与菜单项是加载时注册的）。
   **设置必须存成对象**：插件存储文件没有扩展名，内核按内容嗅探 Content-Type，只有 `{…}` / `[…]` 才解析回
   对象，裸数字会变成字符串。
+
+## 测试
+
+* `npm test` 跑 `tests/` 下的 vitest 单元测试（jsdom 环境）。`vitest.config.mts` 把 `siyuan` 指到
+  `tests/mocks/siyuan.ts`，宿主对象、内核接口与对话框都有可控替身，测试不会启动思源、也不碰本机工作区。
+* 测试文件按 `src/` 模块一一对应；`npm run typecheck:tests` 用 `tsconfig.tests.json` 单独检查测试类型
+  （`tsconfig.json` 仍只覆盖 `src/`，打包与插件类型不受影响）。
+* CI 的 `test` job 跑 `npm test`；`check` job 的 `npm run check` 还包含测试类型检查与打包构建。
 
 ## 构建产物与发布
 

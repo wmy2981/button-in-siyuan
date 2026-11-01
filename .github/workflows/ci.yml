@@ -41,3 +41,22 @@ jobs:
         with:
           name: package
           path: package.zip
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 测试与静态检查分开跑：失败时能一眼看出是测试挂了还是构建/类型检查挂了
+      - name: Test
+        run: npm test

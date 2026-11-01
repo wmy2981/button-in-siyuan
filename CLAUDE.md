@@ -8,14 +8,17 @@ This file provides guidance to ANY AGENT when working with code in this reposito
 ## 命令
 
 ```bash
-npm run check      # 唯一完整门禁：i18n 键校验 + 文档校验 + tsc --noEmit + 打包构建
+npm run check      # 静态门禁：i18n 键校验 + 文档校验 + tsc --noEmit + 测试类型检查 + 打包构建
 npm run typecheck
+npm run typecheck:tests
+npm test           # vitest（jsdom）：tests/ 下的单元测试，宿主 API 全部用替身
 npm run build      # dist/ + package.zip
 npm run dev        # watch 构建，只写仓库根的 index.js / index.css / i18n/（本机插件目录加载用）
 ```
 
-* **改完只做静态验证**（`npm run check`，或 `typecheck` + `build`）。真实测试由维护者手动完成：
-  不要操作维护者的本机思源与工作区，也不要写端到端测试。
+* **改完只做静态验证**（`npm run check`，或 `typecheck` + `typecheck:tests` + `build`），
+  再跑一次 `npm test`。单元测试在 `tests/`，宿主 API 由 `tests/mocks/siyuan.ts` 替身，
+  不启动思源；真实交互仍由维护者手动完成，不要操作维护者的本机思源与工作区，也不要写端到端测试。
 
 ## 边界
 

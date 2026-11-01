@@ -13,7 +13,7 @@ const log = createLogger("buttonBlock");
 /** 自定义块类型名；块信息由插件包名与它组成，例如 button-in-siyuan/button。 */
 export const BUTTON_BLOCK_TYPE = "button";
 
-/** 新建按钮块时默认使用的思源内置图标。 */
+/** 新建按钮块与顶栏快捷操作时默认使用的思源内置图标。 */
 export const DEFAULT_BUTTON_ICON = "iconCirclePlay";
 
 /**

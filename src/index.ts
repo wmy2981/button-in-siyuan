@@ -2,6 +2,7 @@ import {getFrontend, Plugin, Setting, showMessage} from "siyuan";
 import type {IEventBusMap, Protyle} from "siyuan";
 import {downloadAgentSkill, installAgentSkill, removeAgentSkill} from "./agentSkill";
 import {syncAssetReferences, syncRenderedAssetReference} from "./assetReference";
+import {useBottomSheet} from "./bottomSheet";
 import {createButtonBlockIconHtml} from "./buttonIcon";
 import {openButtonBlockManager} from "./buttonManager";
 import {BUTTON_BLOCK_TYPE, DEFAULT_BUTTON_ICON, parseButtonConfig, renderButtonBlock, serializeButtonConfig} from "./buttonBlock";
@@ -121,11 +122,10 @@ export default class ButtonInSiYuan extends Plugin {
             // filter 是斜杠菜单的搜索关键字（不显示给用户，所以不放进 i18n）：
             // 中文界面按「按钮块」、英文界面按 button / btn 都能搜到
             filter: [context.i18n.insertButtonBlock, "button", "btn", "按钮块", "anniu"],
-            // 斜杠菜单里的图标是本插件自绘的按钮块图形（src/buttonIcon.ts），与市集图标同源。
-            // bis-slash-item 是给移动端斜杠菜单用的标记：思源会把插件项 html 整个塞进
-            // .keyboard__slash-text（插件项没有图标槽），那里没有 .b3-list-item__first 的 flex 上下文，
-            // 图标与文字会叠成两行，index.scss 里按这个类把 flex 补回来。
-            html: `<div class="b3-list-item__first bis-slash-item">${createButtonBlockIconHtml()}<span class="b3-list-item__text">${context.i18n.insertButtonBlock}</span></div>`,
+            // 斜杠菜单里的图标是本插件自绘的按钮块图形（src/buttonIcon.ts），与市集图标同源；
+            // html 与官方插件示例一致：`.b3-list-item__first` 的 flex 行由宿主管，
+            // 移动端斜杠菜单（插件项 html 塞进 `.keyboard__slash-text`）也一样（思源 issue 20866 已修复）。
+            html: `<div class="b3-list-item__first">${createButtonBlockIconHtml()}<span class="b3-list-item__text">${context.i18n.insertButtonBlock}</span></div>`,
             id: SLASH_ITEM_ID,
             callback: (protyle) => this.insertButtonBlock(protyle),
         }];
@@ -288,6 +288,45 @@ export default class ButtonInSiYuan extends Plugin {
             description: i18n.settingsDownloadSkillTip,
             createActionElement: () => skillDownload,
         });
+        // 移动端打开设置面板期间不聚焦输入控件：宿主 `Setting.open()` 结尾会对首个 `input, textarea` 补一次
+        // `focus()`，输入项还会经过 `dialog.bindInput()` 再聚焦一次（`app/src/plugin/Setting.ts`）；而 App 里
+        // `HTMLElement.prototype.focus` 被重写成不判 `isConnected` 就调 `JSAndroid.showKeyboard()`
+        // （`app/src/mobile/index.ts`），键盘引起的 adjustResize 会改 WebView 高度、整页重排，面板打开就闪一帧。
+        // 这里在打开期间临时接管 `focus` 只拦输入控件：宿主的对话框容器照常拿到焦点，Tab 与 Esc 不受影响
+        const openSetting = this.setting.open.bind(this.setting);
+        this.setting.open = (name: string) => {
+            if (!this.isMobile) {
+                openSetting(name);
+                return;
+            }
+            const prototype = HTMLElement.prototype;
+            const focus = prototype.focus;
+            prototype.focus = function (this: HTMLElement, options?: FocusOptions) {
+                if (this.tagName !== "INPUT" && this.tagName !== "TEXTAREA") {
+                    focus.call(this, options);
+                }
+            };
+            try {
+                openSetting(name);
+                // 宿主的 `Setting` 建的是普通居中对话框：遮罩整屏淡入、面板从 scale(.8) 淡入放大。App 的 WebView
+                // 在这两处图层变动的那一帧只能提交旧纹理 —— 面板打开时插一帧整屏旧画面（编辑窗口与移动端属性面板都用
+                // 抽屉，遮罩透明、只用位移滑入，没有这个问题）。这里把面板换成同一个抽屉（见 src/bottomSheet.ts）。
+                // 宿主的 `Setting.dialog` 还没写进 siyuan 的类型声明，取最后打开的那个
+                const dialogs = window.siyuan.dialogs;
+                const dialog = dialogs[dialogs.length - 1];
+                if (dialog) {
+                    dialog.element.classList.add("bis-dialog-warm");
+                    const disposeSheet = useBottomSheet(dialog);
+                    const destroyDialog = dialog.destroy.bind(dialog);
+                    dialog.destroy = (options?: Parameters<typeof destroyDialog>[0]) => {
+                        disposeSheet();
+                        destroyDialog(options);
+                    };
+                }
+            } finally {
+                prototype.focus = focus;
+            }
+        };
         log.debug("registered the plugin setting panel", {outputModes: OUTPUT_MODES.length});
     }
 

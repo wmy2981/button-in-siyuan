@@ -13,9 +13,7 @@
 * 图标从当前界面可用的 SVG 图标里选（内置图标，以及图标包和插件注册的图标），支持搜索。
 * 按钮颜色可选：线框、文本与图标共用一个颜色，取自思源内置配色，默认是思源原生蓝。
 * 按钮操作可选，且只能选一项：链接跳转、运行 JavaScript，或执行一个 JavaScript 文件
-  （`data/assets/` 或插件 `scripts/` 目录下的本地文件，或 http(s) 云端地址）。
-* JavaScript 代码编辑器是 CodeMirror，带行号、语法高亮、括号匹配与补全，配色跟随思源的代码高亮方案。
-* 顶栏有一个快捷操作入口：点击展开快捷操作菜单，每个操作一个 JSON 文件，执行行为与按钮块相同。
+* 顶栏快捷操作：点击展开快捷操作菜单，每个操作一个 JSON 文件，执行行为与按钮块相同。
 
 ## 安装
 
@@ -36,39 +34,8 @@
 ## 顶栏快捷操作
 
 桌面端顶栏有一个闪电图标；移动端同一个入口在顶栏的「插件」菜单里（宿主对带图标的顶栏条目就是这么注册的）。点击展开快捷操作菜单，菜单只负责执行，末尾固定一个「管理快捷操作」入口；新建与编辑都在管理面板里完成（面板右上角的加号图标，思源原生图标按钮）。
-每个快捷操作是插件数据目录下的一个 JSON 文件：
-
-```
-data/storage/petal/button-in-siyuan/topbar/<文件名>.json
-```
-
-一个文件一个快捷操作，菜单按文件名排序；文件内容是 `{"text","icon","action"}`，`action` 与按钮块完全相同（链接、JavaScript、JavaScript 文件）。
-管理面板的列表与预览只用图标和文本，不套按钮外观；只允许编辑文本、图标与操作，配色不可改（文件里写了 `color` 也会被忽略）。插件每次展开菜单都重新读这个目录，
-Agent 直接新建或编辑文件即可，新增、修改、删除都不用重载插件。
-
-## 设置项
-
-| 设置项 | 说明 |
-| --- | --- |
-| 按钮文本 | 按钮上的文字，纯文本；留空时回落到默认文本。 |
-| 按钮图标 | 当前界面里可用的 SVG 图标之一，也可以不设置。 |
-| 按钮颜色 | 线框、文本与图标共用的颜色，从思源内置配色里选；默认是思源原生蓝。 |
-| 按钮操作 | `无操作`、`链接跳转`、`JavaScript` 或 `JavaScript 文件`，只会执行其中一项。 |
-| 链接地址 | 选择「链接跳转」时出现，该项必填。 |
-| JavaScript 代码 | 选择「JavaScript」时出现，该项必填。 |
-| JavaScript 文件路径 | 选择「JavaScript 文件」时出现，该项必填。可以填 `data/assets/` 或 `data/storage/petal/button-in-siyuan/scripts/` 下的本地 `.js` 文件（路径从工作空间根开始写），也可以填 http(s) 地址。点「新建」可选择创建到这两个目录之一；「编辑文件信息」可以改名或在两者之间移动 |
 
 ## 插件设置
-
-| 设置项 | 说明 |
-| --- | --- |
-| JavaScript 输出弹窗 | 点按钮执行脚本后什么时候弹结果弹窗：`总是显示`、`有输出时显示`（默认）、`仅 console 输出时显示`、`警告时显示（也包含错误）`、`错误时显示`、`始终不显示`。单个脚本可以在最前面用 `// @bis-output <策略>` 覆盖这一项；`// @bis-frontends` / `// @bis-backends` 还能限定脚本只在声明的平台运行。 |
-| 调试模式 | 默认关：打开后插件自己的日志（加载、打开对话框、出错等）都输出到思源控制台，脚本里的 `console.debug` 也输出并显示在结果弹窗里。关掉时插件一条日志都不打印，控制台里只剩脚本自己的 console 输出。 |
-| JavaScript 编辑器自动换行 | 超出编辑器宽度的内容是否自动换行：`跟随思源设置`（默认，与 <kbd>设置</kbd> > <kbd>编辑器</kbd> > <kbd>代码块换行</kbd> 一致）、`启用`、`禁用`。 |
-| JavaScript 编辑器连字 | 是否显示连字（需要代码字体本身带连字）：`跟随思源设置`（默认，与 <kbd>设置</kbd> > <kbd>编辑器</kbd> > <kbd>代码块连字</kbd> 一致）、`启用`、`禁用`。 |
-| 按钮块管理 | 在独立窗口中列出当前工作空间的所有按钮块，可按文本、链接、脚本路径或所在文档搜索，按操作类型筛选；选中后预览按钮外观与操作摘要，可直接编辑或定位到文档中的块（定位会先关掉管理窗口与设置面板，再打开文档并高亮该块）。 |
-| 向 Agent 提供按钮块技能 | 默认开：把说明按钮块用法的技能写进工作空间的技能目录；关掉时会删除这个技能。 |
-| 下载技能 | 点「下载技能」用思源原生的保存对话框把整份技能打包成一个 zip 存到本地。 |
 
 卸载插件时只删除插件设置（`data/storage/petal/button-in-siyuan/settings`）：`scripts/` 下的脚本、`storage/` 下的脚本数据与 `topbar/` 下的快捷操作都会保留，重装后设置回到默认值。先禁用再卸载时插件没有实例，设置不会被清理。
 
@@ -96,6 +63,11 @@ Agent 直接新建或编辑文件即可，新增、修改、删除都不用重�
 
 完整说明与可以直接粘贴运行的示例：[docs/javascript.zh-CN.md](./docs/javascript.zh-CN.md)。
 
+## Agent 技能
+
+插件会把一份技能（Skill）写给思源的 Agent：`button-block`，以目录形式落在工作空间的
+`data/storage/ai/agent/skills/button-block/`
+
 ## 限制
 
 * 发布服务上本插件被禁用（`disabledInPublish`），发布页面显示块的原始内容而不是按钮。
@@ -111,30 +83,9 @@ Agent 直接新建或编辑文件即可，新增、修改、删除都不用重�
   （`tableCellRichEditor` 里 `pluginExtensions: false`），其斜杠菜单不会列出插件项。这是宿主限制，
   在正文里插入即可。单元格只能放行内内容，从单元格发起插入时按钮块会落在表格后面。
 
-## Agent 技能
+## 集市趋势图表
 
-插件会把一份技能（Skill）写给思源的 Agent：`button-block`，以目录形式落在工作空间的
-`data/storage/ai/agent/skills/button-block/`：
-
-| 文件 | 内容 |
-| --- | --- |
-| `SKILL.md` | 按钮块是什么、块内容（`{"text","icon","color","action"}`）怎么填、怎么用思源的块接口创建与修改。 |
-| `references/javascript.md` | JavaScript 操作：注入的接口、`return` / `console` / `showMessage` 各自的作用、官方端点文档在哪、可直接运行的示例。 |
-| `references/icons.md` | 思源内置图标的全部 id，以及按用途挑图标的对照表。 |
-
-两份参考文档随技能一起发布、而不是让 Agent 去插件目录里找，所以技能无论从哪里被读到都是完整的：
-Agent 用 `skill` 工具按 `name: "button-block/references/javascript.md"` 载入其中一份，思源加载技能正文时
-本来也会把它们列成技能的资源。javascript 文档里还给出了思源自己的 API 文档地址 —— `docs/API.md` 与
-`kernel/api/router.go`，走国内可访问的 CDN，并钉在你正在用的思源版本上 —— Agent 因此查的是官方文档，
-而不是这里随包带的一份副本。
-
-每次加载插件都会用包内自带的那三份重写技能目录，手改过或旧版本留下的内容都不会保留。插件设置里的
-「下载技能」会把它们打成一个 zip（`button-block/SKILL.md` 与 `button-block/references/…`）。
-技能默认写入；在插件设置里关掉、禁用插件或从工作空间移除插件时都会删掉这个技能 ——
-插件没在运行时，Agent 不会读到失效的技能。这几个接口需要思源启用 AI 功能。
-
-同样这两份文档在仓库里也保留了一份，方便技能之外阅读：
-[docs/javascript.md](./docs/javascript.md) 与 [docs/icons.md](./docs/icons.md)。
+![集市趋势图表](https://siyuan-bazaar-stats-graph.sr1.cc.cd/api/chart/wmy2981/button-in-siyuan?metrics=downloads,rating,ratings&range=all&area=true&lang=zh)
 
 ## 开发
 

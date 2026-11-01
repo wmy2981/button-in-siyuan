@@ -104,8 +104,8 @@ export type II18n = {
     managerCount: string;
     managerSelectHint: string;
     managerAction: string;
-    managerDoc: string;
-    managerPath: string;
+    managerNotebook: string;
+    managerHPath: string;
     managerBlockID: string;
     managerEdit: string;
     managerLocate: string;
@@ -118,6 +118,12 @@ export type II18n = {
     topBarManagerTitle: string;
     topBarNewTitle: string;
     topBarEditTitle: string;
+    /** 快捷操作管理器里「编辑」按钮的文案：同一处对按钮块说「编辑按钮块」，对快捷操作说「编辑快捷操作」 */
+    topBarEdit: string;
+    /** 编辑窗口里三个字段标题的快捷操作口径（按钮块用 buttonText / buttonIcon / buttonAction） */
+    topBarTextLabel: string;
+    topBarIconLabel: string;
+    topBarActionLabel: string;
     topBarManagerTip: string;
     topBarManagerEmpty: string;
     topBarFileName: string;
@@ -129,7 +135,11 @@ export type II18n = {
     readonlyPreviewTip: string;
     discardChangesTitle: string;
     discardChangesTip: string;
+    /** 快捷操作口径的同一句提示：写回的是文件而不是按钮块 */
+    topBarDiscardChangesTip: string;
     discardChangesConfirm: string;
+    /** 危险操作确认窗口里确认按钮的文案（删除按钮块 / 删除快捷操作 / 删除 JS 文件共用） */
+    confirmDelete: string;
     save: string;
     cancel: string;
     close: string;

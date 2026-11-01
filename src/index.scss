@@ -39,6 +39,23 @@
     border-radius: 0;
 }
 
+// 插件自己的对话框（src/dialog.ts）与插件设置面板：宿主的容器与遮罩带 opacity / scale 入场过渡，
+// 过渡起点与终点浏览器都会新建、销毁合成层，而 App 的 WebView 在那一帧只能提交旧的页面纹理 ——
+// 打开面板时插一帧整屏旧画面。这里常驻 will-change，图层在打开之前就已经存在。
+.bis-dialog-warm .b3-dialog__container {
+    will-change: transform;
+}
+
+.bis-dialog-warm .b3-dialog__scrim {
+    will-change: opacity;
+}
+
+// 移动端的底部抽屉（src/bottomSheet.ts）：面板靠宿主的 `.mobile-bottom-sheet` 用 `translateY(100%)` 移出视口，
+// 这里常驻 `will-change: transform`，让它的图层在打开之前就已经存在（打开时不再新建合成层）。
+.bis-bottom-sheet {
+    will-change: transform;
+}
+
 // 「按钮块管理」窗口（src/buttonManager.ts）：左侧列表、右侧预览。正文本身是 flex 容器，
 // 列表与预览各自滚动，窗口拖动改尺寸时一起变。
 .bis-manager {
@@ -70,6 +87,8 @@
     &__list {
         flex: 0 0 46%;
         min-width: 0;
+        // min-height: 0 让列表在纵向 flex 里也能被压扁并自己滚动，否则内容一长整个窗口就被撑开
+        min-height: 0;
         overflow: auto;
         padding-right: 8px;
         border-right: 1px solid var(--b3-border-color);
@@ -78,16 +97,23 @@
     &__preview {
         flex: 1 1 auto;
         min-width: 0;
+        min-height: 0;
         overflow: auto;
         padding-left: 4px;
     }
 
+    // 选中与悬浮都要带思源列表项的底色与圆角。`.b3-list-item` 自己只有 padding 与行高：
+    // 底色只在 `.b3-list--background` 里的列表项上，圆角也一样，所以这里两者都补上（issue #34）。
+    // 上下再留出间距，几项挨在一起时不会挤成一片
     &__row {
         display: flex;
         gap: 8px;
         align-items: center;
+        margin: 6px 8px;
+        border-radius: var(--b3-border-radius);
         cursor: pointer;
 
+        &:hover,
         &--current {
             background-color: var(--b3-list-hover);
         }
@@ -103,6 +129,8 @@
     &__row-text {
         flex: 1 1 auto;
         min-width: 0;
+        // 两行贴在一起，明确是同一条目下的标题与位置；思源自己也是 18px 的行高
+        line-height: 18px;
     }
 
     &__row-title,
@@ -112,19 +140,28 @@
         white-space: nowrap;
     }
 
-    // 行内预览沿用原生按钮外观，但要能塞进列表：取消 fn__size200 的固定宽度
+    // 行内预览沿用原生按钮外观，但只当外观示意：固定宽度让每行的文字对齐，内容靠左。
+    // 之前用 `max-width` + 允许收缩，宿主的 `justify-content: center` 会把溢出部分两边一起裁掉，
+    // 图标先被裁没、右边的笔记名也被挤扁（issue #34 反馈）
     &__chip {
-        width: auto;
-        min-width: 0;
-        max-width: 180px;
-        flex-shrink: 1;
+        flex: 0 0 auto;
+        width: 132px;
         overflow: hidden;
+        justify-content: flex-start;
         pointer-events: none;
     }
 
+    // 按钮文本单独一层，超宽时出省略号；`min-width: 0` 才能让它在 flex 里被压缩
+    &__chip-text {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    // 详情里的块是块本身，可以点（运行它的操作），所以这里不再屏蔽指针事件
     &__preview-button {
         margin-bottom: 4px;
-        pointer-events: none;
     }
 
     // 快捷操作（顶栏）的预览头：只有图标与文本，不套按钮外观
@@ -196,6 +233,28 @@
 .bis-action-start {
     margin-right: auto;
     align-self: stretch;
+}
+
+// 编辑窗口里的按钮：鼠标点过之后焦点还留在按钮上，而宿主的 `.b3-button--*` 把 `:hover` 与 `:focus`
+// 写成同一套样式，按钮看起来就一直在悬停。这里只保留键盘聚焦（`:focus-visible`）的反馈，鼠标点击后的
+// 焦点回到静止外观；描边颜色用 `currentColor`，与思源自己的 outline / remove 完全一致。
+.bis-editor-dialog .b3-button--outline:focus:not(:focus-visible),
+.bis-editor-dialog .b3-button--remove:focus:not(:focus-visible) {
+    background-color: transparent;
+    box-shadow: inset 0 0 0 .6px currentColor;
+}
+
+.bis-editor-dialog .b3-button--text:focus:not(:focus-visible),
+.bis-editor-dialog .b3-button--cancel:focus:not(:focus-visible) {
+    background-color: transparent;
+    box-shadow: none;
+}
+
+// 悬停提示（`.b3-tooltips` 的 `::after`）在 `:hover` 与 `:focus-within` 时出现，鼠标点完焦点还留在
+// 按钮上，提示就一直挂着（例如删除按钮上方的「删除快捷操作」）。同样只让键盘聚焦时显示。
+// 插件只有编辑窗口用 `b3-tooltips`，所以按这个窗口限定就够。
+.bis-editor-dialog .b3-tooltips:focus-within:not(:focus-visible)::after {
+    display: none;
 }
 
 // 编辑窗口里的色板：直接复用思源正文颜色面板的 .color__square（自带 26px 方块与 4px 间距）。
@@ -351,17 +410,6 @@
 // 而图标里靠 currentColor 上色的部分（例如 iconLiandi 的两条路径）会跟着变蓝，看起来就是错的。
 .bis-icon-button .svg {
     color: var(--b3-theme-on-background);
-}
-
-// 移动端的斜杠菜单是底部键盘工具栏里的一块面板（思源 mobile/util/keyboardToolbar.ts）：
-// 它把插件项 html 整个塞进 .keyboard__slash-text，而插件项没有图标槽 —— 桌面端那套
-// .b3-list-item__first 的 flex 上下文在那里不存在，.b3-list-item__text（display: flow-root）会退化成
-// 块级盒子，自绘图标与文字上下叠成两行（内置项的图标槽是思源自己填的，所以它们是一行）。
-// 这里只针对本插件标记的项把 flex 补回来，图标与文字恢复成内置项那样的一行。
-.keyboard__slash-text > .bis-slash-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
 }
 
 .bis-icon-picker {
