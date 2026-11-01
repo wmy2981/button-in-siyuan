@@ -1,10 +1,9 @@
 import {Dialog, fetchSyncPost, showMessage} from "siyuan";
 import {createLogger} from "./logger";
 import type {IButtonConfig, TButtonAction} from "./buttonBlock";
-import {createButtonElement, parseButtonConfig} from "./buttonBlock";
+import {createButtonElement, isBlockEditable, parseButtonConfig, runAction} from "./buttonBlock";
 import type {IContext} from "./context";
 import {openButtonBlockEditor} from "./editDialog";
-import {isBlockEditable} from "./buttonBlock";
 import {openLink} from "./openLink";
 
 const log = createLogger("buttonManager");
@@ -12,15 +11,32 @@ const log = createLogger("buttonManager");
 /** 一次最多列出多少个按钮块；显式 LIMIT 避免内核按用户设置的搜索条数上限静默截断。 */
 const BUTTON_QUERY_LIMIT = 5000;
 
-/** 工作空间里的一个按钮块，外加它所在文档的信息（列表里要显示）。 */
+/** 工作空间里的一个按钮块，外加它所在笔记的信息（列表与详情里要显示）。 */
 interface IButtonRow {
     id: string;
     config: IButtonConfig;
+    /** 所在笔记的标题 */
     rootTitle: string;
-    path: string;
+    /** 所在笔记的人可读路径，例如 `/日记/2024-01-01` */
+    hPath: string;
+    /** 所在笔记本的名字 */
+    notebook: string;
 }
 
 const actionTypeOf = (config: IButtonConfig) => config.action?.type || "none";
+
+/**
+ * 笔记本名。宿主的 `window.siyuan.notebooks` 就是 `/api/notebook/lsNotebooks` 的结果
+ * （`app/src/util/pathName.ts` 的 `setNoteBook`），按 box id 找名字即可，不必再发一次请求；
+ * 找不到时退回 id，总比空着强。
+ */
+const notebookNameOf = (box: string) => window.siyuan?.notebooks?.find((item) => item.id === box)?.name || box;
+
+/** 列表第二行：笔记本与笔记 hPath，灰色小字，体现它与上面那行是同一条目（issue #34）。 */
+const rowMetaOf = (row: IButtonRow) => [row.notebook, row.hPath].filter(Boolean).join(" · ");
+
+/** 列表第一行：笔记名字；文档没有内容（标题为空）时退回 hPath 或块 ID。 */
+const rowTitleOf = (row: IButtonRow) => row.rootTitle || row.hPath || row.id;
 
 /** 操作的一句话摘要，按钮块管理器与快捷操作管理器的预览共用。 */
 export const describeButtonAction = (context: IContext, config: IButtonConfig) => {
@@ -42,13 +58,15 @@ export const describeButtonAction = (context: IContext, config: IButtonConfig) =
 /**
  * 读取当前工作空间的全部按钮块（issue #28）。
  *
- * 用一条 SQL 同时取块内容、所在文档标题与路径：自定义块的 `content` 就是那段 JSON，`markdown` 是
- * `;;;button-in-siyuan/button` 围栏。所有块都过一遍 `parseButtonConfig`，内容不是本插件配置的块
+ * 用一条 SQL 同时取块内容与它所在笔记的信息：自定义块的 `content` 就是那段 JSON，`markdown` 是
+ * `;;;button-in-siyuan/button` 围栏。`hpath` 是内核按文档整篇写进每个块的（`kernel/sql/database.go`
+ * 的 `batchUpdateHPath`），所以块自己那一行就有笔记路径，不用再查文档；`box` 是笔记本 ID，名字去
+ * `window.siyuan.notebooks` 里换。所有块都过一遍 `parseButtonConfig`，内容不是本插件配置的块
  * （比如别的插件也用 custom 块）在列表里直接跳过。
  */
 const loadRows = async (context: IContext) => {
     const response = await fetchSyncPost("/api/query/sql", {
-        stmt: `SELECT b.id, b.content, b.root_id, b.path, (SELECT content FROM blocks WHERE id = b.root_id) AS root_title ` +
+        stmt: `SELECT b.id, b.content, b.box, b.hpath, (SELECT content FROM blocks WHERE id = b.root_id) AS root_title ` +
             `FROM blocks b WHERE b.type = 'custom' AND b.markdown LIKE ';;;button-in-siyuan/button%' LIMIT ${BUTTON_QUERY_LIMIT}`,
     }, undefined, false);
     if (response.code !== 0) {
@@ -58,8 +76,9 @@ const loadRows = async (context: IContext) => {
     for (const item of (response.data || []) as Array<{
         id?: string;
         content?: string;
+        box?: string;
+        hpath?: string;
         root_title?: string;
-        path?: string;
     }>) {
         const config = parseButtonConfig(item.content || "", context.i18n.defaultButtonText);
         if (!item.id || !config) {
@@ -69,10 +88,12 @@ const loadRows = async (context: IContext) => {
             id: item.id,
             config,
             rootTitle: item.root_title || "",
-            path: item.path || "",
+            hPath: item.hpath || "",
+            notebook: notebookNameOf(item.box || ""),
         });
     }
-    rows.sort((a, b) => (a.rootTitle + a.config.text).localeCompare(b.rootTitle + b.config.text));
+    // 按「笔记本 + 笔记路径」排：同一个笔记本、同一篇笔记里的按钮块挨在一起
+    rows.sort((a, b) => (a.notebook + a.hPath).localeCompare(b.notebook + b.hPath));
     log.info("loaded the button blocks for the manager", {rows: rows.length, limit: BUTTON_QUERY_LIMIT});
     return rows;
 };
@@ -89,9 +110,10 @@ export interface IButtonBlockManagerOptions {
 /**
  * 「按钮块管理」窗口：列出、搜索、预览、编辑当前工作空间的所有按钮块。
  *
- * 入口在插件设置面板里。左侧是列表（按钮外观 + 文本 + 所在文档），右侧是选中项的完整预览、操作
- * 摘要、块 ID 与文档路径，以及「编辑按钮块」「在文档中定位」。编辑复用同一个编辑窗口：块没在
- * 当前窗口渲染时，保存会自动走内核的 `updateBlock`（见 `updateButtonContentAsync`）。
+ * 入口在插件设置面板里。左侧是列表（按钮外观 + 所在笔记 + 笔记本与 hPath），右侧是选中项的详情：
+ * 可以直接点的按钮块本身、操作摘要、块 ID、笔记 hPath、所在笔记本，以及「编辑按钮块」「在文档中定位」。
+ * 编辑复用同一个编辑窗口：块没在当前窗口渲染时，保存会自动走内核的 `updateBlock`（见
+ * `updateButtonContentAsync`）。
  */
 export const openButtonBlockManager = (context: IContext, options: IButtonBlockManagerOptions = {}) => {
     const {i18n} = context;
@@ -155,13 +177,22 @@ export const openButtonBlockManager = (context: IContext, options: IButtonBlockM
                 : action?.type === "script"
                     ? action.script.substring(0, 500)
                     : "";
-        return [row.config.text, row.config.icon, target, row.rootTitle, row.path, row.id]
+        return [row.config.text, row.config.icon, target, row.rootTitle, row.hPath, row.notebook, row.id]
             .join("\n")
             .toLowerCase()
             .includes(keyword);
     };
 
-    /** 右侧预览：整颗按钮 + 操作摘要 + 位置信息 + 两个动作。 */
+    /** 右侧回到「还没选」的空状态。刷新后原来的块被删掉时也要走这里，不能留着已经不存在的块。 */
+    const showPlaceholder = () => {
+        previewElement.replaceChildren();
+        const hint = document.createElement("div");
+        hint.className = "bis-manager__hint ft__on-surface";
+        hint.textContent = i18n.managerSelectHint;
+        previewElement.append(hint);
+    };
+
+    /** 详情：整颗按钮 + 属性 + 两个动作。 */
     const showPreview = (row: IButtonRow) => {
         selectedID = row.id;
         // 刷新列表后直接恢复预览时，行高亮也要跟着回来
@@ -169,9 +200,19 @@ export const openButtonBlockManager = (context: IContext, options: IButtonBlockM
             element.classList.toggle("bis-manager__row--current", element.dataset.bisId === row.id);
         });
         previewElement.replaceChildren();
+        // 详情里的块本身就是真按钮：点它等于在文档里点这个块，链接、内联脚本、脚本文件都照跑。
+        // 块可能没在当前窗口渲染，这时拿不到编辑器上下文，交给 runAction 按空上下文处理
         const previewButton = createButtonElement(context, row.config);
         previewButton.classList.add("bis-manager__preview-button");
-        previewButton.tabIndex = -1;
+        previewButton.addEventListener("click", () => {
+            const blockElement = document.querySelector<HTMLElement>(
+                `[data-type="NodeCustomBlock"][data-node-id="${row.id}"]`) || undefined;
+            log.info("running a button block from the manager", {
+                blockID: row.id,
+                action: actionTypeOf(row.config),
+            });
+            runAction(context, {blockID: row.id, blockElement, config: row.config});
+        });
         const meta = document.createElement("dl");
         meta.className = "bis-manager__meta";
         const addMeta = (label: string, value: string) => {
@@ -184,9 +225,9 @@ export const openButtonBlockManager = (context: IContext, options: IButtonBlockM
             meta.append(term, detail);
         };
         addMeta(i18n.managerAction, describeButtonAction(context, row.config));
-        addMeta(i18n.managerDoc, row.rootTitle || "-");
-        addMeta(i18n.managerPath, row.path || "-");
         addMeta(i18n.managerBlockID, row.id);
+        addMeta(i18n.managerHPath, row.hPath || "-");
+        addMeta(i18n.managerNotebook, row.notebook || "-");
         const actions = document.createElement("div");
         actions.className = "bis-manager__actions";
         const edit = document.createElement("button");
@@ -240,15 +281,25 @@ export const openButtonBlockManager = (context: IContext, options: IButtonBlockM
             chip.classList.add("bis-manager__chip");
             chip.tabIndex = -1;
             chip.setAttribute("aria-hidden", "true");
+            // 列表里的按钮只是外观示意：文本单独包一层，超宽时出省略号，图标与文字都不会被裁掉一半
+            const chipText = document.createElement("span");
+            chipText.className = "bis-manager__chip-text";
+            for (const node of Array.from(chip.childNodes)) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    chipText.textContent = node.textContent;
+                    node.replaceWith(chipText);
+                }
+            }
             const text = document.createElement("div");
             text.className = "bis-manager__row-text";
             const title = document.createElement("div");
             title.className = "bis-manager__row-title";
-            title.textContent = row.config.text;
-            const doc = document.createElement("div");
-            doc.className = "bis-manager__row-meta ft__on-surface ft__smaller";
-            doc.textContent = row.rootTitle || row.path || row.id;
-            text.append(title, doc);
+            // 按钮文本已经由左边的按钮本体表达，这一行只说它在哪篇笔记里（issue #34）
+            title.textContent = rowTitleOf(row);
+            const meta = document.createElement("div");
+            meta.className = "bis-manager__row-meta ft__on-surface ft__smaller";
+            meta.textContent = rowMetaOf(row);
+            text.append(title, meta);
             rowElement.append(chip, text);
             const select = () => {
                 listElement.querySelectorAll(".bis-manager__row--current")
@@ -269,20 +320,26 @@ export const openButtonBlockManager = (context: IContext, options: IButtonBlockM
         // 选中的块被搜索条件过滤掉时清空右侧，避免显示一个已经不在列表里的项
         if (selectedID && !visible.some((row) => row.id === selectedID)) {
             selectedID = "";
-            previewElement.replaceChildren();
-            const hint = document.createElement("div");
-            hint.className = "bis-manager__hint ft__on-surface";
-            hint.textContent = i18n.managerSelectHint;
-            previewElement.append(hint);
+            showPlaceholder();
         }
     };
 
-    const reload = async () => {
-        listElement.replaceChildren();
-        const loading = document.createElement("div");
-        loading.className = "bis-manager__hint ft__on-surface";
-        loading.textContent = i18n.managerLoading;
-        listElement.append(loading);
+    /**
+     * 重新查询并刷新列表与详情。
+     *
+     * 只有第一次打开才显示「正在读取」：编辑或删除之后刷新时**不先清空列表**，否则窗口会闪一下、
+     * 滚动位置也会被带回顶部（issue #34）。列表重画与滚动位置复原在同一个任务里完成，浏览器只画
+     * 最终状态。
+     */
+    const reload = async (initial = false) => {
+        if (initial) {
+            listElement.replaceChildren();
+            const loading = document.createElement("div");
+            loading.className = "bis-manager__hint ft__on-surface";
+            loading.textContent = i18n.managerLoading;
+            listElement.append(loading);
+        }
+        const scrollTop = listElement.scrollTop;
         try {
             rows = await loadRows(context);
         } catch (error) {
@@ -294,13 +351,17 @@ export const openButtonBlockManager = (context: IContext, options: IButtonBlockM
         const previous = rows.find((row) => row.id === selectedID);
         selectedID = "";
         renderList();
+        listElement.scrollTop = scrollTop;
         if (previous) {
             showPreview(previous);
+        } else {
+            // 选中的块被删掉了（或已被筛选条件排除）：右侧不能留着那个已经不存在的块
+            showPlaceholder();
         }
     };
 
     searchElement.addEventListener("input", renderList);
     filterElement.addEventListener("change", renderList);
     field<HTMLButtonElement>("close").addEventListener("click", () => dialog.destroy());
-    void reload();
+    void reload(true);
 };

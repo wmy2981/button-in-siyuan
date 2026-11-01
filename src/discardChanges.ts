@@ -1,34 +1,22 @@
 import {Dialog} from "siyuan";
+import {confirmDanger} from "./confirmDanger";
 import type {IContext} from "./context";
 import {createLogger} from "./logger";
 
 const log = createLogger("discardChanges");
 
 /**
- * 「放弃未保存的修改」确认窗口：确认按钮用思源自己的危险操作样式 `b3-button--remove`
- * （宿主的删除确认就是这个红色样式，见 `app/src/assets/scss/component/_button.scss`），
- * 确认后才执行 onConfirm；关掉窗口（取消、Esc、点遮罩）都算保留原窗口。
+ * 「放弃未保存的修改」确认窗口：与三处删除确认共用 `confirmDanger`，确认按钮是红色的
+ * `b3-button--remove`；关掉窗口（取消、Esc、点遮罩）都算保留原窗口。
+ *
+ * `tip` 只在编辑顶栏快捷操作时换一句：那时候写回的是文件而不是按钮块。
  */
-export const confirmDiscard = (context: IContext, onConfirm: () => void) => {
-    const {i18n} = context;
-    const dialog = new Dialog({
-        title: i18n.discardChangesTitle,
-        width: context.isMobile ? "92vw" : "520px",
-        content: `<div class="b3-dialog__content">
-    <div class="ft__breakword">${i18n.discardChangesTip}</div>
-</div>
-<div class="b3-dialog__action">
-    <button class="b3-button b3-button--cancel" data-bis="keep">${i18n.cancel}</button>
-    <div class="fn__space"></div>
-    <button class="b3-button b3-button--remove" data-bis="discard">${i18n.discardChangesConfirm}</button>
-</div>`,
-    });
-    dialog.element.querySelector('[data-bis="keep"]')?.addEventListener("click", () => dialog.destroy());
-    dialog.element.querySelector('[data-bis="discard"]')?.addEventListener("click", () => {
-        onConfirm();
-        dialog.destroy();
-    });
-};
+export const confirmDiscard = (context: IContext, onConfirm: () => void, tip = context.i18n.discardChangesTip) =>
+    confirmDanger(context, {
+        title: context.i18n.discardChangesTitle,
+        tip,
+        confirm: context.i18n.discardChangesConfirm,
+    }, onConfirm);
 
 /**
  * 给对话框装上「改了东西就别直接关」的拦截：取消、× 图标、`Esc`、点遮罩四条路都要先问一次。
@@ -39,7 +27,7 @@ export const confirmDiscard = (context: IContext, onConfirm: () => void) => {
  * `isDirty()` 由调用方判断（两边各自比较自己的表单/编辑器快照），`detail` 只进日志。
  */
 export const guardUnsavedChanges = (context: IContext, dialog: Dialog, detail: Record<string, unknown>,
-                                    isDirty: () => boolean) => {
+                                    isDirty: () => boolean, tip?: string) => {
     const destroyDialog = dialog.destroy.bind(dialog);
     dialog.destroy = (options?: Parameters<typeof destroyDialog>[0]) => {
         if (!isDirty()) {
@@ -50,6 +38,6 @@ export const guardUnsavedChanges = (context: IContext, dialog: Dialog, detail: R
         confirmDiscard(context, () => {
             log.info("discarded the unsaved changes", detail);
             destroyDialog(options);
-        });
+        }, tip);
     };
 };

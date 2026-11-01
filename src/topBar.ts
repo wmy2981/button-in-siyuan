@@ -282,7 +282,7 @@ export const openTopBarManager = (context: IContext) => {
         const edit = document.createElement("button");
         edit.type = "button";
         edit.className = "b3-button b3-button--outline";
-        edit.textContent = i18n.managerEdit;
+        edit.textContent = i18n.topBarEdit;
         edit.addEventListener("click", () => openEditor(action));
         const actions = document.createElement("div");
         actions.className = "bis-manager__actions";
@@ -296,6 +296,8 @@ export const openTopBarManager = (context: IContext) => {
             // 新建时给一个默认图标：空图标在菜单里只显示文本，用户往往还要再点一次选图标
             config: action?.config || {text: i18n.topBarDefaultText, icon: DEFAULT_BUTTON_ICON},
             title: action ? i18n.topBarEditTitle : i18n.topBarNewTitle,
+            // 编辑窗口对快捷操作说「快捷操作文本 / 图标 / 操作」，不说「按钮块」（issue #34）
+            quickAction: true,
             colorEditable: false,
             deletable: Boolean(action),
             onSave: async (config) => {
@@ -392,6 +394,9 @@ export const openTopBarManager = (context: IContext) => {
         render();
         if (previous) {
             showPreview(previous);
+        } else {
+            // 选中的快捷操作被删掉了：右侧不能留着那个已经不存在的文件
+            previewElement.replaceChildren();
         }
     };
 

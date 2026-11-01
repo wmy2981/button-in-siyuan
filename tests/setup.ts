@@ -27,6 +27,8 @@ export const resetWindow = () => {
             fileTree: {noSplitScreenWhenOpenTab: false},
         },
         dialogs: [],
+        // 宿主的 lsNotebooks 结果，插件按 box id 换笔记本名字（列表与详情里显示）
+        notebooks: [],
     };
     (window as any).Lute = {
         NewNodeID: () => "20240101000000-abcdefg",

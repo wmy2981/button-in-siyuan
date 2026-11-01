@@ -47,9 +47,17 @@
 * **关窗前的「放弃修改」确认**：不是逐条拦取消 / × / `Esc` / 点遮罩，而是把实例上的 `dialog.destroy` 换成
   自己的函数（宿主这四条路最后都调它）。**`disableClose` 只挡遮罩与 ×，挡不住 `Esc`**；判断「有没有改过」
   与保存必须共用同一个 `currentConfig()` 口径，否则会出现「什么都没改也弹确认」。
-* **删除确认**：删除按钮块、删除快捷操作、删除 JS 文件都用宿主的 `confirm`，并把 `isDelete` 传 `true`
-  （`confirm(title, text, callback, undefined, true)`）——确认按钮才会是思源的红色线框危险操作样式，
-  与「放弃修改」一致；默认那份是蓝色文本按钮，容易被当成普通操作。
+* **危险操作确认**：删除按钮块、删除快捷操作、删除 JS 文件与「放弃修改」共用 `src/confirmDanger.ts`
+  这一个窗口（确认按钮是红色线框 `b3-button--remove`）。**不要退回宿主的 `confirm`**：它在打开时就
+  `focus()` 确认按钮（`app/src/dialog/confirmDialog.ts` 末尾），而宿主的 `.b3-button--remove` 把
+  `:hover` 与 `:focus` 写成同一套样式，窗口一出现按钮就已经是「悬停」外观。正文可能是脚本路径这类
+  用户数据，走 `textContent` 写入，不拼进 HTML。
+* **点过的按钮不留悬停态**：同样因为宿主把 `:hover` 与 `:focus` 写成同一套，鼠标点完焦点还留在按钮上，
+  按钮看起来一直在悬停。编辑窗口给 `dialog.element` 加了 `bis-editor-dialog`，`index.scss` 只在
+  `:focus:not(:focus-visible)` 时把底色与描边还原成静止态 —— 键盘 Tab 过去的按钮仍保留焦点反馈；
+  描边色用 `currentColor`，不重抄主题变量。**提示气泡同理**：`.b3-tooltips` 的 `::after` 在
+  `:hover` 与 `:focus-within` 时出现，点完按钮提示会一直挂着（删除按钮上方的「删除快捷操作」），
+  所以同一窗口里 `:focus-within:not(:focus-visible)` 时把它 `display: none`。
 * **代码编辑器**：CodeMirror 6，配色从思源已加载的代码高亮主题实测后映射，不写死。改高沿用思源原生
   textarea 那套（`.cm-editor` 上的 `resize: vertical`），命中区由浏览器给定：鼠标 **16×16**、触屏约
   **30×30**（本机 Chromium 实测，`::-webkit-resizer` 的宽高与滚动条宽度都改不动它），鼠标那份从角外擦过
@@ -90,12 +98,25 @@
   编辑器复用那个编辑窗口，把保存 / 删除 / 运行换成文件操作，并隐藏配色；新建时 `deletable: false`，
   初始图标用 `DEFAULT_BUTTON_ICON`（`iconCirclePlay`，与新建按钮块一致），编辑时沿用文件里的图标，
   删除会删掉对应文件。执行走同一个 `runAction`，但没有块上下文（`blockID` 为空串、`protyle` 为 undefined）。
+  **文案口径**：同一个窗口服务两种对象，快捷操作传 `quickAction: true`，字段标题、空文本回落值、「放弃修改」
+  的提示都换成快捷操作那一套（`topBarTextLabel` / `topBarIconLabel` / `topBarActionLabel` /
+  `topBarDiscardChangesTip`），不再出现「按钮块」。保存失败时窗口不再补一条 `blockNotEditable` ——
+  快捷操作的保存出口自己已经给了提示。
 * **按钮块管理**（issue #28）：入口是设置面板里的一个按钮，窗口在 `src/buttonManager.ts`。列表用一条 SQL
   取 `type = 'custom' AND markdown LIKE ';;;button-in-siyuan/button%'` 的块（显式 `LIMIT`，理由同
-  `assetReference.ts`），逐条过 `parseButtonConfig`，不是本插件配置的块跳过；搜索与操作类型筛选都在内存里
-  做。预览复用 `createButtonElement()`，编辑复用同一个编辑窗口。**块可能没在当前窗口渲染**，保存时
+  `assetReference.ts`），同时取 `box` 与 `hpath`：`hpath` 是内核按文档整篇写进每个块的
+  （`kernel/sql/database.go` 的 `batchUpdateHPath`），笔记本名字去宿主的 `window.siyuan.notebooks` 里按 box
+  换（它本身就是 `lsNotebooks` 的结果），不用再发请求。逐条过 `parseButtonConfig`，不是本插件配置的块跳过；
+  搜索与操作类型筛选都在内存里做。**列表第一行是笔记名字**（不重复按钮上的文本），第二行是「笔记本 · hPath」
+  的灰色小字，行与行之间留 6px 间距。行内的按钮只是外观示意（`pointer-events: none`）：**固定宽度
+  132px、内容靠左，文本单独包一层出省略号** —— 之前允许收缩、又是宿主默认的 `justify-content: center`，
+  溢出部分会被两边一起裁掉，图标先没。详情复用 `createButtonElement()` 造出的**真按钮**，点它等于在
+  文档里点这个块（`runAction`），其余是操作摘要、块 ID、笔记 hPath、所在笔记本，不再显示 `.sy` 路径。
+  **块可能没在当前窗口渲染**，保存时
   `updateButtonContentAsync()` 在拿不到宿主 `setContent` 的情况下回落到 `/api/block/updateBlock`（markdown
-  围栏整体替换，块 ID 不变）；编辑窗口关闭后管理器重新查询一次列表。
+  围栏整体替换，块 ID 不变）。**编辑 / 删除之后的刷新不能先清空列表**：清空再等查询会让窗口闪一下、滚动位置
+  也被带回顶部，所以只有第一次打开才显示「正在读取」，其余刷新在同一个任务里重画并把 `scrollTop` 写回去
+  （issue #34）；原来的块被删掉时右侧回到空状态，不能留着已经不存在的项。
 * **在文档中定位**：跳转走 `siyuan://blocks/<id>`（宿主的 `processSiYuanUri` 负责打开所在文档、滚动到块并
   高亮），但**跳转前要先关掉管理窗口与设置面板**：管理窗口自己 `destroy()`，设置面板由入口通过
   `IButtonBlockManagerOptions.onLocate` 关 —— 插件拿到的 `siyuan` 类型里 `Setting` 还没有 `close()`，入口按

@@ -117,7 +117,7 @@ describe("openScriptFileEditor", () => {
 
         field("cancel").click();
         await vi.waitFor(() => expect(Dialog.instances).toHaveLength(3));
-        Dialog.instances.at(-1)?.element.querySelector<HTMLElement>('[data-bis="discard"]')?.click();
+        Dialog.instances.at(-1)?.element.querySelector<HTMLElement>('[data-bis="confirm"]')?.click();
         expect(dialog.destroyed).toBe(true);
     });
 

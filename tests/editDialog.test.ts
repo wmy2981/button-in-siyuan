@@ -1,7 +1,7 @@
 import {beforeEach, describe, expect, it, vi} from "vitest";
 import {openButtonBlockEditor} from "../src/editDialog";
 import {makeConfig, makeContext, makeSettings} from "./helpers";
-import {Dialog, confirm, fetchSyncPost, showMessage} from "./mocks/siyuan";
+import {Dialog, fetchSyncPost, showMessage} from "./mocks/siyuan";
 
 const mocks = vi.hoisted(() => ({
     updateButtonContentAsync: vi.fn(),
@@ -56,7 +56,6 @@ beforeEach(() => {
             focus: vi.fn(),
         };
     });
-    confirm.mockImplementation((_title, _text, callback) => callback?.());
 });
 
 const open = (options: Record<string, unknown> = {}, context = makeContext()) => {
@@ -102,6 +101,25 @@ describe("openButtonBlockEditor", () => {
         expect((field("file") as HTMLInputElement).value).toBe("data/assets/a.js");
     });
 
+    it("words the fields for a button block", () => {
+        const {dialog} = open();
+        const labels = Array.from(dialog.element.querySelectorAll(".b3-dialog__content .ft__on-surface"))
+            .map((element) => element.textContent);
+        expect(labels).toContain("buttonText");
+        expect(labels).toContain("buttonIcon");
+        expect(labels).toContain("buttonAction");
+    });
+
+    it("words the fields for a quick action", () => {
+        const {field, dialog} = open({quickAction: true});
+        const labels = Array.from(dialog.element.querySelectorAll(".b3-dialog__content .ft__on-surface"))
+            .map((element) => element.textContent);
+        expect(labels).toContain("topBarTextLabel");
+        expect(labels).toContain("topBarIconLabel");
+        expect(labels).toContain("topBarActionLabel");
+        expect((field("text") as HTMLInputElement).placeholder).toBe("topBarDefaultText");
+    });
+
     it("saves the current form back to the block", async () => {
         const {field, dialog, context} = open();
         (field("text") as HTMLInputElement).value = "  New  ";
@@ -130,6 +148,16 @@ describe("openButtonBlockEditor", () => {
     it("keeps the dialog open when the custom save fails", async () => {
         const onSave = vi.fn(async () => false);
         const {field, dialog} = open({onSave});
+        field("save").click();
+        await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+        // 顶栏快捷操作的保存出口自己会给出失败提示，这里不再补一条「按钮块不可编辑」
+        expect(showMessage).not.toHaveBeenCalledWith("blockNotEditable");
+        expect(dialog.destroyed).toBe(false);
+    });
+
+    it("keeps the dialog open when the block cannot be written", async () => {
+        mocks.updateButtonContentAsync.mockResolvedValue(false);
+        const {field, dialog} = open();
         field("save").click();
         await vi.waitFor(() => expect(showMessage).toHaveBeenCalledWith("blockNotEditable"));
         expect(dialog.destroyed).toBe(false);
@@ -275,8 +303,11 @@ describe("openButtonBlockEditor", () => {
     it("deletes the block after the confirmation", async () => {
         const {field, dialog} = open();
         field("delete").click();
-        expect(confirm).toHaveBeenCalledWith("deleteButtonBlock", "deleteButtonBlockTip",
-            expect.any(Function), undefined, true);
+        const confirmDialog = Dialog.instances.at(-1);
+        expect(confirmDialog?.options.title).toBe("deleteButtonBlock");
+        expect(confirmDialog?.element.querySelector<HTMLElement>('[data-bis="tip"]')?.textContent)
+            .toBe("deleteButtonBlockTip");
+        confirmDialog?.element.querySelector<HTMLElement>('[data-bis="confirm"]')?.click();
         await vi.waitFor(() => expect(fetchSyncPost).toHaveBeenCalledWith(
             "/api/block/deleteBlock",
             {id: "20240101000000-abcdefg"},
@@ -290,8 +321,11 @@ describe("openButtonBlockEditor", () => {
         const onDelete = vi.fn(async () => true);
         const {field, dialog} = open({onDelete});
         field("delete").click();
-        expect(confirm).toHaveBeenCalledWith("deleteTopBarButton", "deleteTopBarButtonTip",
-            expect.any(Function), undefined, true);
+        const confirmDialog = Dialog.instances.at(-1);
+        expect(confirmDialog?.options.title).toBe("deleteTopBarButton");
+        expect(confirmDialog?.element.querySelector<HTMLElement>('[data-bis="confirm"]')?.textContent)
+            .toBe("confirmDelete");
+        confirmDialog?.element.querySelector<HTMLElement>('[data-bis="confirm"]')?.click();
         await vi.waitFor(() => expect(onDelete).toHaveBeenCalledTimes(1));
         expect(dialog.destroyed).toBe(true);
     });
@@ -300,6 +334,7 @@ describe("openButtonBlockEditor", () => {
         const onDelete = vi.fn(async () => false);
         const {field, dialog} = open({onDelete});
         field("delete").click();
+        Dialog.instances.at(-1)?.element.querySelector<HTMLElement>('[data-bis="confirm"]')?.click();
         await vi.waitFor(() => expect(showMessage).toHaveBeenCalledWith("deleteTopBarButtonFailed"));
         expect(dialog.destroyed).toBe(false);
     });
@@ -307,7 +342,7 @@ describe("openButtonBlockEditor", () => {
     it("does not delete in the read-only preview", () => {
         const {field} = open({editable: false});
         field("delete").click();
-        expect(confirm).not.toHaveBeenCalled();
+        expect(Dialog.instances).toHaveLength(1);
     });
 
     it("runs the form through the custom outlet", () => {
@@ -337,7 +372,7 @@ describe("openButtonBlockEditor", () => {
 
         field("cancel").click();
         await vi.waitFor(() => expect(Dialog.instances).toHaveLength(3));
-        Dialog.instances.at(-1)?.element.querySelector<HTMLElement>('[data-bis="discard"]')?.click();
+        Dialog.instances.at(-1)?.element.querySelector<HTMLElement>('[data-bis="confirm"]')?.click();
         expect(dialog.destroyed).toBe(true);
     });
 
@@ -416,8 +451,12 @@ describe("openButtonBlockEditor", () => {
     it("removes the script file after the confirmation", async () => {
         const {field} = open({config: makeConfig({action: {type: "file", file: "data/assets/a.js"}})});
         field("file-remove").click();
-        expect(confirm).toHaveBeenCalledWith("scriptFileRemoveConfirm", "data/assets/a.js",
-            expect.any(Function), undefined, true);
+        const confirmDialog = Dialog.instances.at(-1);
+        expect(confirmDialog?.options.title).toBe("scriptFileRemoveConfirm");
+        // 脚本路径是用户数据，走 textContent 写入
+        expect(confirmDialog?.element.querySelector<HTMLElement>('[data-bis="tip"]')?.textContent)
+            .toBe("data/assets/a.js");
+        confirmDialog?.element.querySelector<HTMLElement>('[data-bis="confirm"]')?.click();
         await vi.waitFor(() => expect(mocks.removeWorkspaceFile).toHaveBeenCalledWith("data/assets/a.js"));
         expect((field("file") as HTMLInputElement).value).toBe("");
     });
@@ -426,6 +465,7 @@ describe("openButtonBlockEditor", () => {
         mocks.removeWorkspaceFile.mockRejectedValue(new Error("read only"));
         const {field} = open({config: makeConfig({action: {type: "file", file: "data/assets/a.js"}})});
         field("file-remove").click();
+        Dialog.instances.at(-1)?.element.querySelector<HTMLElement>('[data-bis="confirm"]')?.click();
         await vi.waitFor(() => expect(showMessage).toHaveBeenCalledWith("read only"));
     });
 

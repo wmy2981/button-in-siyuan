@@ -9,7 +9,7 @@ describe("confirmDiscard", () => {
         const dialog = Dialog.instances.at(-1);
         expect(dialog?.options.title).toBe("discardChangesTitle");
         expect(dialog?.element.textContent).toContain("discardChangesTip");
-        expect(dialog?.element.querySelector('[data-bis="discard"]')?.classList.contains("b3-button--remove")).toBe(true);
+        expect(dialog?.element.querySelector('[data-bis="confirm"]')?.classList.contains("b3-button--remove")).toBe(true);
     });
 
     it("keeps the original window when the user cancels", () => {
@@ -25,7 +25,7 @@ describe("confirmDiscard", () => {
         const onConfirm = vi.fn();
         confirmDiscard(makeContext(), onConfirm);
         const dialog = Dialog.instances.at(-1);
-        dialog?.element.querySelector<HTMLElement>('[data-bis="discard"]')?.click();
+        dialog?.element.querySelector<HTMLElement>('[data-bis="confirm"]')?.click();
         expect(onConfirm).toHaveBeenCalledTimes(1);
         expect(dialog?.destroyed).toBe(true);
     });
@@ -33,6 +33,11 @@ describe("confirmDiscard", () => {
     it("uses the mobile width", () => {
         confirmDiscard(makeContext({isMobile: true}), vi.fn());
         expect(Dialog.instances.at(-1)?.options.width).toBe("92vw");
+    });
+
+    it("takes a custom tip for the quick action editor", () => {
+        confirmDiscard(makeContext(), vi.fn(), "topBarDiscardChangesTip");
+        expect(Dialog.instances.at(-1)?.element.textContent).toContain("topBarDiscardChangesTip");
     });
 });
 
@@ -66,7 +71,7 @@ describe("guardUnsavedChanges", () => {
         const {dialog, destroy} = makeDialog();
         dialog.destroy();
         const confirm = Dialog.instances.at(-1);
-        confirm?.element.querySelector<HTMLElement>('[data-bis="discard"]')?.click();
+        confirm?.element.querySelector<HTMLElement>('[data-bis="confirm"]')?.click();
         expect(destroy).toHaveBeenCalledTimes(1);
     });
 

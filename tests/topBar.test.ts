@@ -249,6 +249,8 @@ describe("openTopBarManager", () => {
         document.querySelector<HTMLElement>(".bis-manager__actions button")?.click();
         expect(openButtonBlockEditor).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
             config: expect.objectContaining({text: "Quick", icon: ""}),
+            // 编辑窗口按快捷操作的口径取文案，不说「按钮块」
+            quickAction: true,
         }));
     });
 
@@ -272,7 +274,7 @@ describe("openTopBarManager", () => {
         row?.click();
         expect(document.querySelector(".bis-manager__action-title")?.textContent).toBe("Quick");
         expect(document.querySelector(".bis-manager__meta")?.textContent).toContain("a.json");
-        expect(document.querySelector(".bis-manager__actions button")?.textContent).toBe("managerEdit");
+        expect(document.querySelector(".bis-manager__actions button")?.textContent).toBe("topBarEdit");
     });
 
     it("selects a row from the keyboard", async () => {

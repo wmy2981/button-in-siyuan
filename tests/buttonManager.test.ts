@@ -12,9 +12,15 @@ const row = (overrides: Record<string, unknown> = {}) => ({
     id: "20240101000000-abcdefg",
     content: configOf({text: "Alpha"}),
     root_title: "Doc",
-    path: "/Doc.sy",
+    box: "box",
+    hpath: "/Doc",
     ...overrides,
 });
+
+/** 列表第一行是笔记名字，第二行是「笔记本 · hPath」，所以行内代码依赖这两项。 */
+const withNotebook = (notebooks: Array<{id: string, name: string}>) => {
+    (window as any).siyuan.notebooks = notebooks;
+};
 
 const waitForRows = (count: number) => vi.waitFor(() => {
     expect(document.querySelectorAll(".bis-manager__row")).toHaveLength(count);
@@ -68,8 +74,8 @@ describe("openButtonBlockManager", () => {
         fetchSyncPost.mockResolvedValue({
             code: 0,
             data: [
-                row({id: "b", content: configOf({text: "Beta"}), root_title: "Z"}),
-                row({id: "a", content: configOf({text: "Alpha"}), root_title: "A"}),
+                row({id: "b", content: configOf({text: "Beta"}), root_title: "Z", hpath: "/Z"}),
+                row({id: "a", content: configOf({text: "Alpha"}), root_title: "A", hpath: "/A"}),
                 row({id: "c", content: "not json"}),
                 row({id: "", content: configOf({text: "No ID"})}),
             ],
@@ -77,8 +83,32 @@ describe("openButtonBlockManager", () => {
         openButtonBlockManager(makeContext());
         await waitForRows(2);
         const titles = Array.from(document.querySelectorAll(".bis-manager__row-title")).map((item) => item.textContent);
-        expect(titles).toEqual(["Alpha", "Beta"]);
+        // 行首是笔记名字，不再重复按钮上的文本
+        expect(titles).toEqual(["A", "Z"]);
         expect(document.querySelector(".bis-manager__status")?.textContent).toBe("2 managerCount");
+    });
+
+    it("shows the notebook and the note path on the second line", async () => {
+        withNotebook([{id: "box", name: "My notebook"}]);
+        fetchSyncPost.mockResolvedValue({
+            code: 0,
+            data: [row({id: "a", content: configOf({text: "Alpha"}), root_title: "Doc A", hpath: "/Doc A"})],
+        });
+        openButtonBlockManager(makeContext());
+        await waitForRows(1);
+        expect(document.querySelector(".bis-manager__row-meta")?.textContent).toBe("My notebook · /Doc A");
+    });
+
+    it("wraps the chip text so a long label can be ellipsized", async () => {
+        fetchSyncPost.mockResolvedValue({
+            code: 0,
+            data: [row({id: "a", content: configOf({text: "A very long button label"})})],
+        });
+        openButtonBlockManager(makeContext());
+        await waitForRows(1);
+        const chip = document.querySelector(".bis-manager__chip");
+        expect(chip?.querySelector(".bis-manager__chip-text")?.textContent).toBe("A very long button label");
+        expect(chip?.textContent).toBe("A very long button label");
     });
 
     it("filters by the search box", async () => {
@@ -92,7 +122,7 @@ describe("openButtonBlockManager", () => {
         search.value = "bet";
         search.dispatchEvent(new Event("input"));
         expect(document.querySelectorAll(".bis-manager__row")).toHaveLength(1);
-        expect(document.querySelector(".bis-manager__row-title")?.textContent).toBe("Beta");
+        expect(document.querySelector(".bis-manager__chip")?.textContent).toBe("Beta");
 
         search.value = "nothing";
         search.dispatchEvent(new Event("input"));
@@ -115,13 +145,14 @@ describe("openButtonBlockManager", () => {
         filter.value = "script";
         filter.dispatchEvent(new Event("change"));
         expect(document.querySelectorAll(".bis-manager__row")).toHaveLength(1);
-        expect(document.querySelector(".bis-manager__row-title")?.textContent).toBe("Script");
+        expect(document.querySelector(".bis-manager__chip")?.textContent).toBe("Script");
     });
 
     it("previews the selected block", async () => {
+        withNotebook([{id: "box", name: "My notebook"}]);
         fetchSyncPost.mockResolvedValue({
             code: 0,
-            data: [row({id: "a", content: configOf({text: "Alpha", color: 2}), root_title: "Doc A", path: "/A.sy"})],
+            data: [row({id: "a", content: configOf({text: "Alpha", color: 2}), root_title: "Doc A", hpath: "/A"})],
         });
         openButtonBlockManager(makeContext());
         await waitForRows(1);
@@ -132,11 +163,52 @@ describe("openButtonBlockManager", () => {
         expect(preview?.querySelector(".bis-manager__preview-button")?.classList.contains("bis-button-color")).toBe(true);
         const meta = preview?.querySelector(".bis-manager__meta")?.textContent || "";
         expect(meta).toContain("actionNone");
-        expect(meta).toContain("Doc A");
-        expect(meta).toContain("/A.sy");
+        expect(meta).toContain("/A");
+        expect(meta).toContain("My notebook");
         expect(meta).toContain("a");
+        // 详情里不再出现 .sy 路径
+        expect(meta).not.toContain(".sy");
         expect(Array.from(preview?.querySelectorAll(".bis-manager__actions button") || []).map((button) => button.textContent))
             .toEqual(["managerEdit", "managerLocate"]);
+    });
+
+    it("runs the action of the previewed block", async () => {
+        fetchSyncPost.mockResolvedValue({
+            code: 0,
+            data: [row({id: "a", content: configOf({text: "Alpha", action: {type: "link", link: "https://example.com"}})})],
+        });
+        openButtonBlockManager(makeContext());
+        await waitForRows(1);
+        document.querySelector<HTMLElement>(".bis-manager__row")?.click();
+        document.querySelector<HTMLElement>(".bis-manager__preview-button")?.click();
+        expect(platformUtils.openByMobile).toHaveBeenCalledWith("https://example.com");
+    });
+
+    it("refreshes the row after the editor closes without resetting the scroll", async () => {
+        fetchSyncPost.mockResolvedValue({code: 0, data: [row({id: "a", content: configOf({text: "Old"})})]});
+        openButtonBlockManager(makeContext());
+        await waitForRows(1);
+        document.querySelector<HTMLElement>(".bis-manager__row")?.click();
+        document.querySelector<HTMLElement>(".bis-manager__actions button")?.click();
+        const {openButtonBlockEditor} = await import("../src/editDialog");
+        const {onClosed} = vi.mocked(openButtonBlockEditor).mock.calls.at(-1)?.[1] as {onClosed?: () => void};
+
+        const list = document.querySelector<HTMLElement>('[data-bis="list"]') as HTMLElement;
+        let scrolled = 40;
+        Object.defineProperty(list, "scrollTop", {
+            configurable: true,
+            get: () => scrolled,
+            set: (value: number) => {
+                scrolled = value;
+            },
+        });
+        fetchSyncPost.mockResolvedValue({code: 0, data: [row({id: "a", content: configOf({text: "New"})})]});
+        onClosed?.();
+
+        await vi.waitFor(() => expect(document.querySelector(".bis-manager__chip")?.textContent).toBe("New"));
+        // 刷新既不显示「正在读取」，也不把列表带回顶部
+        expect(document.querySelector(".bis-manager__hint")).toBeNull();
+        expect(list.scrollTop).toBe(40);
     });
 
     it("opens the editor with the block context", async () => {

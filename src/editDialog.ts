@@ -1,9 +1,10 @@
-import {confirm, Dialog, fetchSyncPost, showMessage} from "siyuan";
+import {Dialog, fetchSyncPost, showMessage} from "siyuan";
 import {setAssetReference} from "./assetReference";
 import {useBottomSheet} from "./bottomSheet";
 import type {IButtonConfig, TButtonAction} from "./buttonBlock";
 import {BUTTON_COLOR_INDEXES, runAction, serializeButtonConfig, updateButtonContentAsync} from "./buttonBlock";
 import {createCodeEditor} from "./codeEditor";
+import {confirmDanger} from "./confirmDanger";
 import type {IContext} from "./context";
 import {guardUnsavedChanges} from "./discardChanges";
 import {createIconElement, openIconPicker} from "./icon";
@@ -19,22 +20,6 @@ import {openScriptFileInfo} from "./scriptFileInfo";
 import {openScriptDocs} from "./scriptDocs";
 
 const log = createLogger("editDialog");
-
-/**
- * 危险操作的确认窗口：走宿主的 `confirm`，并把第 5 个参数 `isDelete` 传 `true`，确认按钮才是思源的
- * 红色线框样式（`app/src/dialog/confirmDialog.ts` 的 `b3-button--remove`，v3.8.6 起就有），与
- * 「放弃修改」一致；默认那份是蓝色文本按钮，容易被当成普通操作。
- *
- * 仓库锁定的 `siyuan` 1.2.9 类型定义只写到第 4 个参数，运行时以宿主源码为准，这里补一个签名。
- */
-const confirmDelete = (title: string, text: string, onConfirm: () => void) =>
-    (confirm as unknown as (
-        title: string,
-        text: string,
-        confirmCallback?: () => void,
-        cancelCallback?: () => void,
-        isDelete?: boolean,
-    ) => void)(title, text, onConfirm, undefined, true);
 
 /**
  * 云端脚本的二次确认（issue #2）：强调引入云端文件可能不安全，给出三条路 —— 放弃、直接使用，
@@ -113,6 +98,11 @@ export interface IButtonEditorOptions {
     editable?: boolean;
     /** 覆盖窗口标题（顶栏快捷操作用自己的标题）。 */
     title?: string;
+    /**
+     * 文案口径：编辑的是顶栏快捷操作而不是按钮块。字段标题与文本占位符换成「快捷操作」那一套
+     * （issue #34），窗口结构与行为不变。
+     */
+    quickAction?: boolean;
     /** 是否显示配色选择，默认显示；顶栏快捷操作只允许文本、图标与操作，配色不可改（issue #30）。 */
     colorEditable?: boolean;
     /** 是否显示删除按钮，默认显示；新建顶栏快捷操作时还没有东西可删。 */
@@ -134,6 +124,12 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
     const config = options.config;
     const editable = options.editable !== false;
     const colorEditable = options.colorEditable !== false;
+    const quickAction = options.quickAction === true;
+    // 同一份窗口服务两种对象：字段标题与空文本的回落值跟着对象换词（issue #34）
+    const textLabel = quickAction ? i18n.topBarTextLabel : i18n.buttonText;
+    const iconLabel = quickAction ? i18n.topBarIconLabel : i18n.buttonIcon;
+    const actionLabel = quickAction ? i18n.topBarActionLabel : i18n.buttonAction;
+    const defaultText = quickAction ? i18n.topBarDefaultText : i18n.defaultButtonText;
     // 运行脚本时把块元素交给作用域，脚本里的 protyle 才能拿到当前编辑器；块不在当前窗口时为空
     const blockElement = blockID
         ? document.querySelector<HTMLElement>(`[data-type="NodeCustomBlock"][data-node-id="${blockID}"]`) || undefined
@@ -164,11 +160,11 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
         },
         content: `<div class="b3-dialog__content" data-bis="editor-body">
     <div class="ft__on-surface ft__breakword fn__none" data-bis="readonly-tip"><strong>${i18n.readonlyPreviewTip}</strong></div>
-    <div class="ft__on-surface">${i18n.buttonText}</div>
+    <div class="ft__on-surface">${textLabel}</div>
     <div class="fn__hr--small"></div>
-    <input class="b3-text-field fn__block" data-bis="text" spellcheck="false" placeholder="${i18n.defaultButtonText}">
+    <input class="b3-text-field fn__block" data-bis="text" spellcheck="false" placeholder="${defaultText}">
     <div class="fn__hr"></div>
-    <div class="ft__on-surface">${i18n.buttonIcon}</div>
+    <div class="ft__on-surface">${iconLabel}</div>
     <div class="fn__hr--small"></div>
     <div class="fn__flex">
         <button class="b3-button b3-button--outline bis-icon-button" data-bis="icon">${i18n.chooseIcon}</button>
@@ -182,7 +178,7 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
         <div class="bis-button-colors" data-bis="colors"></div>
     </div>
     <div class="fn__hr"></div>
-    <div class="ft__on-surface">${i18n.buttonAction}</div>
+    <div class="ft__on-surface">${actionLabel}</div>
     <div class="fn__hr--small"></div>
     <select class="b3-select fn__block" data-bis="action">
         <option value="">${i18n.actionNone}</option>
@@ -238,6 +234,9 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
     <button class="b3-button b3-button--text fn__none" data-bis="save">${i18n.save}</button>
 </div>`,
     });
+    // 宿主的 .b3-button 把 :hover 与 :focus 写成同一套样式，鼠标点过的按钮会一直像在悬停。
+    // 这个标记让 index.scss 只对编辑窗口去掉「鼠标点完还留着」的焦点外观，键盘聚焦仍然保留
+    dialog.element.classList.add("bis-editor-dialog");
     if (context.isMobile) {
         disposeSheet = useBottomSheet(dialog);
     }
@@ -330,7 +329,7 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
             action = {type: "file", file: isRemoteScript(raw) ? raw : normalizeScriptPath(raw) || raw};
         }
         return {
-            text: textElement.value.trim() || i18n.defaultButtonText,
+            text: textElement.value.trim() || defaultText,
             icon,
             color: colorEditable ? color || undefined : undefined,
             action,
@@ -369,8 +368,10 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
     // 预览模式下没有任何东西可以改，不用拦
     const openedWith = serializeButtonConfig(currentConfig());
     let saved = false;
-    guardUnsavedChanges(context, dialog, {blockID}, () =>
-        editable && !saved && serializeButtonConfig(currentConfig()) !== openedWith);
+    guardUnsavedChanges(context, dialog, {blockID},
+        () => editable && !saved && serializeButtonConfig(currentConfig()) !== openedWith,
+        // 快捷操作写回的是 JSON 文件，「放弃修改」的提示不能说「不会写回按钮块」
+        quickAction ? i18n.topBarDiscardChangesTip : undefined);
     actionElement.addEventListener("change", updateActionFields);
     iconElement.addEventListener("click", () => {
         openIconPicker(context, {
@@ -439,7 +440,11 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
         if (!path) {
             return;
         }
-        confirmDelete(i18n.scriptFileRemoveConfirm, path, () => {
+        confirmDanger(context, {
+            title: i18n.scriptFileRemoveConfirm,
+            tip: path,
+            confirm: i18n.confirmDelete,
+        }, () => {
             void removeWorkspaceFile(path).then(() => {
                 // 文件已经不在，输入框里留着旧路径只会让保存后的按钮点不动
                 if (fileElement.value.trim() === path) {
@@ -519,7 +524,10 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
         const written = options.onSave ? await options.onSave(next) : await updateButtonContentAsync(blockID, next);
         if (!written) {
             log.error("failed to write the button back, keeping the dialog open", {blockID: blockID || "topbar"});
-            showMessage(i18n.blockNotEditable);
+            // 顶栏快捷操作的保存出口自己会给出失败提示，这里只在写块失败时补一条
+            if (!options.onSave) {
+                showMessage(i18n.blockNotEditable);
+            }
             return;
         }
         log.info("saved the button", {
@@ -559,32 +567,35 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
             log.warn("delete rejected: the note is locked", {blockID});
             return;
         }
-        confirmDelete(options.onDelete ? i18n.deleteTopBarButton : i18n.deleteButtonBlock,
-            options.onDelete ? i18n.deleteTopBarButtonTip : i18n.deleteButtonBlockTip, () => {
-                void (async () => {
-                    try {
-                        if (options.onDelete) {
-                            if (!await options.onDelete()) {
-                                log.error("failed to delete the top bar button");
-                                showMessage(i18n.deleteTopBarButtonFailed);
-                                return;
-                            }
-                        } else {
-                            const response = await fetchSyncPost("/api/block/deleteBlock", {id: blockID}, undefined, false);
-                            if (response.code !== 0) {
-                                throw new Error(response.msg || `/api/block/deleteBlock code ${response.code}`);
-                            }
+        confirmDanger(context, {
+            title: options.onDelete ? i18n.deleteTopBarButton : i18n.deleteButtonBlock,
+            tip: options.onDelete ? i18n.deleteTopBarButtonTip : i18n.deleteButtonBlockTip,
+            confirm: i18n.confirmDelete,
+        }, () => {
+            void (async () => {
+                try {
+                    if (options.onDelete) {
+                        if (!await options.onDelete()) {
+                            log.error("failed to delete the top bar button");
+                            showMessage(i18n.deleteTopBarButtonFailed);
+                            return;
                         }
-                        log.info("deleted the button", {blockID: blockID || "topbar"});
-                        // 已经删了，关窗时不用再问「放弃修改」
-                        saved = true;
-                        dialog.destroy();
-                    } catch (error) {
-                        log.error("failed to delete the button", {blockID: blockID || "topbar", error});
-                        showMessage(options.onDelete ? i18n.deleteTopBarButtonFailed : i18n.deleteButtonBlockFailed);
+                    } else {
+                        const response = await fetchSyncPost("/api/block/deleteBlock", {id: blockID}, undefined, false);
+                        if (response.code !== 0) {
+                            throw new Error(response.msg || `/api/block/deleteBlock code ${response.code}`);
+                        }
                     }
-                })();
-            });
+                    log.info("deleted the button", {blockID: blockID || "topbar"});
+                    // 已经删了，关窗时不用再问「放弃修改」
+                    saved = true;
+                    dialog.destroy();
+                } catch (error) {
+                    log.error("failed to delete the button", {blockID: blockID || "topbar", error});
+                    showMessage(options.onDelete ? i18n.deleteTopBarButtonFailed : i18n.deleteButtonBlockFailed);
+                }
+            })();
+        });
     });
     // 打开窗口时不聚焦任何输入框（原来是聚焦并全选按钮文字，顺手敲键盘就把它改掉了），要改哪一项用户自己点：
     // 焦点留在宿主的对话框容器上，Tab 与 Esc 照常
