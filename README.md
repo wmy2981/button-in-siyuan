@@ -16,11 +16,8 @@ Insert native SiYuan buttons into documents, with text, a built-in icon and a li
 * The button colour is optional: the frame, the text and the icon share one colour taken from
   SiYuan's built-in palette; the default stays SiYuan's native blue.
 * A button action is optional and is one of: open a link, run JavaScript, or run a JavaScript file
-  (a local file under `data/assets/` or the plugin's `scripts/` directory, or an http(s) address).
-* The JavaScript editor is CodeMirror with line numbers, syntax highlighting, bracket matching and
-  completion; its colors follow SiYuan's code highlighting scheme.
-* The top bar has a quick-action entry: clicking it opens a menu of custom actions, each stored as one JSON
-  file and using the same actions as button blocks.
+* Top bar quick actions: clicking opens the quick action menu, each action is one JSON file and behaves
+  like a button block.
 
 ## Install
 
@@ -43,41 +40,8 @@ Requires SiYuan 3.8.6 or later.
 ## Top bar quick actions
 
 The desktop top bar has a lightning icon; on mobile the same entry sits in the top bar's Plugins menu (that is how the host registers icon top bar entries there). Click it to open the quick action menu: the menu only runs the actions and always ends with a "Manage quick actions" item. Creating and editing happen in that manager (the add icon in its top-right corner, a native SiYuan icon button).
-Each quick action is one JSON file in the plugin data directory:
-
-```
-data/storage/petal/button-in-siyuan/topbar/<file name>.json
-```
-
-One file is one quick action, and the menu follows file name order. The content is `{"text","icon","action"}`; `action` is exactly the same as for a button block (link, JavaScript, JavaScript file).
-The manager lists and previews each action by its icon and label only — it is not styled as a button. Only the
-text, the icon and the action are editable; the colour cannot be changed (a `color` field in the file is ignored).
-The plugin re-reads that directory every time the menu opens, so creating or editing a file with an agent needs no
-plugin reload — add, change or delete the file and the menu follows.
-
-## Settings
-
-| Field | Description |
-| --- | --- |
-| Button text | Button label, plain text. Empty input falls back to the default text. |
-| Button icon | One SVG icon of the current interface; can also be unset. |
-| Button colour | Colours the frame, the text and the icon together, picked from SiYuan's built-in palette; the default is SiYuan's native blue. |
-| Button action | `None`, `Open link`, `JavaScript` or `JavaScript file`. Only one action is used. |
-| Link address | Shown for `Open link`; required for that action. |
-| JavaScript code | Shown for `JavaScript`; required for that action. |
-| JavaScript file path | Shown for `JavaScript file`; required for that action. It can be a local `.js` file under `data/assets/` or `data/storage/petal/button-in-siyuan/scripts/`, always named by its full path from the workspace root, or an http(s) address. The "New" button creates a file in either directory; "Edit file info" renames it or moves it between them. |
 
 ## Plugin settings
-
-| Setting | Description |
-| --- | --- |
-| JavaScript output dialog | When the result dialog opens after a script runs: `Always`, `With output` (default), `Console output only`, `On warning (and error)`, `On error`, `Never`. A script can override this with a `// @bis-output <mode>` declaration at its top; `// @bis-frontends` / `// @bis-backends` also restrict where the script may run. |
-| Debug mode | Off by default: turns on the plugin's own logs (loading, dialogs, failures) in the SiYuan console, plus the script's `console.debug` output (console and result dialog). Off means the plugin prints nothing, and the console only carries what the script itself logs. |
-| JavaScript editor line wrap | Whether content wider than the editor wraps: `Follow SiYuan` (default, the same as <kbd>Settings</kbd> > <kbd>Editor</kbd> > <kbd>Code block wraps</kbd>), `On`, `Off`. |
-| JavaScript editor ligatures | Whether the editor shows ligatures (the code font has to bring them): `Follow SiYuan` (default, the same as <kbd>Settings</kbd> > <kbd>Editor</kbd> > <kbd>Code block ligature</kbd>), `On`, `Off`. |
-| Button block manager | Lists every button block in the workspace in a separate window, searchable by text, link, script path or document and filterable by action type; pick one to preview its look and action summary, then edit it or locate it in the document (locating closes the manager and the settings panel first, then opens the document with the block highlighted). |
-| Provide the button block skill to the agent | On by default: writes a skill explaining button blocks into the workspace skill directory; switching it off deletes that skill. |
-| Download the skill | The "Download skill" button saves the whole skill as one zip file through SiYuan's own save dialog. |
 
 Uninstalling the plugin deletes only its settings file (`data/storage/petal/button-in-siyuan/settings`): scripts under `scripts/`, script data under `storage/` and top bar actions under `topbar/` are kept, and a reinstall starts from the default settings. If the plugin is disabled before uninstalling, there is no instance to run the cleanup, so the settings file stays.
 
@@ -108,6 +72,11 @@ Scripts can call every API SiYuan exposes to plugins.
 
 Full guide with ready-to-paste examples: [docs/javascript.md](./docs/javascript.md).
 
+## Agent skill
+
+The plugin writes a skill for SiYuan's agent: `button-block`, installed as a directory at
+`data/storage/ai/agent/skills/button-block/`
+
 ## Limitations
 
 * The plugin is disabled on the publish service (`disabledInPublish`), so published pages show the
@@ -130,33 +99,6 @@ Full guide with ready-to-paste examples: [docs/javascript.md](./docs/javascript.
   so its slash menu never lists plugin entries. This is a host limitation; insert the block in the
   normal editor. A cell holds inline content only, so a block inserted from a cell lands after the
   table.
-
-## Agent skill
-
-The plugin writes a skill for SiYuan's agent: `button-block`, installed as a directory at
-`data/storage/ai/agent/skills/button-block/`:
-
-| File | Holds |
-| --- | --- |
-| `SKILL.md` | What a button block is, how the block payload (`{"text","icon","color","action"}`) is filled in, and how to create and change one through SiYuan's block APIs. |
-| `references/javascript.md` | The script action: the injected APIs, what `return`, `console` and `showMessage` each do, where the official endpoint reference lives, and ready-to-run examples. |
-| `references/icons.md` | Every built-in SiYuan icon id, plus a table for picking one by intent. |
-
-The reference documents live inside the skill instead of being pointed at from the plugin directory, so the
-skill stays complete wherever it is read from: the agent loads one with the `skill` tool
-(`name: "button-block/references/javascript.md"`), and SiYuan lists them as the skill's resources anyway. The
-javascript document also carries the address of SiYuan's own API reference — `docs/API.md` and
-`kernel/api/router.go`, on a China-friendly CDN, pinned to the SiYuan version you are running — so an agent
-looks an endpoint up in the official reference rather than in a copy bundled here.
-
-Every plugin load rewrites all three files from the copies bundled in the package, so a hand edit or an older
-version cannot leave a stale skill behind. "Download skill" in the plugin settings saves them as a single zip
-(`button-block/SKILL.md` and `button-block/references/…`). The skill is written by default; switching it off in
-the plugin settings removes it again, and so does disabling the plugin or removing it from the workspace — an
-agent never picks up a skill whose plugin is not running. Those APIs need SiYuan's AI features to be enabled.
-
-The same two documents are kept in the repository for reading outside the skill:
-[docs/javascript.md](./docs/javascript.md) and [docs/icons.md](./docs/icons.md).
 
 ## Bazaar Stats Graph
 
