@@ -1,4 +1,5 @@
-import {Dialog, fetchSyncPost, showMessage} from "siyuan";
+import {fetchSyncPost, showMessage} from "siyuan";
+import {createDialog} from "./dialog";
 import {setAssetReference} from "./assetReference";
 import {useBottomSheet} from "./bottomSheet";
 import type {IButtonConfig, TButtonAction} from "./buttonBlock";
@@ -37,7 +38,7 @@ const askAboutRemoteScript = (context: IContext, url: string) => new Promise<str
             resolve(path);
         }
     };
-    const dialog = new Dialog({
+    const dialog = createDialog({
         title: i18n.cloudWarningTitle,
         width: context.isMobile ? "92vw" : "560px",
         content: `<div class="b3-dialog__content">
@@ -150,7 +151,7 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
     // 移动端把这个对话框换成思源原生的底部抽屉（issue #23）；桌面端保持居中窗口。
     // 清理函数在对话框销毁时执行，移除手势监听并复原行内样式
     let disposeSheet: (() => void) | undefined;
-    const dialog = new Dialog({
+    const dialog = createDialog({
         title: options.title || i18n.editButtonBlock,
         // 比原来的 640px 宽一圈；宽度用 min() 收在视口内（思源自己也给容器留了 88vw 的上限）
         width: "min(760px, 92vw)",

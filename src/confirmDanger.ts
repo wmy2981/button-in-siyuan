@@ -1,4 +1,4 @@
-import {Dialog} from "siyuan";
+import {createDialog} from "./dialog";
 import type {IContext} from "./context";
 import {createLogger} from "./logger";
 
@@ -22,7 +22,7 @@ export interface IConfirmDangerOptions {
  * 这里不主动聚焦任何按钮，宿主的 `Dialog` 只聚焦容器，Tab 与 `Esc` 照常。
  */
 export const confirmDanger = (context: IContext, options: IConfirmDangerOptions, onConfirm: () => void) => {
-    const dialog = new Dialog({
+    const dialog = createDialog({
         title: options.title,
         width: context.isMobile ? "92vw" : "520px",
         content: `<div class="b3-dialog__content">

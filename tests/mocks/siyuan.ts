@@ -154,6 +154,10 @@ export class Setting {
 
     items: TAny[] = [];
     options: TAny;
+    /** 与宿主一致：打开面板时聚焦首个 `input, textarea`（`app/src/plugin/Setting.ts` 结尾那一句）。 */
+    open = vi.fn((_name: string): void => {
+        document.body.querySelector<HTMLElement>("input, textarea")?.focus();
+    });
 
     constructor(options: TAny = {}) {
         this.options = options;

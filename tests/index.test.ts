@@ -249,6 +249,48 @@ describe("settings panel", () => {
         (setting?.items[5].createActionElement() as HTMLButtonElement).click();
         expect(Dialog.instances.at(-1)?.options.title).toBe("manageButtonBlocks");
     });
+
+    it("focuses the first input when the host opens the panel on desktop", async () => {
+        const plugin = makePlugin();
+        plugin.onload();
+        await waitForSettings(plugin);
+        const input = document.createElement("input");
+        document.body.append(input);
+        Setting.instances.at(-1)?.open("Button in SiYuan");
+        expect(document.activeElement).toBe(input);
+    });
+
+    it("does not focus an input while the panel opens on mobile", async () => {
+        getFrontend.mockReturnValue("mobile");
+        const plugin = makePlugin();
+        plugin.onload();
+        await waitForSettings(plugin);
+        const input = document.createElement("input");
+        document.body.append(input);
+        Setting.instances.at(-1)?.open("Button in SiYuan");
+        // 面板打开期间不聚焦输入控件：App 里那一下 focus 会唤起键盘、改 WebView 高度，整页重排闪一帧
+        expect(document.activeElement).not.toBe(input);
+    });
+
+    it("opens the panel as the native bottom sheet on mobile", async () => {
+        getFrontend.mockReturnValue("mobile");
+        const plugin = makePlugin();
+        plugin.onload();
+        await waitForSettings(plugin);
+        // 宿主的 Setting 打开时会自己建对话框；这里先放一个替身，模拟它已经建好的状态
+        const dialog = new Dialog({content: "<div class=\"b3-dialog__content\"></div>"});
+        (window as any).siyuan.dialogs = [dialog];
+        Setting.instances.at(-1)?.open("Button in SiYuan");
+        const sheet = dialog.element.querySelector<HTMLElement>(".b3-dialog__container");
+        // 居中对话框的遮罩淡入 + 面板放大在 App 里会插一帧旧画面，改用与编辑窗口同一个抽屉
+        expect(dialog.element.classList.contains("bis-dialog-warm")).toBe(true);
+        expect(dialog.element.classList.contains("mobile-bottom-sheet-dialog")).toBe(true);
+        expect(sheet?.classList.contains("mobile-bottom-sheet")).toBe(true);
+        expect(sheet?.classList.contains("bis-bottom-sheet")).toBe(true);
+        expect(sheet?.style.transform).toBe("translateY(100%)");
+        expect(sheet?.style.opacity).toBe("0");
+        expect(sheet?.querySelector(".b3-menu__title--root")).not.toBeNull();
+    });
 });
 
 describe("slash item", () => {
