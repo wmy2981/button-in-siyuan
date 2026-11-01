@@ -275,6 +275,8 @@ describe("openButtonBlockEditor", () => {
     it("deletes the block after the confirmation", async () => {
         const {field, dialog} = open();
         field("delete").click();
+        expect(confirm).toHaveBeenCalledWith("deleteButtonBlock", "deleteButtonBlockTip",
+            expect.any(Function), undefined, true);
         await vi.waitFor(() => expect(fetchSyncPost).toHaveBeenCalledWith(
             "/api/block/deleteBlock",
             {id: "20240101000000-abcdefg"},
@@ -288,6 +290,8 @@ describe("openButtonBlockEditor", () => {
         const onDelete = vi.fn(async () => true);
         const {field, dialog} = open({onDelete});
         field("delete").click();
+        expect(confirm).toHaveBeenCalledWith("deleteTopBarButton", "deleteTopBarButtonTip",
+            expect.any(Function), undefined, true);
         await vi.waitFor(() => expect(onDelete).toHaveBeenCalledTimes(1));
         expect(dialog.destroyed).toBe(true);
     });
@@ -412,7 +416,8 @@ describe("openButtonBlockEditor", () => {
     it("removes the script file after the confirmation", async () => {
         const {field} = open({config: makeConfig({action: {type: "file", file: "data/assets/a.js"}})});
         field("file-remove").click();
-        expect(confirm).toHaveBeenCalledWith("scriptFileRemoveConfirm", "data/assets/a.js", expect.any(Function));
+        expect(confirm).toHaveBeenCalledWith("scriptFileRemoveConfirm", "data/assets/a.js",
+            expect.any(Function), undefined, true);
         await vi.waitFor(() => expect(mocks.removeWorkspaceFile).toHaveBeenCalledWith("data/assets/a.js"));
         expect((field("file") as HTMLInputElement).value).toBe("");
     });

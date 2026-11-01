@@ -21,6 +21,22 @@ import {openScriptDocs} from "./scriptDocs";
 const log = createLogger("editDialog");
 
 /**
+ * 危险操作的确认窗口：走宿主的 `confirm`，并把第 5 个参数 `isDelete` 传 `true`，确认按钮才是思源的
+ * 红色线框样式（`app/src/dialog/confirmDialog.ts` 的 `b3-button--remove`，v3.8.6 起就有），与
+ * 「放弃修改」一致；默认那份是蓝色文本按钮，容易被当成普通操作。
+ *
+ * 仓库锁定的 `siyuan` 1.2.9 类型定义只写到第 4 个参数，运行时以宿主源码为准，这里补一个签名。
+ */
+const confirmDelete = (title: string, text: string, onConfirm: () => void) =>
+    (confirm as unknown as (
+        title: string,
+        text: string,
+        confirmCallback?: () => void,
+        cancelCallback?: () => void,
+        isDelete?: boolean,
+    ) => void)(title, text, onConfirm, undefined, true);
+
+/**
  * 云端脚本的二次确认（issue #2）：强调引入云端文件可能不安全，给出三条路 —— 放弃、直接使用，
  * 或者下载到 assets/（随机文件名）之后与云端再无关系。
  *
@@ -423,7 +439,7 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
         if (!path) {
             return;
         }
-        confirm(i18n.scriptFileRemoveConfirm, path, () => {
+        confirmDelete(i18n.scriptFileRemoveConfirm, path, () => {
             void removeWorkspaceFile(path).then(() => {
                 // 文件已经不在，输入框里留着旧路径只会让保存后的按钮点不动
                 if (fileElement.value.trim() === path) {
@@ -543,7 +559,7 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
             log.warn("delete rejected: the note is locked", {blockID});
             return;
         }
-        confirm(options.onDelete ? i18n.deleteTopBarButton : i18n.deleteButtonBlock,
+        confirmDelete(options.onDelete ? i18n.deleteTopBarButton : i18n.deleteButtonBlock,
             options.onDelete ? i18n.deleteTopBarButtonTip : i18n.deleteButtonBlockTip, () => {
                 void (async () => {
                     try {
