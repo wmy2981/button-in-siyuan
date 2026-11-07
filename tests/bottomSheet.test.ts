@@ -1,7 +1,24 @@
-import {describe, expect, it, vi} from "vitest";
+import {beforeEach, describe, expect, it, vi} from "vitest";
 import {useBottomSheet} from "../src/bottomSheet";
 import {Dialog} from "./mocks/siyuan";
 import {flushPromises, touchEvent} from "./helpers";
+
+/** jsdom 的 rAF 会在当前调用栈里同步执行，而真实浏览器是下一帧；测试里手动放行。 */
+let frames: FrameRequestCallback[] = [];
+const runFrames = () => {
+    const pending = frames;
+    frames = [];
+    pending.forEach((callback) => callback(0));
+};
+
+beforeEach(() => {
+    frames = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+        frames.push(callback);
+        return frames.length;
+    });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => undefined);
+});
 
 const makeDialog = (extra = "") => {
     const dialog = new Dialog({
@@ -35,8 +52,6 @@ describe("useBottomSheet", () => {
         const {dialog, sheet} = openSheet();
         expect(dialog.element.classList.contains("mobile-bottom-sheet-dialog")).toBe(true);
         expect(sheet.classList.contains("mobile-bottom-sheet")).toBe(true);
-        // 常驻的 will-change 由自己的类预热图层（样式在 index.scss）
-        expect(sheet.classList.contains("bis-bottom-sheet")).toBe(true);
         expect(sheet.firstElementChild?.classList.contains("b3-menu__title--root")).toBe(true);
         expect(sheet.style.width).toBe("100vw");
         expect(sheet.style.maxWidth).toBe("100vw");
@@ -53,37 +68,26 @@ describe("useBottomSheet", () => {
         expect(header?.classList.contains("resize__move")).toBe(false);
     });
 
-    it("hides the sheet with a transform until the host opens the dialog", async () => {
+    it("starts off-screen and slides in when the host opens the dialog", async () => {
         const {dialog, sheet} = openSheet();
-        // 隐藏只靠位移与透明度：不用 visibility / display，也不延迟挂载
         expect(sheet.style.transform).toBe("translateY(100%)");
-        expect(sheet.style.opacity).toBe("0");
+        expect(sheet.style.visibility).toBe("hidden");
+
+        dialog.element.classList.add("b3-dialog--open");
+        await flushPromises();
+        runFrames();
+        expect(sheet.style.transform).toBe("");
         expect(sheet.style.visibility).toBe("");
-        expect(sheet.style.transition).toBe("");
-        expect(sheet.isConnected).toBe(true);
-
-        dialog.element.classList.add("b3-dialog--open");
-        await flushPromises();
-        expect(sheet.style.transform).toBe("");
-        expect(sheet.style.opacity).toBe("");
-    });
-
-    it("cancels the transition the sheet classes kicked off before opening", async () => {
-        const {dialog, sheet} = openSheet();
-        const cancel = vi.fn();
-        (sheet as unknown as {getAnimations: () => Array<{cancel: () => void}>}).getAnimations = () => [{cancel}];
-        dialog.element.classList.add("b3-dialog--open");
-        await flushPromises();
-        expect(cancel).toHaveBeenCalledTimes(1);
-        expect(sheet.style.transform).toBe("");
     });
 
     it("opens immediately when the dialog is already open", () => {
         const {dialog, sheet} = makeDialog();
         dialog.element.classList.add("b3-dialog--open");
         useBottomSheet(dialog as never);
+        expect(frames).toHaveLength(1);
+        runFrames();
+        expect(sheet.style.visibility).toBe("");
         expect(sheet.style.transform).toBe("");
-        expect(sheet.style.opacity).toBe("");
     });
 
     it("closes after a long drag down", () => {

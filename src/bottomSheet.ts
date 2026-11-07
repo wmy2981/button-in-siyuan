@@ -27,8 +27,7 @@ export const useBottomSheet = (dialog: Dialog) => {
         return () => undefined;
     }
     element.classList.add("mobile-bottom-sheet-dialog");
-    // 宿主的抽屉样式负责移出视口与滑入；`bis-bottom-sheet` 只常驻 `will-change: transform` 预热图层
-    sheet.classList.add("mobile-bottom-sheet", "bis-bottom-sheet");
+    sheet.classList.add("mobile-bottom-sheet");
     // 原生抽屉没有关闭按钮（宿主移动端对话框本来也会把 × 藏起来），这里显式隐藏，
     // 免得换一个前端又露出来
     element.querySelector(".b3-dialog__close")?.classList.add("fn__none");
@@ -44,14 +43,42 @@ export const useBottomSheet = (dialog: Dialog) => {
     handle.setAttribute("aria-hidden", "true");
     sheet.prepend(handle);
 
-    // 面板从一开始就压在屏幕下方：宿主的 `.mobile-bottom-sheet` 把它摆在 `transform: translateY(100%)`，
-    // 拿到打开类之后再滑上来（`app/src/assets/scss/main/_mobile.scss`）。这里只用位移动出视口、并让它在打开前
-    // 不可见 —— 不碰 visibility / display，也不延迟挂载，面板全程留在渲染树里。
+    // 初始状态压在屏幕下方，等对话框拿到 b3-dialog--open 之后再滑上来（与宿主的过渡一致）
+    sheet.style.transition = "none";
     sheet.style.transform = "translateY(100%)";
-    sheet.style.opacity = "0";
+    sheet.style.visibility = "hidden";
 
     const dialogElement = element.querySelector<HTMLElement>(".b3-dialog");
     const scrim = element.querySelector<HTMLElement>(".b3-dialog__scrim");
+    let opened = false;
+    let frame = 0;
+    const open = () => {
+        frame = 0;
+        if (opened || !element.isConnected) {
+            return;
+        }
+        opened = true;
+        resize();
+        sheet.style.visibility = "";
+        // 强制一次布局，让 transition 从当前（屏幕外）位置开始
+        void sheet.offsetHeight;
+        sheet.style.transition = "";
+        void sheet.offsetHeight;
+        sheet.style.transform = "";
+        log.debug("opened the bottom sheet");
+    };
+    const observer = new MutationObserver(() => {
+        if (!opened && element.classList.contains("b3-dialog--open")) {
+            // 等一帧：宿主的打开类与布局在同一轮里写入，这里要拿最终尺寸
+            frame = window.requestAnimationFrame(open);
+        }
+    });
+    observer.observe(element, {attributes: true, attributeFilter: ["class"]});
+    // 调用方可能已经把对话框搭好、宿主也已经加上打开类（例如先建对话框再初始化编辑器），
+    // 这时 MutationObserver 等不到变化，直接补一次
+    if (element.classList.contains("b3-dialog--open")) {
+        frame = window.requestAnimationFrame(open);
+    }
 
     /** 键盘弹出时把面板压进可见视口，与宿主的底部抽屉做法一致。 */
     const resize = () => {
@@ -62,26 +89,6 @@ export const useBottomSheet = (dialog: Dialog) => {
         dialogElement.style.top = `${viewport.offsetTop}px`;
         dialogElement.style.height = `${viewport.height}px`;
     };
-
-    let opened = false;
-    const open = () => {
-        if (opened || !element.isConnected || !element.classList.contains("b3-dialog--open")) {
-            return;
-        }
-        opened = true;
-        resize();
-        // 挂上抽屉样式时，宿主容器的 transform 过渡（原本是 scale(.8)）也会跟着朝屏幕外跑起来。
-        // 先取消它，打开时的滑动才能从屏幕外正常起步，用到的仍然是宿主自己那份 transition
-        sheet.getAnimations?.().forEach((animation) => animation.cancel());
-        sheet.style.transform = "";
-        sheet.style.opacity = "";
-        log.debug("opened the bottom sheet");
-    };
-    const observer = new MutationObserver(open);
-    observer.observe(element, {attributes: true, attributeFilter: ["class"]});
-    // 调用方可能已经把对话框搭好、宿主也已经加上打开类（例如先建对话框再初始化编辑器），
-    // 这时 MutationObserver 等不到变化，直接补一次
-    open();
     window.visualViewport?.addEventListener("resize", resize);
     window.visualViewport?.addEventListener("scroll", resize);
     resize();
@@ -158,7 +165,7 @@ export const useBottomSheet = (dialog: Dialog) => {
         const shouldClose = offset > Math.min(120, sheet.clientHeight * .25) ||
             (offset > 20 && offset / duration > .6);
         suppressClickUntil = performance.now() + 300;
-        // 清掉行内 transition 与位移后，浏览器会从当前位移过渡回原位（或朝屏幕外滑走），不用强制回流催它
+        void sheet.offsetHeight;
         sheet.style.transition = "";
         start = undefined;
         dragging = false;
@@ -191,6 +198,9 @@ export const useBottomSheet = (dialog: Dialog) => {
     sheet.addEventListener("click", onClick, true);
 
     return () => {
+        if (frame) {
+            window.cancelAnimationFrame(frame);
+        }
         observer.disconnect();
         window.visualViewport?.removeEventListener("resize", resize);
         window.visualViewport?.removeEventListener("scroll", resize);

@@ -1,5 +1,4 @@
-import {showMessage} from "siyuan";
-import {createDialog} from "./dialog";
+import {Dialog, showMessage} from "siyuan";
 import {createCodeEditor} from "./codeEditor";
 import type {IContext} from "./context";
 import {guardUnsavedChanges} from "./discardChanges";
@@ -34,7 +33,7 @@ export const openScriptFileEditor = async (context: IContext, options: {
     log.info("opened the script file editor", {path: options.path, chars: content.length, editable});
     // 移动端占满整个可见页面（issue #24）：键盘弹起时也有足够高度写代码，不再是中间的小窗口。
     // 桌面端保持原来的宽度与默认高度，编辑区填满正文剩下的空间（见 src/codeEditor.ts）
-    const dialog = createDialog({
+    const dialog = new Dialog({
         title: options.path,
         width: context.isMobile ? "100%" : "min(880px, 92vw)",
         height: context.isMobile ? "100%" : "min(84vh, 720px)",

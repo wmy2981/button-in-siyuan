@@ -67,30 +67,6 @@
   `Esc` 照常），免得顺手敲键盘就改掉了原来的内容。**新建 / 重命名脚本文件那两个窗口例外**：它们用的
   `openInputDialog` 返回前会聚焦并全选输入框，`appendScriptFileSuffix` 里必须把它 `blur()` 掉；校验不通过
   时的 `focus()` 与「载入示例」之后的聚焦是用户点出来的，保留。
-  **移动端这一条是硬性的**：App 里 `HTMLElement.prototype.focus` 被宿主重写成直接调 `JSAndroid.showKeyboard()`
-  （`app/src/mobile/index.ts`），键盘引起的 adjustResize 会改 WebView 高度、整页重排，打开的那一刻就闪一帧。
-  所以图标选择窗口在移动端不聚焦搜索框；设置面板是宿主的 `Setting`，它在 `open()` 末尾会对首个
-  `input, textarea` 补一次 `focus()`（`app/src/plugin/Setting.ts`），插件在 `open` 期间临时接管 `focus`
-  把输入控件拦下来。
-* **移动端设置面板用抽屉**：插件设置面板是宿主的 `Setting`，它建的是居中对话框（整屏遮罩淡入 + 面板从
-  `scale(.8)` 放大）。插件在 `Setting.open()` 返回后把那个对话框交给 `useBottomSheet()`，换成与编辑窗口、
-  移动端属性面板同一个抽屉：遮罩透明、只用 `translateY` 滑入。桌面端不动，仍是居中的设置窗口。
-  **别退回居中对话框**：居中那套在 App 上每次打开都会插一帧整屏旧画面（移动端其它面板要么铺满屏幕、
-  要么是抽屉，才躲过了它）。
-* **移动端底部抽屉**：`src/bottomSheet.ts` 只给宿主对话框挂 `mobile-bottom-sheet-dialog` /
-  `mobile-bottom-sheet` 与抓手，移出视口与滑入都交给宿主的 `transform: translateY(100%)` 与它自己的
-  transition（`app/src/assets/scss/main/_mobile.scss`），容器常驻 `bis-bottom-sheet` 的
-  `will-change: transform` 预热图层。**不要用 `visibility`、`display: none` 或延迟挂载来做「先藏、首帧之后再显示」，
-  也不要照抄宿主 `app/src/mobile/util/bindBottomSheetDialog.ts` 里 `visibility` 加两次 `offsetHeight` 的写法**：
-  渲染树一进一出会重建合成层，App 的 WebView 在那一帧只能提交旧纹理。打开前的不可见只靠行内 `opacity: 0`，
-  宿主加上 `b3-dialog--open` 时清掉；清掉之前先用 `getAnimations()` 取消挂抽屉样式时被带起来的那次位移动画，
-  这样打开时的过渡才是宿主自己那份「从屏幕外滑上来」。这一条 web 端复现不出来，`npm run check` 与
-  浏览器验证都证明不了，只能由维护者在移动端 App 上复测。
-* **对话框不重建合成层**：插件自己的对话框一律用 `src/dialog.ts` 的 `createDialog()` 创建（设置面板是宿主的
-  `Setting`，在 `open` 返回后补同一个类），给外壳挂 `bis-dialog-warm`；`src/index.scss` 让容器与遮罩常驻
-  `will-change`（`transform` / `opacity`）。宿主的 `scale` + `opacity` 入场过渡在起点与终点都会新建、销毁合成层，
-  App 的 WebView 在那一帧只能提交旧的页面纹理 —— 打开面板时插一帧整屏旧画面。**过渡本身一点不动**：时长、曲线与
-  `b3-dialog--open` 的切换时序都还是宿主那份，只把图层提前准备好。
 * **图标**：从文档里的 `<symbol id="icon…">` 现取现用，元素带思源的 `.svg` 类以跟随 `currentColor`。
   选择器里**不要改 `color`**：悬浮与选中只换底色 / 描边，否则靠 `currentColor` 上色的图标会显示成主色。
 * **JavaScript 操作**：在页面上下文里整段包成 async 函数执行，执行期间接管 `console` 收集输出；弹窗策略

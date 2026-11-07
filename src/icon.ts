@@ -1,4 +1,4 @@
-import {createDialog} from "./dialog";
+import {Dialog} from "siyuan";
 import type {IContext} from "./context";
 import {createLogger} from "./logger";
 
@@ -37,7 +37,7 @@ export const openIconPicker = (context: IContext, options: {
     onSelect: (icon: string) => void,
 }) => {
     const {i18n} = context;
-    const dialog = createDialog({
+    const dialog = new Dialog({
         title: i18n.chooseIconTitle,
         width: context.isMobile ? "92vw" : "560px",
         content: `<div class="b3-dialog__content">
@@ -95,10 +95,5 @@ export const openIconPicker = (context: IContext, options: {
         emptyElement.classList.toggle("fn__none", matched > 0);
     };
     searchElement.addEventListener("input", filter);
-    // 桌面端打开就聚焦搜索框，直接敲字即可筛选；移动端不主动聚焦 —— App 里 `HTMLElement.prototype.focus`
-    // 会直接走原生桥接唤起键盘（`app/src/mobile/index.ts`），键盘引起的 adjustResize 改动 WebView 高度、
-    // 整页重排，弹窗打开的那一帧就闪了。要搜图标，用户点一下输入框就行
-    if (!context.isMobile) {
-        searchElement.focus();
-    }
+    searchElement.focus();
 };

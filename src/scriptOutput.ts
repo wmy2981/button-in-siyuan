@@ -1,5 +1,4 @@
-import {platformUtils, showMessage} from "siyuan";
-import {createDialog} from "./dialog";
+import {Dialog, platformUtils, showMessage} from "siyuan";
 import type {IContext} from "./context";
 import {createLogger} from "./logger";
 
@@ -256,7 +255,7 @@ export const showScriptOutput = (context: IContext, scriptResult: IScriptResult)
         hasResult: typeof scriptResult.result !== "undefined",
         hasFailure: typeof scriptResult.failure !== "undefined",
     });
-    const dialog = createDialog({
+    const dialog = new Dialog({
         title: i18n.scriptOutput,
         width: "min(720px, 92vw)",
         content: `<div class="b3-dialog__content">

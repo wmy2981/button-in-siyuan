@@ -1,5 +1,4 @@
-import {showMessage} from "siyuan";
-import {createDialog} from "./dialog";
+import {Dialog, showMessage} from "siyuan";
 import type {IContext} from "./context";
 import {createLogger} from "./logger";
 import {ASSET_SCRIPT_DIR, PLUGIN_SCRIPT_DIR} from "./pluginPaths";
@@ -37,7 +36,7 @@ export const openScriptFileInfo = (context: IContext, options: {
     const initialLocation: TScriptLocation = (existing && scriptLocation(existing)) || "plugin";
     const directoryOf = (location: TScriptLocation) =>
         location === "plugin" ? PLUGIN_SCRIPT_DIR : ASSET_SCRIPT_DIR;
-    const dialog = createDialog({
+    const dialog = new Dialog({
         title: options.mode === "create" ? i18n.scriptFileCreateTitle : i18n.scriptFileInfoTitle,
         width: context.isMobile ? "92vw" : "560px",
         content: `<div class="b3-dialog__content">

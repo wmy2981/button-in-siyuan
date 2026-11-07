@@ -1,5 +1,4 @@
-import {platformUtils, ProtyleMethod, showMessage} from "siyuan";
-import {createDialog} from "./dialog";
+import {Dialog, platformUtils, ProtyleMethod, showMessage} from "siyuan";
 import docsEn from "../docs/javascript.md";
 import docsZh from "../docs/javascript.zh-CN.md";
 import type {IContext} from "./context";
@@ -91,7 +90,7 @@ export const openScriptDocs = async (context: IContext, options: {
         return;
     }
     log.info("opened the JavaScript documentation", {chars: markdown.length, htmlChars: html.length});
-    const dialog = createDialog({
+    const dialog = new Dialog({
         title: context.i18n.scriptDocs,
         width: "min(880px, 92vw)",
         content: `<div class="b3-dialog__content">

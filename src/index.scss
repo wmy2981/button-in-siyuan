@@ -39,23 +39,6 @@
     border-radius: 0;
 }
 
-// 插件自己的对话框（src/dialog.ts）与插件设置面板：宿主的容器与遮罩带 opacity / scale 入场过渡，
-// 过渡起点与终点浏览器都会新建、销毁合成层，而 App 的 WebView 在那一帧只能提交旧的页面纹理 ——
-// 打开面板时插一帧整屏旧画面。这里常驻 will-change，图层在打开之前就已经存在。
-.bis-dialog-warm .b3-dialog__container {
-    will-change: transform;
-}
-
-.bis-dialog-warm .b3-dialog__scrim {
-    will-change: opacity;
-}
-
-// 移动端的底部抽屉（src/bottomSheet.ts）：面板靠宿主的 `.mobile-bottom-sheet` 用 `translateY(100%)` 移出视口，
-// 这里常驻 `will-change: transform`，让它的图层在打开之前就已经存在（打开时不再新建合成层）。
-.bis-bottom-sheet {
-    will-change: transform;
-}
-
 // 「按钮块管理」窗口（src/buttonManager.ts）：左侧列表、右侧预览。正文本身是 flex 容器，
 // 列表与预览各自滚动，窗口拖动改尺寸时一起变。
 .bis-manager {
