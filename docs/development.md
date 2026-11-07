@@ -64,9 +64,29 @@
   就抓不住，所以 `createCornerPad` 在角的外侧补了一块同样大小的透明命中区；**原生角本身一点不动**，两块
   区域不重叠，触屏按 `(pointer: coarse)` 把补丁藏掉。
 * **弹窗不抢焦点**：插件自己的对话框打开时不聚焦输入框或编辑区（宿主 `Dialog` 本来只聚焦容器，Tab 与
-  `Esc` 照常），免得顺手敲键盘就改掉了原来的内容。**新建 / 重命名脚本文件那两个窗口例外**：它们用的
-  `openInputDialog` 返回前会聚焦并全选输入框，`appendScriptFileSuffix` 里必须把它 `blur()` 掉；校验不通过
-  时的 `focus()` 与「载入示例」之后的聚焦是用户点出来的，保留。
+  `Esc` 照常），免得顺手敲键盘就改掉了原来的内容。
+  **移动端这一条是硬性的**：App 里 `HTMLElement.prototype.focus` 被宿主重写成不判 `isConnected` 就经原生桥接
+  调 `showKeyboard()`（`app/src/mobile/index.ts`），键盘引起的 adjustResize 会改 WebView 高度、整页重排，
+  打开的那一刻就闪一帧。所以图标选择窗口在移动端不聚焦搜索框；设置面板是宿主的 `Setting`，它在 `open()` 末尾
+  会对正文里第一个 `input, textarea` 补一次 `focus()`（`app/src/plugin/Setting.ts`），输入项还会被
+  `Dialog.bindInput` 在插入文档**之前**先聚焦一次（`app/src/dialog/index.ts`）—— 那次元素还游离在文档外，
+  事后 `blur()` 和按祖先节点判断都拦不住。`index.ts` 的 `openSetting()` 因此在移动端于同步的 `open` 期间按
+  元素类型接管 `HTMLElement.prototype.focus`，`finally` 里立刻还原；用户随后点输入框不经过这个重写，照常能编辑。
+  校验不通过时的 `focus()` 与「载入示例」之后的聚焦是用户点出来的，保留。
+* **对话框不重建合成层**：插件自己的对话框一律用 `src/dialog.ts` 的 `createDialog()` 创建，给外壳挂
+  `bis-dialog-warm`；`index.scss` 让容器与 `.b3-dialog__content` 常驻 `will-change: transform`（设置面板在
+  `openSetting()` 里补同一个类）。宿主的 `scale` + `opacity` 入场过渡（`component/_dialog.scss`）在起点与终点
+  都会新建、销毁合成层，App 的 WebView 在那一帧只能提交旧的页面纹理 —— 打开面板时插一帧整屏旧画面。
+  **过渡本身一点不动**：时长、曲线与 `b3-dialog--open` 的切换时序都还是宿主那份，只把图层提前准备好。
+  正文也要预热：只处理外壳时，滚动正文会单独混入旧画面。
+* **移动端底部抽屉**：`src/bottomSheet.ts` 只给宿主对话框挂 `mobile-bottom-sheet-dialog` /
+  `mobile-bottom-sheet` 与抓手，移出视口与滑入全交给宿主：`.mobile-bottom-sheet` 自己带
+  `transform: translateY(100%)` 与 `.15s` 过渡，打开类一到就改成 `translateY(0)`
+  （`app/src/assets/scss/main/_mobile.scss`）。容器常驻 `bis-bottom-sheet` 的 `will-change: transform`
+  预热图层。**不要用 `visibility`、`display: none` 或延迟挂载做「先藏、首帧之后再显示」，也不要照抄宿主
+  `app/src/mobile/util/bindBottomSheetDialog.ts` 里 `visibility` 加两次 `offsetHeight` 的写法**：渲染树一进一出
+  会重建合成层，App 的 WebView 在那一帧只能提交旧纹理。这一条 web 端复现不出来，`npm run check` 与浏览器验证
+  都证明不了，只能由维护者在移动端 App 上复测。
 * **图标**：从文档里的 `<symbol id="icon…">` 现取现用，元素带思源的 `.svg` 类以跟随 `currentColor`。
   选择器里**不要改 `color`**：悬浮与选中只换底色 / 描边，否则靠 `currentColor` 上色的图标会显示成主色。
 * **JavaScript 操作**：在页面上下文里整段包成 async 函数执行，执行期间接管 `console` 收集输出；弹窗策略

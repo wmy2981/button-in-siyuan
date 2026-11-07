@@ -27,7 +27,11 @@ export const useBottomSheet = (dialog: Dialog) => {
         return () => undefined;
     }
     element.classList.add("mobile-bottom-sheet-dialog");
-    sheet.classList.add("mobile-bottom-sheet");
+    // 宿主的 `.mobile-bottom-sheet` 负责「压在屏幕下方」与滑入：它自己带 `transform: translateY(100%)`，
+    // 对话框拿到 `b3-dialog--open` 后再由 `.mobile-bottom-sheet-dialog.b3-dialog--open .mobile-bottom-sheet`
+    // 改成 `translateY(0)`，中间是宿主那份 `transition`（`_mobile.scss`）。这里不再自己藏、也不再自己催动画。
+    // `bis-bottom-sheet` 只让面板常驻 `will-change: transform`（`index.scss`），图层在滑入前就已经存在。
+    sheet.classList.add("mobile-bottom-sheet", "bis-bottom-sheet");
     // 原生抽屉没有关闭按钮（宿主移动端对话框本来也会把 × 藏起来），这里显式隐藏，
     // 免得换一个前端又露出来
     element.querySelector(".b3-dialog__close")?.classList.add("fn__none");
@@ -43,42 +47,8 @@ export const useBottomSheet = (dialog: Dialog) => {
     handle.setAttribute("aria-hidden", "true");
     sheet.prepend(handle);
 
-    // 初始状态压在屏幕下方，等对话框拿到 b3-dialog--open 之后再滑上来（与宿主的过渡一致）
-    sheet.style.transition = "none";
-    sheet.style.transform = "translateY(100%)";
-    sheet.style.visibility = "hidden";
-
     const dialogElement = element.querySelector<HTMLElement>(".b3-dialog");
     const scrim = element.querySelector<HTMLElement>(".b3-dialog__scrim");
-    let opened = false;
-    let frame = 0;
-    const open = () => {
-        frame = 0;
-        if (opened || !element.isConnected) {
-            return;
-        }
-        opened = true;
-        resize();
-        sheet.style.visibility = "";
-        // 强制一次布局，让 transition 从当前（屏幕外）位置开始
-        void sheet.offsetHeight;
-        sheet.style.transition = "";
-        void sheet.offsetHeight;
-        sheet.style.transform = "";
-        log.debug("opened the bottom sheet");
-    };
-    const observer = new MutationObserver(() => {
-        if (!opened && element.classList.contains("b3-dialog--open")) {
-            // 等一帧：宿主的打开类与布局在同一轮里写入，这里要拿最终尺寸
-            frame = window.requestAnimationFrame(open);
-        }
-    });
-    observer.observe(element, {attributes: true, attributeFilter: ["class"]});
-    // 调用方可能已经把对话框搭好、宿主也已经加上打开类（例如先建对话框再初始化编辑器），
-    // 这时 MutationObserver 等不到变化，直接补一次
-    if (element.classList.contains("b3-dialog--open")) {
-        frame = window.requestAnimationFrame(open);
-    }
 
     /** 键盘弹出时把面板压进可见视口，与宿主的底部抽屉做法一致。 */
     const resize = () => {
@@ -89,9 +59,12 @@ export const useBottomSheet = (dialog: Dialog) => {
         dialogElement.style.top = `${viewport.offsetTop}px`;
         dialogElement.style.height = `${viewport.height}px`;
     };
+
+    // 入场完全交给宿主：不设 `visibility`、不强制回流、不等帧。面板在创建时就已经是「屏幕外 + 不可见」
+    // （宿主的 `.mobile-bottom-sheet`），打开类一到就沿宿主那份过渡滑上来
+    resize();
     window.visualViewport?.addEventListener("resize", resize);
     window.visualViewport?.addEventListener("scroll", resize);
-    resize();
 
     // 下拉关闭：起手位置、当前位移与关闭阈值都与宿主的 bindBottomSheetDrag 相同
     let start: {x: number, y: number, time: number} | undefined;
@@ -165,7 +138,8 @@ export const useBottomSheet = (dialog: Dialog) => {
         const shouldClose = offset > Math.min(120, sheet.clientHeight * .25) ||
             (offset > 20 && offset / duration > .6);
         suppressClickUntil = performance.now() + 300;
-        void sheet.offsetHeight;
+        // 清掉行内 transition 与位移后，宿主的过渡会把它从当前位置送回原位（或朝屏幕外滑走），
+        // 不用强制回流去催它
         sheet.style.transition = "";
         start = undefined;
         dragging = false;
@@ -198,10 +172,6 @@ export const useBottomSheet = (dialog: Dialog) => {
     sheet.addEventListener("click", onClick, true);
 
     return () => {
-        if (frame) {
-            window.cancelAnimationFrame(frame);
-        }
-        observer.disconnect();
         window.visualViewport?.removeEventListener("resize", resize);
         window.visualViewport?.removeEventListener("scroll", resize);
         sheet.removeEventListener("touchstart", onStart);

@@ -1,24 +1,7 @@
-import {beforeEach, describe, expect, it, vi} from "vitest";
+import {describe, expect, it, vi} from "vitest";
 import {useBottomSheet} from "../src/bottomSheet";
 import {Dialog} from "./mocks/siyuan";
-import {flushPromises, touchEvent} from "./helpers";
-
-/** jsdom 的 rAF 会在当前调用栈里同步执行，而真实浏览器是下一帧；测试里手动放行。 */
-let frames: FrameRequestCallback[] = [];
-const runFrames = () => {
-    const pending = frames;
-    frames = [];
-    pending.forEach((callback) => callback(0));
-};
-
-beforeEach(() => {
-    frames = [];
-    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
-        frames.push(callback);
-        return frames.length;
-    });
-    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => undefined);
-});
+import {touchEvent} from "./helpers";
 
 const makeDialog = (extra = "") => {
     const dialog = new Dialog({
@@ -52,6 +35,8 @@ describe("useBottomSheet", () => {
         const {dialog, sheet} = openSheet();
         expect(dialog.element.classList.contains("mobile-bottom-sheet-dialog")).toBe(true);
         expect(sheet.classList.contains("mobile-bottom-sheet")).toBe(true);
+        // 常驻的 will-change 由自己的类预热图层（样式在 index.scss）
+        expect(sheet.classList.contains("bis-bottom-sheet")).toBe(true);
         expect(sheet.firstElementChild?.classList.contains("b3-menu__title--root")).toBe(true);
         expect(sheet.style.width).toBe("100vw");
         expect(sheet.style.maxWidth).toBe("100vw");
@@ -68,25 +53,27 @@ describe("useBottomSheet", () => {
         expect(header?.classList.contains("resize__move")).toBe(false);
     });
 
-    it("starts off-screen and slides in when the host opens the dialog", async () => {
+    it("leaves the off-screen state and the entrance to the host", () => {
         const {dialog, sheet} = openSheet();
-        expect(sheet.style.transform).toBe("translateY(100%)");
-        expect(sheet.style.visibility).toBe("hidden");
+        // 压在屏幕下方、滑入都靠宿主的 `.mobile-bottom-sheet` 与它自己的过渡：
+        // 这里不写行内位移、不用 visibility 藏、也不强制回流或等帧
+        expect(sheet.style.transform).toBe("");
+        expect(sheet.style.visibility).toBe("");
+        expect(sheet.style.transition).toBe("");
+        expect(sheet.isConnected).toBe(true);
+        expect(dialog.element.classList.contains("b3-dialog--open")).toBe(false);
 
         dialog.element.classList.add("b3-dialog--open");
-        await flushPromises();
-        runFrames();
         expect(sheet.style.transform).toBe("");
         expect(sheet.style.visibility).toBe("");
     });
 
-    it("opens immediately when the dialog is already open", () => {
+    it("does not schedule its own entry frame", () => {
+        const requestFrame = vi.spyOn(window, "requestAnimationFrame");
         const {dialog, sheet} = makeDialog();
         dialog.element.classList.add("b3-dialog--open");
         useBottomSheet(dialog as never);
-        expect(frames).toHaveLength(1);
-        runFrames();
-        expect(sheet.style.visibility).toBe("");
+        expect(requestFrame).not.toHaveBeenCalled();
         expect(sheet.style.transform).toBe("");
     });
 

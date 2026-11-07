@@ -154,6 +154,15 @@ export class Setting {
 
     items: TAny[] = [];
     options: TAny;
+    dialog?: Dialog;
+    /**
+     * 与宿主一致：`Setting.open` 建一个对话框，再聚焦正文里第一个 `input, textarea`
+     * （`app/src/plugin/Setting.ts` 结尾那一句）。移动端这次聚焦会经桥接唤起软键盘，是闪烁的一半原因。
+     */
+    open = vi.fn((_name: string): void => {
+        this.dialog = new Dialog({content: `<div class="b3-dialog__content"><input class="b3-text-field"></div>`});
+        this.dialog.element.querySelector<HTMLElement>("input, textarea")?.focus();
+    });
 
     constructor(options: TAny = {}) {
         this.options = options;
@@ -185,6 +194,11 @@ export class Plugin {
     loadData = vi.fn(async (_name: string): Promise<TAny> => undefined);
     saveData = vi.fn(async (_name: string, _value?: unknown): Promise<TAny> => undefined);
     removeData = vi.fn(async (_name: string): Promise<TAny> => ({code: 0}));
+
+    /** 与宿主一致：打开设置面板就是让 `setting` 自己建面板。插件在移动端覆写它挡聚焦。 */
+    openSetting() {
+        this.setting?.open(this.displayName || this.name);
+    }
 
     constructor(options: TAny = {}) {
         this.app = options.app ?? {};

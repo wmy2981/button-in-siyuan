@@ -249,6 +249,36 @@ describe("settings panel", () => {
         (setting?.items[5].createActionElement() as HTMLButtonElement).click();
         expect(Dialog.instances.at(-1)?.options.title).toBe("manageButtonBlocks");
     });
+
+    it("keeps the host focus behaviour on desktop", async () => {
+        const plugin = makePlugin();
+        plugin.onload();
+        await waitForSettings(plugin);
+        plugin.openSetting();
+        expect(document.activeElement).toBe(document.body.querySelector(".b3-dialog__content input"));
+    });
+
+    it("does not focus an input while the panel opens on mobile", async () => {
+        getFrontend.mockReturnValue("mobile");
+        const plugin = makePlugin();
+        plugin.onload();
+        await waitForSettings(plugin);
+        plugin.openSetting();
+        // 面板打开期间不聚焦输入控件：App 里那一下 focus 会经桥接唤起键盘、改 WebView 高度，整页重排闪一帧
+        const input = document.body.querySelector(".b3-dialog__content input");
+        expect(input).not.toBeNull();
+        expect(document.activeElement).not.toBe(input);
+    });
+
+    it("pre-warms the layer of the settings dialog on mobile", async () => {
+        getFrontend.mockReturnValue("mobile");
+        const plugin = makePlugin();
+        plugin.onload();
+        await waitForSettings(plugin);
+        plugin.openSetting();
+        // index.scss 给 bis-dialog-warm 的容器与正文挂常驻 will-change，见 src/index.ts 的 openSetting
+        expect((plugin.setting as any).dialog?.element.classList.contains("bis-dialog-warm")).toBe(true);
+    });
 });
 
 describe("slash item", () => {

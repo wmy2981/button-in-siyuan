@@ -291,6 +291,44 @@ export default class ButtonInSiYuan extends Plugin {
     }
 
     /**
+     * 打开设置面板（移动端要额外挡两件事）。
+     *
+     * 一是聚焦：宿主的 `Setting.open` 构建完面板会对正文里第一个 `input, textarea` 补一次 `focus()`
+     * （`app/src/plugin/Setting.ts`），输入项还会经过 `Dialog.bindInput` 先聚焦一次再插入文档
+     * （`app/src/dialog/index.ts`）。而移动端 `mobile/index.ts` 重写的 `HTMLElement.prototype.focus`
+     * 不判 `isConnected` 就经原生桥接唤起软键盘，键盘引起的 adjustResize 会改 WebView 高度、整页重排，
+     * 面板弹出那一帧就闪旧画面。`bindInput` 那次聚焦发生在控件插入之前，元素还游离在文档外，
+     * 事后 blur 和按祖先节点判断都拦不住，所以在同步的 `open` 期间按元素类型接管 `focus`，返回后立即还原；
+     * 用户随后点输入框不经过这个重写，照常可编辑。
+     *
+     * 二是图层：容器的 `scale` / `opacity` 入场过渡在起点与终点都会新建、销毁合成层，App 的 WebView
+     * 在那一帧只能提交旧纹理。这里给面板挂上 `bis-dialog-warm`，`index.scss` 让容器与正文常驻
+     * `will-change`，见 src/dialog.ts。宿主的过渡与 `b3-dialog--open` 时序一点不动。
+     */
+    openSetting() {
+        if (!this.isMobile) {
+            super.openSetting();
+            return;
+        }
+        const prototype = HTMLElement.prototype;
+        const focus = prototype.focus;
+        prototype.focus = function (this: HTMLElement, options?: FocusOptions) {
+            // 对话框容器等非输入控件的聚焦照常放行，不会唤键盘
+            if (!(this instanceof HTMLInputElement || this instanceof HTMLTextAreaElement)) {
+                focus.call(this, options);
+            }
+        };
+        try {
+            super.openSetting();
+        } finally {
+            prototype.focus = focus;
+        }
+        // 宿主的 `Setting.dialog` 运行时一定存在，当前 siyuan 类型声明里还没写，这里只做窄类型
+        const dialogElement = (this.setting as Setting & {dialog?: {element?: HTMLElement};}).dialog?.element;
+        dialogElement?.classList.add("bis-dialog-warm");
+    }
+
+    /**
      * 设置面板里的「下载技能」：把内置的整份技能打包交给思源原生的保存流程（见 agentSkill.ts）。
      * 保存对话框由宿主弹出，用户在对话框里取消不算失败，所以这里只在真正出错时提示。
      */

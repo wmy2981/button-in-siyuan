@@ -1,5 +1,6 @@
-import {Dialog, fetchSyncPost, Menu, showMessage} from "siyuan";
+import {fetchSyncPost, Menu, showMessage} from "siyuan";
 import type {APIFormData, IMenu, PutFileRequestInput} from "siyuan";
+import {createDialog} from "./dialog";
 import type {IButtonConfig} from "./buttonBlock";
 import {DEFAULT_BUTTON_ICON, parseButtonConfig, runAction} from "./buttonBlock";
 import {describeButtonAction} from "./buttonManager";
@@ -212,7 +213,7 @@ export const openTopBarMenu = async (context: IContext, target?: HTMLElement) =>
  */
 export const openTopBarManager = (context: IContext) => {
     const {i18n} = context;
-    const dialog = new Dialog({
+    const dialog = createDialog({
         title: i18n.topBarManagerTitle,
         width: context.isMobile ? "100%" : "min(980px, 94vw)",
         height: context.isMobile ? "100%" : "min(82vh, 760px)",

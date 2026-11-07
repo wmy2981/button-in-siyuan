@@ -1,4 +1,5 @@
-import {Dialog, fetchSyncPost, showMessage} from "siyuan";
+import {fetchSyncPost, showMessage} from "siyuan";
+import {createDialog} from "./dialog";
 import {createLogger} from "./logger";
 import type {IButtonConfig, TButtonAction} from "./buttonBlock";
 import {createButtonElement, isBlockEditable, parseButtonConfig, runAction} from "./buttonBlock";
@@ -117,7 +118,7 @@ export interface IButtonBlockManagerOptions {
  */
 export const openButtonBlockManager = (context: IContext, options: IButtonBlockManagerOptions = {}) => {
     const {i18n} = context;
-    const dialog = new Dialog({
+    const dialog = createDialog({
         title: i18n.manageButtonBlocks,
         width: context.isMobile ? "100%" : "min(980px, 94vw)",
         height: context.isMobile ? "100%" : "min(82vh, 760px)",
