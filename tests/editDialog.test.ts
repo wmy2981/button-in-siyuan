@@ -1,6 +1,7 @@
 import {beforeEach, describe, expect, it, vi} from "vitest";
 import {openButtonBlockEditor} from "../src/editDialog";
 import {makeConfig, makeContext, makeSettings} from "./helpers";
+import {setMobileSafeMode} from "../src/safeMode";
 import {Dialog, fetchSyncPost, showMessage} from "./mocks/siyuan";
 
 const mocks = vi.hoisted(() => ({
@@ -445,7 +446,20 @@ describe("openButtonBlockEditor", () => {
         expect(mocks.openScriptFileEditor).toHaveBeenCalledWith(expect.anything(), {
             path: "data/assets/a.js",
             editable: true,
+            hideBelow: undefined,
         });
+    });
+
+    it("hides this editor while the script file page is open in safe mode", () => {
+        setMobileSafeMode(true);
+        const {field, dialog} = open(
+            {config: makeConfig({action: {type: "file", file: "data/assets/a.js"}})},
+            makeContext({isMobile: true}),
+        );
+        field("file-edit").click();
+        const options = mocks.openScriptFileEditor.mock.calls.at(-1)?.[1] as {hideBelow?: HTMLElement};
+        // App 里下层窗口还挂着时再建对话框会把 WebView 卡死（issue #43），安全模式把它交出去藏起来
+        expect(options.hideBelow).toBe(dialog.element);
     });
 
     it("removes the script file after the confirmation", async () => {

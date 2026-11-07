@@ -8,6 +8,7 @@ import {createCodeEditor} from "./codeEditor";
 import {confirmDanger} from "./confirmDanger";
 import type {IContext} from "./context";
 import {guardUnsavedChanges} from "./discardChanges";
+import {getMobileSafeMode} from "./safeMode";
 import {createIconElement, openIconPicker} from "./icon";
 import {createLogger} from "./logger";
 import {
@@ -419,7 +420,9 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
         // 这一条在预览模式下也留着：脚本文件窗口是只读的，看一眼文件内容不会改动任何东西
         const path = localScriptPath();
         if (path) {
-            void openScriptFileEditor(context, {path, editable});
+            // 安全模式下打开这个满屏页面期间先把这个编辑窗口藏起来（issue #43，见 src/safeMode.ts）
+            const hideBelow = context.isMobile && getMobileSafeMode() ? dialog.element : undefined;
+            void openScriptFileEditor(context, {path, editable, hideBelow});
         }
     });
     field<HTMLButtonElement>("file-info").addEventListener("click", () => {

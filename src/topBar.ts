@@ -1,6 +1,6 @@
 import {fetchSyncPost, Menu, showMessage} from "siyuan";
 import type {APIFormData, IMenu, PutFileRequestInput} from "siyuan";
-import {createDialog} from "./dialog";
+import {createDialog, hideWhileOpening, makeFullscreenDialog} from "./dialog";
 import type {IButtonConfig} from "./buttonBlock";
 import {DEFAULT_BUTTON_ICON, parseButtonConfig, runAction} from "./buttonBlock";
 import {describeButtonAction} from "./buttonManager";
@@ -8,6 +8,7 @@ import type {IContext} from "./context";
 import {openButtonBlockEditor} from "./editDialog";
 import {createIconElement} from "./icon";
 import {createLogger} from "./logger";
+import {getMobileSafeMode} from "./safeMode";
 import {PLUGIN_STORAGE_DIR} from "./pluginPaths";
 
 const log = createLogger("topBar");
@@ -233,7 +234,7 @@ export const openTopBarManager = (context: IContext) => {
 </div>`,
     });
     if (context.isMobile) {
-        dialog.element.querySelector(".b3-dialog__container")?.classList.add("bis-dialog-fullscreen");
+        makeFullscreenDialog(dialog);
     }
     const field = <T extends HTMLElement>(type: string) => {
         const element = dialog.element.querySelector<T>(`[data-bis="${type}"]`);
@@ -292,7 +293,7 @@ export const openTopBarManager = (context: IContext) => {
     };
 
     const openEditor = (action?: ITopBarAction) => {
-        openButtonBlockEditor(context, {
+        const open = () => openButtonBlockEditor(context, {
             blockID: "",
             // 新建时给一个默认图标：空图标在菜单里只显示文本，用户往往还要再点一次选图标
             config: action?.config || {text: i18n.topBarDefaultText, icon: DEFAULT_BUTTON_ICON},
@@ -324,8 +325,18 @@ export const openTopBarManager = (context: IContext) => {
                 }
             } : undefined,
             onRun: (config) => runTopBarAction(context, config),
-            onClosed: () => void reload(),
+            onClosed: () => {
+                // 安全模式下编辑窗口关掉之后管理窗口再露出来（见 dialog.ts）
+                dialog.element.style.display = "";
+                void reload();
+            },
         });
+        if (context.isMobile && getMobileSafeMode()) {
+            // App 里下层还挂着这个满屏窗口时再建对话框会把 WebView 卡死并重载前端（issue #43）
+            hideWhileOpening(dialog.element, open);
+        } else {
+            open();
+        }
     };
 
     const render = () => {

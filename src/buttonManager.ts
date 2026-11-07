@@ -1,6 +1,7 @@
 import {fetchSyncPost, showMessage} from "siyuan";
-import {createDialog} from "./dialog";
+import {createDialog, hideWhileOpening, makeFullscreenDialog} from "./dialog";
 import {createLogger} from "./logger";
+import {getMobileSafeMode} from "./safeMode";
 import type {IButtonConfig, TButtonAction} from "./buttonBlock";
 import {createButtonElement, isBlockEditable, parseButtonConfig, runAction} from "./buttonBlock";
 import type {IContext} from "./context";
@@ -144,7 +145,7 @@ export const openButtonBlockManager = (context: IContext, options: IButtonBlockM
 </div>`,
     });
     if (context.isMobile) {
-        dialog.element.querySelector(".b3-dialog__container")?.classList.add("bis-dialog-fullscreen");
+        makeFullscreenDialog(dialog);
     }
     const field = <T extends HTMLElement>(type: string) => {
         const element = dialog.element.querySelector<T>(`[data-bis="${type}"]`);
@@ -237,12 +238,22 @@ export const openButtonBlockManager = (context: IContext, options: IButtonBlockM
         edit.textContent = i18n.managerEdit;
         edit.addEventListener("click", () => {
             const blockElement = document.querySelector<HTMLElement>(`[data-type="NodeCustomBlock"][data-node-id="${row.id}"]`);
-            openButtonBlockEditor(context, {
+            const open = () => openButtonBlockEditor(context, {
                 blockID: row.id,
                 config: row.config,
                 editable: isBlockEditable(blockElement),
-                onClosed: () => void reload(),
+                onClosed: () => {
+                    // 安全模式下编辑窗口关掉之后管理窗口再露出来（见 dialog.ts）
+                    dialog.element.style.display = "";
+                    void reload();
+                },
             });
+            if (context.isMobile && getMobileSafeMode()) {
+                // App 里下层还挂着这个满屏窗口时再建对话框会把 WebView 卡死并重载前端（issue #43）
+                hideWhileOpening(dialog.element, open);
+            } else {
+                open();
+            }
         });
         const locate = document.createElement("button");
         locate.type = "button";

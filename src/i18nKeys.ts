@@ -89,6 +89,8 @@ export type II18n = {
     settingsCodeLigaturesTip: string;
     settingsAgentSkill: string;
     settingsAgentSkillTip: string;
+    settingsSafeMode: string;
+    settingsSafeModeTip: string;
     settingsDownloadSkill: string;
     settingsDownloadSkillTip: string;
     downloadSkill: string;

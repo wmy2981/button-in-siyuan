@@ -1,8 +1,9 @@
 import {describe, expect, it, vi} from "vitest";
 import {describeButtonAction, openButtonBlockManager} from "../src/buttonManager";
 import {serializeButtonConfig} from "../src/buttonBlock";
-import {fetchSyncPost, platformUtils, showMessage} from "./mocks/siyuan";
+import {Dialog, fetchSyncPost, platformUtils, showMessage} from "./mocks/siyuan";
 import {makeConfig, makeContext} from "./helpers";
+import {setMobileSafeMode} from "../src/safeMode";
 
 vi.mock("../src/editDialog", () => ({openButtonBlockEditor: vi.fn()}));
 
@@ -224,6 +225,36 @@ describe("openButtonBlockManager", () => {
             config: expect.objectContaining({text: "Alpha"}),
             editable: true,
         }));
+    });
+
+    it("keeps the manager visible on mobile unless the safe mode is on", async () => {
+        fetchSyncPost.mockResolvedValue({code: 0, data: [row({id: "a", content: configOf({text: "Alpha"})})]});
+        openButtonBlockManager(makeContext({isMobile: true}));
+        await waitForRows(1);
+        const managerElement = Dialog.instances.at(-1)?.element as HTMLElement;
+        document.querySelector<HTMLElement>(".bis-manager__row")?.click();
+        document.querySelector<HTMLElement>(".bis-manager__actions button")?.click();
+        // 安全模式默认关闭：行为与以前一致，管理窗口留在原地（issue #43）
+        expect(managerElement.style.display).toBe("");
+    });
+
+    it("hides itself while the editor is open when the safe mode is on", async () => {
+        setMobileSafeMode(true);
+        fetchSyncPost.mockResolvedValue({code: 0, data: [row({id: "a", content: configOf({text: "Alpha"})})]});
+        openButtonBlockManager(makeContext({isMobile: true}));
+        await waitForRows(1);
+        const managerElement = Dialog.instances.at(-1)?.element as HTMLElement;
+        expect(managerElement.style.display).toBe("");
+        document.querySelector<HTMLElement>(".bis-manager__row")?.click();
+        document.querySelector<HTMLElement>(".bis-manager__actions button")?.click();
+
+        // App 里压着满屏管理窗口再建对话框会把 WebView 卡死，安全模式把它摘出渲染树
+        expect(managerElement.style.display).toBe("none");
+        const {openButtonBlockEditor} = await import("../src/editDialog");
+        const {onClosed} = vi.mocked(openButtonBlockEditor).mock.calls.at(-1)?.[1] as {onClosed?: () => void};
+        onClosed?.();
+        expect(managerElement.style.display).toBe("");
+        await vi.waitFor(() => expect(document.querySelector(".bis-manager__chip")?.textContent).toBe("Alpha"));
     });
 
     it("closes itself and the settings panel before locating the block", async () => {

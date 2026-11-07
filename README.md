@@ -43,6 +43,8 @@ The desktop top bar has a lightning icon; on mobile the same entry sits in the t
 
 ## Plugin settings
 
+Mobile has one extra switch, "Mobile safe mode", off by default and stored on this device only (it never follows SiYuan sync). When it is on, opening the editor from a manager, or the JavaScript file page from the editor, hides the full-screen window below first — on some devices two stacked full-screen windows freeze SiYuan and reload its frontend, and the switch works around that. With it off, nothing changes.
+
 Uninstalling the plugin deletes only its settings file (`data/storage/petal/button-in-siyuan/settings`): scripts under `scripts/`, script data under `storage/` and top bar actions under `topbar/` are kept, and a reinstall starts from the default settings. If the plugin is disabled before uninstalling, there is no instance to run the cleanup, so the settings file stays.
 
 ## Link addresses

@@ -99,13 +99,14 @@ describe("plugin lifecycle", () => {
         await waitForSettings(plugin);
 
         const setting = Setting.instances.at(-1);
-        expect(setting?.items).toHaveLength(7);
+        expect(setting?.items).toHaveLength(8);
         expect(setting?.items.map((item) => item.title)).toEqual([
             "settingsOutputMode",
             "settingsDebugMode",
             "settingsCodeWrap",
             "settingsCodeLigatures",
             "settingsAgentSkill",
+            "settingsSafeMode",
             "manageButtonBlocks",
             "settingsDownloadSkill",
         ]);
@@ -115,6 +116,22 @@ describe("plugin lifecycle", () => {
             "always", "output", "console", "warn", "error", "never",
         ]);
         expect(outputSelect.value).toBe("output");
+    });
+
+    it("stores the mobile safe mode on this device only", async () => {
+        const plugin = makePlugin();
+        plugin.onload();
+        await waitForSettings(plugin);
+        const setting = Setting.instances.at(-1);
+        const item = setting?.items.find((entry) => entry.title === "settingsSafeMode");
+        const safeModeSwitch = item?.createActionElement() as HTMLInputElement;
+        // 默认关闭，行为与以前一致
+        expect(safeModeSwitch.checked).toBe(false);
+        safeModeSwitch.checked = true;
+        safeModeSwitch.dispatchEvent(new Event("change"));
+        // 只写 localStorage，不写插件设置（因此不跟随思源同步）
+        expect(window.localStorage.getItem("button-in-siyuan/mobile-safe-mode")).toBe("true");
+        expect((item?.createActionElement() as HTMLInputElement).checked).toBe(true);
     });
 
     it("removes the listeners, the top bar entry and the agent skill on unload", async () => {
@@ -226,7 +243,7 @@ describe("settings panel", () => {
         plugin.onload();
         await waitForSettings(plugin);
         const setting = Setting.instances.at(-1);
-        const button = setting?.items[6].createActionElement() as HTMLButtonElement;
+        const button = setting?.items[7].createActionElement() as HTMLButtonElement;
         button.click();
         await vi.waitFor(() => expect(saveExportFile).toHaveBeenCalledWith("/export/button-block.zip"));
     });
@@ -237,7 +254,7 @@ describe("settings panel", () => {
         await waitForSettings(plugin);
         fetchSyncPost.mockResolvedValue({code: -1, msg: "zip failed"});
         const setting = Setting.instances.at(-1);
-        (setting?.items[6].createActionElement() as HTMLButtonElement).click();
+        (setting?.items[7].createActionElement() as HTMLButtonElement).click();
         await vi.waitFor(() => expect(showMessage).toHaveBeenCalledWith("downloadSkillFailed"));
     });
 
@@ -246,7 +263,7 @@ describe("settings panel", () => {
         plugin.onload();
         await waitForSettings(plugin);
         const setting = Setting.instances.at(-1);
-        (setting?.items[5].createActionElement() as HTMLButtonElement).click();
+        (setting?.items[6].createActionElement() as HTMLButtonElement).click();
         expect(Dialog.instances.at(-1)?.options.title).toBe("manageButtonBlocks");
     });
 

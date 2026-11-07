@@ -12,6 +12,8 @@ export const resetWindow = () => {
     // 宿主在桌面端注入的 Electron 入口与移动端的 visualViewport，都不该从一个测试漏到下一个
     delete (window as any).require;
     delete (window as any).visualViewport;
+    // 安全模式存在 localStorage（不跟随同步），不能从一个用例漏到下一个
+    window.localStorage.clear();
     (window as any).siyuan = {
         config: {
             lang: "zh_CN",

@@ -84,6 +84,8 @@
   "settingsCodeLigaturesTip": "When enabled, the editor shows ligatures (the code font has to bring them); the default \"Follow SiYuan\" follows SiYuan's \"Code block ligature\" setting",
   "settingsAgentSkill": "Provide the button block skill to the agent",
   "settingsAgentSkillTip": "Writes a skill explaining button blocks (payload format, icon list, script APIs) into the workspace skill directory for SiYuan's agent; switching it off deletes that skill",
+  "settingsSafeMode": "Mobile safe mode",
+  "settingsSafeModeTip": "In the app, hide the full-screen window below before opening the button editor from a manager or the JavaScript file page from the editor, which works around the app freezing and reloading its frontend. Stored on this device only, never synced, off by default",
   "settingsDownloadSkill": "Download the skill",
   "settingsDownloadSkillTip": "Saves the whole skill (SKILL.md and its references) as a zip file, to hand it to another agent",
   "downloadSkill": "Download skill",

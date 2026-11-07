@@ -75,18 +75,44 @@
   校验不通过时的 `focus()` 与「载入示例」之后的聚焦是用户点出来的，保留。
 * **对话框不重建合成层**：插件自己的对话框一律用 `src/dialog.ts` 的 `createDialog()` 创建，给外壳挂
   `bis-dialog-warm`；`index.scss` 让容器与 `.b3-dialog__content` 常驻 `will-change: transform`（设置面板在
-  `openSetting()` 里补同一个类）。宿主的 `scale` + `opacity` 入场过渡（`component/_dialog.scss`）在起点与终点
-  都会新建、销毁合成层，App 的 WebView 在那一帧只能提交旧的页面纹理 —— 打开面板时插一帧整屏旧画面。
-  **过渡本身一点不动**：时长、曲线与 `b3-dialog--open` 的切换时序都还是宿主那份，只把图层提前准备好。
-  正文也要预热：只处理外壳时，滚动正文会单独混入旧画面。
-* **移动端底部抽屉**：`src/bottomSheet.ts` 只给宿主对话框挂 `mobile-bottom-sheet-dialog` /
-  `mobile-bottom-sheet` 与抓手，移出视口与滑入全交给宿主：`.mobile-bottom-sheet` 自己带
-  `transform: translateY(100%)` 与 `.15s` 过渡，打开类一到就改成 `translateY(0)`
-  （`app/src/assets/scss/main/_mobile.scss`）。容器常驻 `bis-bottom-sheet` 的 `will-change: transform`
-  预热图层。**不要用 `visibility`、`display: none` 或延迟挂载做「先藏、首帧之后再显示」，也不要照抄宿主
-  `app/src/mobile/util/bindBottomSheetDialog.ts` 里 `visibility` 加两次 `offsetHeight` 的写法**：渲染树一进一出
-  会重建合成层，App 的 WebView 在那一帧只能提交旧纹理。这一条 web 端复现不出来，`npm run check` 与浏览器验证
-  都证明不了，只能由维护者在移动端 App 上复测。
+  `openSetting()` 里补同一个类）。宿主的 `scale` +
+  `opacity` 入场过渡（`component/_dialog.scss`）在起点与终点都会新建、销毁合成层，App 的 WebView 在那一帧
+  只能提交旧的页面纹理 —— 打开面板时插一帧整屏旧画面。**过渡本身一点不动**：时长、曲线与
+  `b3-dialog--open` 的切换时序都还是宿主那份，只把图层提前准备好。正文也要预热：只处理外壳时，滚动正文会
+  单独混入旧画面。
+  **满屏页面（管理窗口、JavaScript 文件页、快捷操作面板）例外**：它们走 `makeFullscreenDialog()`，
+  入场同样预热，但入场结束（400ms）后把 `bis-dialog-warm` 收回来 —— 满屏页面会一直开着，常驻的整屏合成层
+  没有意义，而预热只对入场那一刻有用。释放用固定时钟而不是 `transitionend`：宿主的容器同时过渡
+  `transform` 与 `opacity`，两条事件先后到达，按事件释放有可能在 `transform` 还没走完时就把图层提前拆掉。
+* **移动端底部抽屉**：`src/bottomSheet.ts` 给宿主对话框挂 `mobile-bottom-sheet-dialog` /
+  `mobile-bottom-sheet` 与抓手，**入场与收起的时序照 `app/src/mobile/util/bindBottomSheetDialog.ts`
+  逐步实现**（issue #46，此前动画与原生对不上、滑动收起时没有过渡）：
+  - 建好面板先写 `transition: none` + `translateY(100%)` + `visibility: hidden`，谁也不抢跑；
+  - 宿主加上 `b3-dialog--open`、并且键盘与视口都稳定之后（`waitForSheetViewport`：没有键盘下一帧就开，
+    有键盘等它收起并稳定 32ms，最多等 1s），才放开 `visibility`、刷一次布局、恢复 `.mobile-bottom-sheet`
+    自己那份 `.15s` 过渡、再改成 `translateY(0)`；
+  - 收起时宿主先标 `data-dialog-closing` 再摘打开类，`updateOpen` 里冻住面板高度并清掉拖动留下的行内
+    `transition` / `transform`，同一份过渡把面板整块送出屏幕。宿主的 `destroy()` 190ms 之后才移除 DOM，
+    正好够这段过渡跑完；不清行内位移的话面板会停在手指松开的位置被直接抽走，就是「卡一下然后收起」。
+
+  位置与尺寸只在入场那一次按可见视口算好（`top` / `bottom` / `height`），之后只有视口真的变了（键盘弹出、
+  旋转、分屏）才重算，不在打开过程中跟着 `visualViewport` 的每个事件写。容器常驻 `bis-bottom-sheet` 的
+  `will-change: transform` 预热图层。
+  下拉关闭的阈值与宿主相同（120px / 面板高度的 1/4 / 0.6px/ms）；抓手只用于下拉关闭，不接管宿主那份
+  「拖抓手改高度」，面板高度由调用方决定。这一整套 web 端复现不出来（`npm run check` 与浏览器验证都证明
+  不了），只能由维护者在移动端 App 上复测。
+* **App 里压着满屏窗口再开对话框会卡死（安全模式）**：满屏对话框（管理窗口、JavaScript 文件页）还挂在
+  屏幕上时新建第二个对话框，App 的 WebView 会整帧卡死并重载前端。真机现象很具体：插件的 JS 38ms 就跑完
+  （`editor: ready`），之后宿主 50ms 的打开类、200ms 的定时器都不再执行，第二个窗口一帧都没画出来。
+  **抽屉、图层预热、CodeMirror 都不是原因**：去掉抽屉、去掉 `will-change`、不建 CodeMirror 都照样卡；
+  把下层窗口从渲染树里摘掉（`display: none`）就完全正常。这是宿主/WebView 侧的问题，而摘掉下层窗口
+  意味着打开期间看不到它，所以做成**默认关闭的可选安全模式**（`src/safeMode.ts`）：
+  - 开关在插件设置面板里，值只写 `localStorage`，**不进插件设置、不跟随思源同步**，默认关闭；
+  - 关闭时行为与以前完全一致；
+  - 打开时走 `hideWhileOpening()`（`src/dialog.ts`）：两个管理窗口（`buttonManager.ts` / `topBar.ts`）
+    在移动端打开编辑窗口前先藏起自己，编辑窗口的 `onClosed` 里恢复；编辑窗口打开 JavaScript 文件页时
+    把 `dialog.element` 交给 `openScriptFileEditor({hideBelow})`，那个页面关掉时恢复。
+  新增「从某个窗口再开一个窗口」的入口时按同样方式接安全模式，不要无条件藏窗口。
 * **图标**：从文档里的 `<symbol id="icon…">` 现取现用，元素带思源的 `.svg` 类以跟随 `currentColor`。
   选择器里**不要改 `color`**：悬浮与选中只换底色 / 描边，否则靠 `currentColor` 上色的图标会显示成主色。
 * **JavaScript 操作**：在页面上下文里整段包成 async 函数执行，执行期间接管 `console` 收集输出；弹窗策略

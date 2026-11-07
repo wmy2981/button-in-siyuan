@@ -9,6 +9,7 @@ import type {IContext} from "./context";
 import {openButtonBlockEditor} from "./editDialog";
 import type {II18n} from "./i18nKeys";
 import {createLogger, setDebugEnabled} from "./logger";
+import {getMobileSafeMode, setMobileSafeMode} from "./safeMode";
 import type {ISettings, TCodeMode, TOutputMode} from "./settings";
 import {CODE_MODES, DEFAULT_SETTINGS, loadSettings, OUTPUT_MODES, removeSettings, saveSettings} from "./settings";
 import {openTopBarManager, openTopBarMenu, TOPBAR_ICON, TOPBAR_ID} from "./topBar";
@@ -208,6 +209,14 @@ export default class ButtonInSiYuan extends Plugin {
         const debugSwitch = document.createElement("input");
         debugSwitch.type = "checkbox";
         debugSwitch.className = "b3-switch fn__flex-center";
+        // 安全模式不进插件设置：只写本机，立即生效，也不跟随思源同步（见 src/safeMode.ts）
+        const safeModeSwitch = document.createElement("input");
+        safeModeSwitch.type = "checkbox";
+        safeModeSwitch.className = "b3-switch fn__flex-center";
+        safeModeSwitch.addEventListener("change", () => {
+            setMobileSafeMode(safeModeSwitch.checked);
+            log.info("mobile safe mode toggled", {enabled: safeModeSwitch.checked});
+        });
         // 下载按钮与思源自己的设置按钮同款：b3-button--outline，尺寸交给面板里的 fn__size200
         const skillDownload = document.createElement("button");
         skillDownload.className = "b3-button b3-button--outline";
@@ -275,6 +284,14 @@ export default class ButtonInSiYuan extends Plugin {
             createActionElement: () => {
                 skillSwitch.checked = this.settings.agentSkill;
                 return skillSwitch;
+            },
+        });
+        this.setting.addItem({
+            title: i18n.settingsSafeMode,
+            description: i18n.settingsSafeModeTip,
+            createActionElement: () => {
+                safeModeSwitch.checked = getMobileSafeMode();
+                return safeModeSwitch;
             },
         });
         this.setting.addItem({
