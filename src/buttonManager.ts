@@ -58,6 +58,13 @@ export const describeButtonAction = (context: IContext, config: IButtonConfig) =
         // 命令显示它的名字，不显示 id：id 是宿主的内部标识，给用户看没有意义
         return `${i18n.actionCommand}: ${commandLabel(context, action.command)}`;
     }
+    if (action.type === "prompt") {
+        // 提示词与内联脚本一样只给第一行，多行的补一个省略号
+        const firstLine = action.prompt.split(/\r?\n/, 1)[0].trim();
+        return firstLine
+            ? `${i18n.actionPrompt}: ${firstLine}${action.prompt.includes("\n") ? " …" : ""}`
+            : i18n.actionPrompt;
+    }
     const firstLine = action.script.split(/\r?\n/, 1)[0].trim();
     return `${i18n.actionScript}: ${firstLine ? `${firstLine}${action.script.includes("\n") ? " …" : ""}` : i18n.managerInlineScript}`;
 };
@@ -138,6 +145,7 @@ export const openButtonBlockManager = (context: IContext, options: IButtonBlockM
             <option value="script">${i18n.actionScript}</option>
             <option value="file">${i18n.actionFile}</option>
             <option value="command">${i18n.actionCommand}</option>
+            <option value="prompt">${i18n.actionPrompt}</option>
         </select>
     </div>
     <div class="bis-manager__body">
@@ -178,15 +186,17 @@ export const openButtonBlockManager = (context: IContext, options: IButtonBlockM
             return true;
         }
         const action = row.config.action;
-        const target = action?.type === "link"
-            ? action.link
-            : action?.type === "file"
-                ? action.file
-                : action?.type === "script"
-                    ? action.script.substring(0, 500)
-                    : action?.type === "command"
-                        ? commandLabel(context, action.command)
-                        : "";
+        const target = action
+            ? action.type === "link"
+                ? action.link
+                : action.type === "file"
+                    ? action.file
+                    : action.type === "script"
+                        ? action.script.substring(0, 500)
+                        : action.type === "command"
+                            ? commandLabel(context, action.command)
+                            : action.prompt.substring(0, 500)
+            : "";
         return [row.config.text, row.config.icon, target, row.rootTitle, row.hPath, row.notebook, row.id]
             .join("\n")
             .toLowerCase()

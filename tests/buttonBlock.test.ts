@@ -15,12 +15,14 @@ import {
     updateButtonContentAsync,
 } from "../src/buttonBlock";
 import {openLink} from "../src/openLink";
+import {runAgentPrompt} from "../src/agentPrompt";
 import {loadActionScript} from "../src/scriptFile";
 import {runScript} from "../src/scriptRunner";
 import {showMessage, fetchSyncPost, globalCommand} from "./mocks/siyuan";
 import {flushPromises, makeConfig, makeContext, makeI18n} from "./helpers";
 
 vi.mock("../src/openLink", () => ({openLink: vi.fn()}));
+vi.mock("../src/agentPrompt", () => ({runAgentPrompt: vi.fn(async () => undefined)}));
 vi.mock("../src/scriptRunner", () => ({runScript: vi.fn(async () => undefined)}));
 vi.mock("../src/scriptFile", async (importOriginal) => {
     const actual = await importOriginal<typeof import("../src/scriptFile")>();
@@ -91,6 +93,13 @@ describe("serializeButtonConfig / parseButtonConfig", () => {
             .toEqual({type: "file", file: "data/assets/a.js"});
         expect(parseButtonConfig(JSON.stringify({action: {type: "command", command: "globalSearch", extra: 1}}), DEFAULT_TEXT)?.action)
             .toEqual({type: "command", command: "globalSearch"});
+        expect(parseButtonConfig(JSON.stringify({action: {type: "prompt", prompt: "# hi", autoSend: true, extra: 1}}), DEFAULT_TEXT)?.action)
+            .toEqual({type: "prompt", prompt: "# hi", autoSend: true});
+        expect(parseButtonConfig(JSON.stringify({action: {type: "prompt", prompt: "# hi", newChat: true, autoSend: true}}), DEFAULT_TEXT)?.action)
+            .toEqual({type: "prompt", prompt: "# hi", newChat: true, autoSend: true});
+        // autoSend 与 newChat 只在真的开着时才写出来
+        expect(parseButtonConfig(JSON.stringify({action: {type: "prompt", prompt: "# hi", autoSend: false, newChat: false}}), DEFAULT_TEXT)?.action)
+            .toEqual({type: "prompt", prompt: "# hi"});
     });
 
     it.each([
@@ -100,6 +109,8 @@ describe("serializeButtonConfig / parseButtonConfig", () => {
         {type: "file"},
         {type: "command"},
         {type: "command", command: 1},
+        {type: "prompt"},
+        {type: "prompt", prompt: 1},
         {type: "unknown", link: "a"},
         {},
     ])("drops the invalid action %p", (action) => {
@@ -302,6 +313,16 @@ describe("runAction", () => {
         const context = makeContext({i18n: makeI18n({commandUnavailable: "no such command"})});
         runAction(context, {blockID: "b", config: makeConfig({action: {type: "command", command: "gone"}})});
         expect(showMessage).toHaveBeenCalledWith("no such command");
+    });
+
+    it("hands agent prompts to the agent panel", () => {
+        const context = makeContext();
+        runAction(context, {
+            blockID: "b",
+            config: makeConfig({action: {type: "prompt", prompt: "# hi", newChat: true, autoSend: true}}),
+        });
+        expect(runAgentPrompt).toHaveBeenCalledWith(context, {text: "# hi", newChat: true, autoSend: true});
+        expect(runScript).not.toHaveBeenCalled();
     });
 });
 

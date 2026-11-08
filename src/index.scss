@@ -293,7 +293,8 @@
 
 // 编辑区的挂载点只是占位 div，不参与布局，好让 .bis-code 直接成为上面那个 flex 容器的子项
 [data-bis="file-editor"],
-[data-bis="script-editor"] {
+[data-bis="script-editor"],
+[data-bis="prompt-editor"] {
     display: contents;
 }
 
@@ -304,7 +305,8 @@
 
 // 「JavaScript」操作里的代码字段：展开时占满剩余空间；收起时整段带 fn__none（display: none），
 // 不参与布局
-[data-bis="script-field"] {
+[data-bis="script-field"],
+[data-bis="prompt-field"] {
     display: flex;
     flex: 1 0 0;
     flex-direction: column;

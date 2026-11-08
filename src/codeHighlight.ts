@@ -20,8 +20,8 @@ interface IHighlighter {
 
 const highlighter = () => (window as unknown as {hljs?: IHighlighter}).hljs;
 
-/** 宿主的代码高亮是否已经就绪：脚本已经在、并且认识这门语言。 */
-export const isHighlighterReady = (language: string) => Boolean(highlighter()?.getLanguage(language));
+/** 宿主的代码高亮脚本是否已经就绪（语言认不认得由 highlightTokens 自己判断）。 */
+export const isHighlighterReady = () => Boolean(highlighter()?.highlight);
 
 /** 等宿主把脚本加载完的上限与轮询间隔；本地内核的静态文件，正常几十毫秒就到。 */
 const HIGHLIGHTER_TIMEOUT = 3000;
@@ -37,8 +37,8 @@ let pending: Promise<boolean> | undefined;
  * 这里交给宿主的 `ProtyleMethod.highlightRender` 渲染一个离屏代码块，把两者一起带进来，就绪后再移除。
  * 拿不到时（离线、加载失败）只是没有 token 颜色，编辑器照常能用。
  */
-export const ensureHighlighter = (language: string) => {
-    if (isHighlighterReady(language)) {
+export const ensureHighlighter = () => {
+    if (isHighlighterReady()) {
         return Promise.resolve(true);
     }
     if (pending) {
@@ -54,11 +54,11 @@ export const ensureHighlighter = (language: string) => {
     pending = new Promise<boolean>((resolve) => {
         const started = Date.now();
         const wait = () => {
-            if (isHighlighterReady(language)) {
+            if (isHighlighterReady()) {
                 host.remove();
                 // 只做并发去重：之后每次进来都由 isHighlighterReady 直接判掉
                 pending = undefined;
-                log.debug("the host highlighter is ready", {language});
+                log.debug("the host highlighter is ready");
                 resolve(true);
                 return;
             }
@@ -66,7 +66,7 @@ export const ensureHighlighter = (language: string) => {
                 host.remove();
                 // 失败同样不留缓存：下次打开编辑器时再试一次
                 pending = undefined;
-                log.warn("the host highlighter did not arrive in time", {language});
+                log.warn("the host highlighter did not arrive in time");
                 resolve(false);
                 return;
             }

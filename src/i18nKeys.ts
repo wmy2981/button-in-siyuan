@@ -29,6 +29,7 @@ export type II18n = {
     actionScript: string;
     actionFile: string;
     actionCommand: string;
+    actionPrompt: string;
     actionContentRequired: string;
     linkAddress: string;
     linkAddressPlaceholder: string;
@@ -71,6 +72,17 @@ export type II18n = {
     commandPickerTitle: string;
     searchCommand: string;
     noMatchedCommand: string;
+    /** 智能体提示词操作（issue #45） */
+    promptText: string;
+    promptPlaceholder: string;
+    promptAutoSend: string;
+    promptNewChat: string;
+    promptNewChatTip: string;
+    promptTip: string;
+    promptRequired: string;
+    agentUnavailable: string;
+    agentNewChatBlocked: string;
+    agentSendBlocked: string;
     docsLoad: string;
     scriptOutput: string;
     scriptUnavailable: string;

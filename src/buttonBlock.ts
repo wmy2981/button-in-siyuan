@@ -1,4 +1,5 @@
 import {fetchSyncPost, showMessage} from "siyuan";
+import {runAgentPrompt} from "./agentPrompt";
 import {runCommand} from "./commands";
 import type {IContext} from "./context";
 import {createIconElement} from "./icon";
@@ -31,14 +32,15 @@ export const MAX_BUTTON_COLOR = 12;
 export const BUTTON_COLOR_INDEXES = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12];
 
 /**
- * 按钮操作：链接跳转、内联 JavaScript、执行 assets/ 下（或云端）的一个 JavaScript 文件，
- * 或执行思源命令面板里的一条命令（issue #38）。
+ * 按钮操作：链接跳转、内联 JavaScript、执行 assets/ 下（或云端）的一个 JavaScript 文件、
+ * 执行思源命令面板里的一条命令（issue #38），或把一段 Markdown 提示词交给智能体（issue #45）。
  */
 export type TButtonAction =
     | {type: "link", link: string}
     | {type: "script", script: string}
     | {type: "file", file: string}
-    | {type: "command", command: string};
+    | {type: "command", command: string}
+    | {type: "prompt", prompt: string, autoSend?: boolean, newChat?: boolean};
 
 /** 按钮块配置，序列化后存放在自定义块内容里。 */
 export interface IButtonConfig {
@@ -64,6 +66,15 @@ const parseButtonAction = (value: TButtonAction | undefined): TButtonAction | un
     }
     if (value?.type === "command" && typeof value.command === "string") {
         return {type: "command", command: value.command};
+    }
+    if (value?.type === "prompt" && typeof value.prompt === "string") {
+        // autoSend 与 newChat 都只是给智能体用的快捷开关：缺省与 false 等价
+        return {
+            type: "prompt",
+            prompt: value.prompt,
+            ...(value.autoSend === true ? {autoSend: true} : {}),
+            ...(value.newChat === true ? {newChat: true} : {}),
+        };
     }
     return;
 };
@@ -240,6 +251,10 @@ export const runAction = (context: IContext, options: {
             log.warn("the command is not available right now", {blockID: options.blockID, command: action.command});
             showMessage(context.i18n.commandUnavailable);
         }
+        return;
+    }
+    if (action.type === "prompt") {
+        void runAgentPrompt(context, {text: action.prompt, autoSend: action.autoSend, newChat: action.newChat});
         return;
     }
     if (action.type === "file") {

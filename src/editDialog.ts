@@ -192,6 +192,7 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
         <option value="script">${i18n.actionScript}</option>
         <option value="file">${i18n.actionFile}</option>
         <option value="command">${i18n.actionCommand}</option>
+        <option value="prompt">${i18n.actionPrompt}</option>
     </select>
     <div data-bis="link-field">
         <div class="fn__hr"></div>
@@ -237,6 +238,26 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
         <div class="fn__hr--small"></div>
         <div class="ft__on-surface ft__smaller">${i18n.commandTip}</div>
     </div>
+    <div data-bis="prompt-field">
+        <div class="fn__hr"></div>
+        <div class="ft__on-surface">${i18n.promptText}</div>
+        <div class="fn__hr--small"></div>
+        <div data-bis="prompt-editor"></div>
+        <div class="fn__hr"></div>
+        <label class="fn__flex">
+            <span class="fn__flex-1">${i18n.promptNewChat}</span>
+            <input type="checkbox" class="b3-switch fn__flex-center" data-bis="prompt-new-chat">
+        </label>
+        <div class="fn__hr--small"></div>
+        <div class="ft__on-surface ft__smaller">${i18n.promptNewChatTip}</div>
+        <div class="fn__hr"></div>
+        <label class="fn__flex">
+            <span class="fn__flex-1">${i18n.promptAutoSend}</span>
+            <input type="checkbox" class="b3-switch fn__flex-center" data-bis="prompt-auto-send">
+        </label>
+        <div class="fn__hr--small"></div>
+        <div class="ft__on-surface ft__smaller">${i18n.promptTip}</div>
+    </div>
 </div>
 <div class="b3-dialog__action">
     <div class="fn__flex bis-action-start">
@@ -276,6 +297,9 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
     const fileElement = field<HTMLInputElement>("file");
     const commandFieldElement = field<HTMLElement>("command-field");
     const commandElement = field<HTMLButtonElement>("command");
+    const promptFieldElement = field<HTMLElement>("prompt-field");
+    const promptAutoSendElement = field<HTMLInputElement>("prompt-auto-send");
+    const promptNewChatElement = field<HTMLInputElement>("prompt-new-chat");
     const editorSettings = context.getSettings();
     const scriptEditor = createCodeEditor({
         value: config.action?.type === "script" ? config.action.script : "",
@@ -285,6 +309,17 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
         editable,
     });
     field<HTMLElement>("script-editor").append(scriptEditor.element);
+    const promptEditor = createCodeEditor({
+        value: config.action?.type === "prompt" ? config.action.prompt : "",
+        language: "markdown",
+        placeholder: i18n.promptPlaceholder,
+        codeWrap: editorSettings.codeWrap,
+        codeLigatures: editorSettings.codeLigatures,
+        editable,
+    });
+    field<HTMLElement>("prompt-editor").append(promptEditor.element);
+    promptAutoSendElement.checked = config.action?.type === "prompt" && config.action.autoSend === true;
+    promptNewChatElement.checked = config.action?.type === "prompt" && config.action.newChat === true;
 
     const updateIconElement = () => {
         iconElement.replaceChildren();
@@ -320,15 +355,27 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
         });
     };
     const updateActionFields = () => {
+        const wasScriptVisible = !scriptFieldElement.classList.contains("fn__none");
+        const wasPromptVisible = !promptFieldElement.classList.contains("fn__none");
         const isScript = actionElement.value === "script";
+        const isPrompt = actionElement.value === "prompt";
         linkFieldElement.classList.toggle("fn__none", actionElement.value !== "link");
         scriptFieldElement.classList.toggle("fn__none", !isScript);
         fileFieldElement.classList.toggle("fn__none", actionElement.value !== "file");
         commandFieldElement.classList.toggle("fn__none", actionElement.value !== "command");
-        // 写 JavaScript 时才给窗口一个默认高度：编辑区会填满正文剩下的空间，窗口拖动改尺寸它也跟着变
+        promptFieldElement.classList.toggle("fn__none", !isPrompt);
+        // 编辑区刚从 display: none 切回可见时要重新测量：编辑器隐藏期间量到的尺寸是 0，
+        // 直接打字会出现光标与落点错位、看起来像吞字符（issue #45 反馈）
+        if (!wasScriptVisible && isScript) {
+            scriptEditor.refresh();
+        }
+        if (!wasPromptVisible && isPrompt) {
+            promptEditor.refresh();
+        }
+        // 写 JavaScript 或提示词时才给窗口一个默认高度：编辑区会填满正文剩下的空间，窗口拖动改尺寸它也跟着变
         // （见 src/codeEditor.ts）。其余操作的字段很少，窗口按内容自适应就好，固定高度只会留一片空白
         if (containerElement) {
-            containerElement.style.height = isScript ? "min(84vh, 720px)" : "";
+            containerElement.style.height = isScript || isPrompt ? "min(84vh, 720px)" : "";
         }
     };
     /** 命令按钮上显示选中命令的名字；还没选时显示「选择命令」。 */
@@ -352,6 +399,13 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
             action = {type: "file", file: isRemoteScript(raw) ? raw : normalizeScriptPath(raw) || raw};
         } else if (actionElement.value === "command") {
             action = {type: "command", command};
+        } else if (actionElement.value === "prompt") {
+            action = {
+                type: "prompt",
+                prompt: promptEditor.getValue(),
+                ...(promptNewChatElement.checked ? {newChat: true} : {}),
+                ...(promptAutoSendElement.checked ? {autoSend: true} : {}),
+            };
         }
         return {
             text: textElement.value.trim() || defaultText,
@@ -381,6 +435,8 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
         fileElement.readOnly = true;
         iconElement.disabled = true;
         commandElement.disabled = true;
+        promptAutoSendElement.disabled = true;
+        promptNewChatElement.disabled = true;
         // 脚本文件的四个按钮里只有「编辑」留到预览模式（下面单独放行）：它打开的是只读窗口，不写盘
         ["file-create", "file-info", "file-remove"].forEach((type) => {
             field<HTMLButtonElement>(type).disabled = true;
@@ -533,6 +589,12 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
         if (actionElement.value === "command" && !command) {
             log.warn("save rejected: no command is chosen", {blockID});
             showMessage(i18n.commandRequired);
+            return;
+        }
+        if (actionElement.value === "prompt" && !promptEditor.getValue().trim()) {
+            log.warn("save rejected: the agent prompt is empty", {blockID});
+            showMessage(i18n.promptRequired);
+            promptEditor.focus();
             return;
         }
         if (actionElement.value === "file") {

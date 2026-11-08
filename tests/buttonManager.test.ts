@@ -69,6 +69,15 @@ describe("describeButtonAction", () => {
         expect(describeButtonAction(makeContext(), makeConfig({action: {type: "command", command: "plugin/gone/x"}})))
             .toBe("actionCommand: plugin/gone/x");
     });
+
+    it("describes an agent prompt by its first line", () => {
+        expect(describeButtonAction(makeContext(), makeConfig({action: {type: "prompt", prompt: "  # 标题  \n第二行"}})))
+            .toBe("actionPrompt: # 标题 …");
+        expect(describeButtonAction(makeContext(), makeConfig({action: {type: "prompt", prompt: "一行"}})))
+            .toBe("actionPrompt: 一行");
+        expect(describeButtonAction(makeContext(), makeConfig({action: {type: "prompt", prompt: "  "}})))
+            .toBe("actionPrompt");
+    });
 });
 
 describe("openButtonBlockManager", () => {

@@ -21,23 +21,19 @@ afterEach(() => {
 });
 
 describe("isHighlighterReady", () => {
-    it("is true when the host highlighter knows the language", () => {
-        expect(isHighlighterReady("javascript")).toBe(true);
-    });
-
-    it("is false for a language the host does not ship", () => {
-        expect(isHighlighterReady("rust")).toBe(false);
+    it("is true when the host highlighter is loaded", () => {
+        expect(isHighlighterReady()).toBe(true);
     });
 
     it("is false before the host has loaded it", () => {
         dropHighlighter();
-        expect(isHighlighterReady("javascript")).toBe(false);
+        expect(isHighlighterReady()).toBe(false);
     });
 });
 
 describe("ensureHighlighter", () => {
     it("resolves right away when the host highlighter is already there", async () => {
-        await expect(ensureHighlighter("javascript")).resolves.toBe(true);
+        await expect(ensureHighlighter()).resolves.toBe(true);
         expect(ProtyleMethod.highlightRender).not.toHaveBeenCalled();
     });
 
@@ -45,7 +41,7 @@ describe("ensureHighlighter", () => {
         vi.useFakeTimers();
         const instance = hljs();
         dropHighlighter();
-        const ensured = ensureHighlighter("javascript");
+        const ensured = ensureHighlighter();
         const host = document.querySelector<HTMLElement>(".code-block");
         expect(host).not.toBeNull();
         expect(host?.getAttribute("aria-hidden")).toBe("true");
@@ -65,14 +61,15 @@ describe("ensureHighlighter", () => {
         vi.useFakeTimers();
         const instance = hljs();
         dropHighlighter();
-        const ensured = ensureHighlighter("rust");
+        const ensured = ensureHighlighter();
         await vi.advanceTimersByTimeAsync(3100);
         await expect(ensured).resolves.toBe(false);
         expect(document.querySelector(".code-block")).toBeNull();
         // 失败不缓存：下一次调用会重新请宿主加载
         (window as any).hljs = instance;
         ProtyleMethod.highlightRender.mockClear();
-        await expect(ensureHighlighter("javascript")).resolves.toBe(true);
+        await expect(ensureHighlighter()).resolves.toBe(true);
+        expect(ProtyleMethod.highlightRender).not.toHaveBeenCalled();
     });
 });
 

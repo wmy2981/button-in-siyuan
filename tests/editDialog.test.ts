@@ -63,6 +63,7 @@ beforeEach(() => {
                 value = next;
             },
             focus: vi.fn(),
+            refresh: vi.fn(),
         };
     });
 });
@@ -186,6 +187,7 @@ describe("openButtonBlockEditor", () => {
             getValue: () => "   ",
             setValue: vi.fn(),
             focus: vi.fn(),
+            refresh: vi.fn(),
         });
         const {field} = open({config: makeConfig({action: {type: "script", script: "1;"}})});
         field("save").click();
@@ -426,6 +428,59 @@ describe("openButtonBlockEditor", () => {
         action.dispatchEvent(new Event("change"));
         expect(field("command-field").classList.contains("fn__none")).toBe(false);
         expect(field("link-field").classList.contains("fn__none")).toBe(true);
+
+        action.value = "prompt";
+        action.dispatchEvent(new Event("change"));
+        expect(field("prompt-field").classList.contains("fn__none")).toBe(false);
+        expect(field("command-field").classList.contains("fn__none")).toBe(true);
+        expect(dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.style.height)
+            .toBe("min(84vh, 720px)");
+    });
+
+    it("saves the agent prompt and the auto-send switch", async () => {
+        const {field} = open({config: makeConfig({action: {type: "prompt", prompt: "旧的", autoSend: true}})});
+        expect((field("prompt-auto-send") as HTMLInputElement).checked).toBe(true);
+        expect(mocks.createCodeEditor).toHaveBeenLastCalledWith(expect.objectContaining({language: "markdown"}));
+        await saveAndWait(field, mocks.updateButtonContentAsync);
+        expect(mocks.updateButtonContentAsync).toHaveBeenCalledWith("20240101000000-abcdefg",
+            expect.objectContaining({action: {type: "prompt", prompt: "旧的", autoSend: true}}));
+
+        mocks.updateButtonContentAsync.mockClear();
+        const plain = open({config: makeConfig({action: {type: "prompt", prompt: "旧的"}})});
+        expect((plain.field("prompt-auto-send") as HTMLInputElement).checked).toBe(false);
+        await saveAndWait(plain.field, mocks.updateButtonContentAsync);
+        // 关着的开关不写进 payload
+        expect(mocks.updateButtonContentAsync).toHaveBeenCalledWith("20240101000000-abcdefg",
+            expect.objectContaining({action: {type: "prompt", prompt: "旧的"}}));
+    });
+
+    it("saves the new-chat switch of an agent prompt", async () => {
+        const {field} = open({config: makeConfig({action: {type: "prompt", prompt: "旧的", newChat: true}})});
+        expect((field("prompt-new-chat") as HTMLInputElement).checked).toBe(true);
+        await saveAndWait(field, mocks.updateButtonContentAsync);
+        expect(mocks.updateButtonContentAsync).toHaveBeenCalledWith("20240101000000-abcdefg",
+            expect.objectContaining({action: {type: "prompt", prompt: "旧的", newChat: true}}));
+
+        mocks.updateButtonContentAsync.mockClear();
+        const off = open({config: makeConfig({action: {type: "prompt", prompt: "旧的"}})});
+        expect((off.field("prompt-new-chat") as HTMLInputElement).checked).toBe(false);
+        await saveAndWait(off.field, mocks.updateButtonContentAsync);
+        expect(mocks.updateButtonContentAsync).toHaveBeenCalledWith("20240101000000-abcdefg",
+            expect.objectContaining({action: {type: "prompt", prompt: "旧的"}}));
+    });
+
+    it("rejects an empty agent prompt", () => {
+        mocks.createCodeEditor.mockReturnValue({
+            element: document.createElement("div"),
+            getValue: () => "   ",
+            setValue: vi.fn(),
+            focus: vi.fn(),
+            refresh: vi.fn(),
+        });
+        const {field} = open({config: makeConfig({action: {type: "prompt", prompt: "x"}})});
+        field("save").click();
+        expect(showMessage).toHaveBeenCalledWith("promptRequired");
+        expect(mocks.updateButtonContentAsync).not.toHaveBeenCalled();
     });
 
     it("picks a command and saves it", async () => {

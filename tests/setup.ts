@@ -38,6 +38,9 @@ export const resetWindow = () => {
         New: () => ({
             ProtylePreviewStr: (_id: string, markdown: string) =>
                 `<pre class="code-block" data-language="javascript"><code class="hljs">${markdown.length}</code></pre>`,
+            // 智能体提示词把 Markdown 渲染成块 DOM（src/agentPrompt.ts）：一行一个段落，够断言了
+            Md2BlockDOM: (markdown: string) => markdown.split("\n").map((line) =>
+                `<div data-type="NodeParagraph" class="p"><div contenteditable="true">${line}</div></div>`).join(""),
         }),
     };
     // 宿主的 highlight.js（思源渲染代码块时才加载）。默认「已经在、但什么都不着色」，

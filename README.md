@@ -15,7 +15,7 @@ Insert native SiYuan buttons into documents, with text, a built-in icon and a li
   set plus icons from icon packages and plugins.
 * The button colour is optional: the frame, the text and the icon share one colour taken from
   SiYuan's built-in palette; the default stays SiYuan's native blue.
-* A button action is optional and is one of: open a link, run JavaScript, run a JavaScript file, or run a SiYuan command
+* A button action is optional and is one of: open a link, run JavaScript, run a JavaScript file, run a SiYuan command, or hand an agent prompt to the AI
 * Top bar quick actions: clicking opens the quick action menu, each action is one JSON file and behaves
   like a button block.
 
@@ -67,6 +67,16 @@ button only shows a toast.
 
 Command panel entries that need an editor context (insert heading, table, fold…) are not listed: they need a
 concrete selection to act on.
+
+## Agent prompts
+
+An agent prompt action binds a piece of Markdown: clicking the button opens the AI agent sidebar and puts that
+text into its input, **replacing** whatever was there, with the formatting kept as it is (headings, lists and
+code blocks stay what they are). With "Start a new chat" on, a new conversation is opened first and the prompt
+goes into that one. With "Send automatically" on, it is sent right away. The prompt is edited with
+Markdown syntax highlighting in the same editor the JavaScript action uses. When no model is configured, or the
+agent is still answering, nothing is sent: the plugin waits for the send button to become usable and only then
+says so, leaving the prompt in the input.
 
 ## JavaScript
 

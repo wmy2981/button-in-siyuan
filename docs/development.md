@@ -43,6 +43,25 @@
   因此不列进选择窗口；用户选到跑不了的命令时只弹一条 toast。选择窗口只列命令名，**不显示快捷键**：
   `keymap.general` 里存的是宿主自己的字符串（形如 `⌥⌘M`），不经宿主那套格式化直接摆出来既不准也
   不好看，要看快捷键去「设置 - 快捷键」。
+* **智能体提示词操作**（issue #45，`src/agentPrompt.ts`）：点按钮时打开智能体侧栏，把 Markdown 填进它的
+  输入框，需要时直接发送。宿主的 AgentChat 没有给插件留填文本的入口，所以只动界面：桌面端点右侧停靠栏的
+  `.dock__item[data-type="agentChat"]`（**已经展开时不要再点，那次点击会把它收起来**），移动端照宿主
+  `openDock("agent")` 的做法滑出 `[data-type="sidebar-agent-tab"]`（`app/src/mobile/dock/util.ts`）；
+  面板是异步建出来的（移动端还要等动态 import），所以轮询等 `.sy__agentChat` 出现。
+  发送框是 protyle-lite（`.agent-chat__composer-host .protyle-wysiwyg`），用 Lute 的 `Md2BlockDOM` 把
+  Markdown 渲染成块 DOM，**先清空再写**（提示词是按钮固定带的那一段，接在用户草稿后面会混起来），
+  发送时它自己用 `BlockDOM2StdMd` 还原回 Markdown，**格式因此原样保留** —— 直接把文本写进去会被当成
+  字面量。**不主动聚焦输入框**（移动端一聚焦就唤起软键盘、整页重排）。往输入框里写 DOM 走的是宿主的
+  `MutationObserver`，它会自己刷新发送按钮的可用状态，不用额外派发事件。
+  **每一步都要确认真的发生了**，这几个异步动作都会静默失败，只看「点了」就往下走会把提示词送到别处
+  （移动端反馈的两个症状都出在这里）：
+  打开「新对话」时先点面板头部的 `.block__icon[data-type="new-session"]`，再等 `.agent-welcome` 换成
+  另一个节点 —— 宿主的 `createSession` 先存上一轮、再清空消息区与输入框，中间夹着几次等内核的调用，
+  移动端更慢；给它 5 秒，没换成新节点就再点一次，两次都没成就提示一句并**不填**（填进旧对话就发错
+  地方了）。填完等 150ms 再看一眼内容还在不在，被 `composer.clear()` 清掉就再填一次。
+  自动发送**等 `.agent-chat__send` 可用再点**（面板第一次打开时 `AgentChat` 还在读会话与模型列表，
+  那一刻按钮是禁用的），点完再等输入框被清空 —— 那是宿主`sendMessage` 已经收下这轮的标志；没清空就
+  再点一次，两次都没清空（没配模型、上一轮还在回复）才提示一句，提示词留在输入框。
 * **移动端侧栏滑动**：宿主的自定义块渲染器给挂载元素挂了一组阻断冒泡的触摸监听
   （`app/src/plugin/customBlockRender.ts` 的 `isolateEditorEvents`），而侧栏滑动是挂在 `document` 上的
   冒泡监听（`app/src/mobile/util/touch.ts`），所以任何自定义块都滑不出侧面板。`src/mobileSwipe.ts` 在

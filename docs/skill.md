@@ -63,6 +63,7 @@ the block type, with a **single-line JSON payload** as its body (in the database
 | `{"type":"file","file":"data/storage/petal/button-in-siyuan/scripts/my-script.js"}` | Same, but the file lives in the plugin's own `scripts/` directory instead of the user's asset directory. |
 | `{"type":"file","file":"https://example.com/x.js"}` | Downloads and runs that URL on every click. Prefer a local file: the remote content can change unnoticed, and the script can read and write the user's notes. |
 | `{"type":"command","command":"globalSearch"}` | Runs a SiYuan command: either a core one (its id is the name under `keymap.general` in `conf.json`, for example `globalSearch`, `dailyNote`, `config`) or one another plugin registered (`plugin/<plugin name>/<langKey>`, the id SiYuan's command panel uses). `config.command` is the id, never the label. When the command is gone (its plugin was disabled) or cannot run in the current environment, the click only shows a toast — nothing else happens. |
+| `{"type":"prompt","prompt":"…","newChat":true,"autoSend":true}` | Hands the Markdown in `prompt` to SiYuan's AI agent chat, formatting kept as it is. `newChat` is optional and off unless it is `true`: then a new conversation is started before the prompt goes in. `autoSend` is optional and off unless it is `true`: then the prompt is sent right away. Use it for a button that gives the agent one fixed instruction. |
 
 Write the payload as one line of JSON. The only hard rule is that no line of the block content may be exactly
 `;;;`. Content that is not valid JSON, or that carries none of the fields above, is *not* a button block, so
@@ -156,7 +157,7 @@ content is the same payload as a button block, minus `color`:
 | --- | --- |
 | `text` | Label. Empty falls back to the plugin's default label. |
 | `icon` | Optional exact id from `references/icons.md`; omit or use `""` for no icon. |
-| `action` | Optional, exactly the same forms as the block payload (`link`, `script`, `file`, `command`). |
+| `action` | Optional, exactly the same forms as the block payload (`link`, `script`, `file`, `command`, `prompt`). |
 
 A quick action carries only text, icon and action: **`color` is ignored**, so do not add it. Write the file as
 one JSON object with indentation; invalid JSON, or an object with none of `text` / `icon` / `action`, is skipped
@@ -210,7 +211,7 @@ mode, so a failure does not go unnoticed.
 ## Before you report back
 
 - `get_kramdown` gives back the `;;;` fence, the payload line inside it parses with `JSON.parse`, and
-  `action.type` is one of `link`, `script`, `file`, `command` (and, for `file`, the target really is readable).
+  `action.type` is one of `link`, `script`, `file`, `command`, `prompt` (and, for `file`, the target really is readable).
 - Every `icon` id is listed in `references/icons.md` or comes from the active icon pack, and `color`, if present,
   is an integer between 1 and 12.
 - For a script: you have decided what each click should show — the result window while working it out, a toast

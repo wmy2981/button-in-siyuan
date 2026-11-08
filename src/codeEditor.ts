@@ -1,4 +1,5 @@
 import {javascript} from "@codemirror/lang-javascript";
+import {markdown} from "@codemirror/lang-markdown";
 import {HighlightStyle, syntaxHighlighting} from "@codemirror/language";
 import {Compartment, EditorState, type Extension} from "@codemirror/state";
 import {Decoration, EditorView, placeholder, ViewPlugin, type DecorationSet, type ViewUpdate} from "@codemirror/view";
@@ -17,8 +18,11 @@ const log = createLogger("codeEditor");
  * 用到的那套 `hljs-…` 类名与配色样式表也都是同一份（见 src/codeHighlight.ts）。
  */
 
-/** 编辑器里对应的 highlight.js 语言名。 */
-const HLJS_LANGUAGE = "javascript";
+/** 编辑器能编辑的语言；同时也是宿主 highlight.js 的语言名。 */
+export type TCodeLanguage = "javascript" | "markdown";
+
+const languageExtension = (language: TCodeLanguage): Extension =>
+    language === "markdown" ? markdown() : javascript();
 
 /** 等宿主的高亮脚本就绪后重画的扩展位。 */
 const highlightCompartment = new Compartment();
@@ -323,6 +327,8 @@ const observeManualHeight = (view: EditorView) => {
 export const createCodeEditor = (options: {
     value?: string;
     placeholder?: string;
+    /** 编辑的语言：JavaScript 或 Markdown（智能体提示词用后者）。 */
+    language?: TCodeLanguage;
     /** 换行方式：跟随思源、强制启用、强制禁用（见 settings.ts 的 TCodeMode）。 */
     codeWrap?: TCodeMode;
     /** 连字方式，取值与 codeWrap 相同。 */
@@ -333,21 +339,22 @@ export const createCodeEditor = (options: {
      */
     editable?: boolean;
 } = {}): ICodeEditor => {
+    const language = options.language || "javascript";
     const dark = isDarkMode();
     const editable = options.editable !== false;
     const lineWrap = resolveCodeMode(options.codeWrap, window.siyuan?.config?.editor?.codeLineWrap);
     const ligatures = resolveCodeMode(options.codeLigatures, window.siyuan?.config?.editor?.codeLigatures);
     // 宿主的高亮脚本与样式表通常已经在了（文档里有代码块就会加载）；还没有时先空着这个扩展位，
     // 等 ensureHighlighter 把它们带进来再补上 token 着色，编辑器本身不必等
-    const highlighterReady = isHighlighterReady(HLJS_LANGUAGE);
+    const highlighterReady = isHighlighterReady();
     const extensions: Extension[] = [
         basicSetup,
-        javascript(),
+        languageExtension(language),
         // basicSetup 自带一份兜底的高亮样式（只会给关键字加粗、给注释斜体），它只在没有别的
         // 高亮样式时才生效；这里给一份空样式把位置占掉，token 的颜色因此全部来自宿主的那套 hljs 类
         syntaxHighlighting(HighlightStyle.define([])),
         createTheme(ligatures),
-        highlighterReady ? createTokenHighlight(HLJS_LANGUAGE) : highlightCompartment.of([]),
+        highlighterReady ? createTokenHighlight(language) : highlightCompartment.of([]),
     ];
     if (!editable) {
         // 只读：CodeMirror 自己的 editable facet 关掉输入与光标，正文仍可选中复制
@@ -366,11 +373,11 @@ export const createCodeEditor = (options: {
         parent: element,
     });
     if (!highlighterReady) {
-        void ensureHighlighter(HLJS_LANGUAGE).then((loaded) => {
+        void ensureHighlighter().then((loaded) => {
             if (!loaded || !view.dom.isConnected) {
                 return;
             }
-            view.dispatch({effects: highlightCompartment.reconfigure(createTokenHighlight(HLJS_LANGUAGE))});
+            view.dispatch({effects: highlightCompartment.reconfigure(createTokenHighlight(language))});
             log.debug("the token colours arrived after the editor was created", {chars: view.state.doc.length});
         });
     }
@@ -379,7 +386,7 @@ export const createCodeEditor = (options: {
         element.append(createCornerPad(view));
     }
     observeManualHeight(view);
-    log.debug("created the code editor", {chars: view.state.doc.length, dark, lineWrap, ligatures, editable, highlighterReady});
+    log.debug("created the code editor", {chars: view.state.doc.length, language, dark, lineWrap, ligatures, editable, highlighterReady});
     return {
         element,
         getValue: () => view.state.doc.toString(),
