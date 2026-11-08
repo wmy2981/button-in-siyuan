@@ -5,6 +5,8 @@ import {useBottomSheet} from "./bottomSheet";
 import type {IButtonConfig, TButtonAction} from "./buttonBlock";
 import {BUTTON_COLOR_INDEXES, runAction, serializeButtonConfig, updateButtonContentAsync} from "./buttonBlock";
 import {createCodeEditor} from "./codeEditor";
+import {commandLabel} from "./commands";
+import {openCommandPicker} from "./commandPicker";
 import {confirmDanger} from "./confirmDanger";
 import type {IContext} from "./context";
 import {guardUnsavedChanges} from "./discardChanges";
@@ -139,6 +141,8 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
     let icon = config.icon;
     /** 0 表示不覆写颜色（思源原生蓝），见 BUTTON_COLOR_INDEXES。 */
     let color = colorEditable ? config.color || 0 : 0;
+    /** 命令操作的命令 id；空串表示还没选。 */
+    let command = config.action?.type === "command" ? config.action.command : "";
     log.info("opened the button editor", {
         blockID: blockID || "topbar",
         text: config.text,
@@ -187,6 +191,7 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
         <option value="link">${i18n.actionLink}</option>
         <option value="script">${i18n.actionScript}</option>
         <option value="file">${i18n.actionFile}</option>
+        <option value="command">${i18n.actionCommand}</option>
     </select>
     <div data-bis="link-field">
         <div class="fn__hr"></div>
@@ -223,6 +228,14 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
         </div>
         <div class="fn__hr--small"></div>
         <div class="ft__on-surface ft__smaller">${i18n.scriptFileTip}</div>
+    </div>
+    <div data-bis="command-field">
+        <div class="fn__hr"></div>
+        <div class="fn__flex">
+            <button type="button" class="b3-select fn__flex-1 bis-command-button" data-bis="command">${i18n.chooseCommand}</button>
+        </div>
+        <div class="fn__hr--small"></div>
+        <div class="ft__on-surface ft__smaller">${i18n.commandTip}</div>
     </div>
 </div>
 <div class="b3-dialog__action">
@@ -261,6 +274,8 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
     const scriptFieldElement = field<HTMLElement>("script-field");
     const fileFieldElement = field<HTMLElement>("file-field");
     const fileElement = field<HTMLInputElement>("file");
+    const commandFieldElement = field<HTMLElement>("command-field");
+    const commandElement = field<HTMLButtonElement>("command");
     const editorSettings = context.getSettings();
     const scriptEditor = createCodeEditor({
         value: config.action?.type === "script" ? config.action.script : "",
@@ -309,11 +324,17 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
         linkFieldElement.classList.toggle("fn__none", actionElement.value !== "link");
         scriptFieldElement.classList.toggle("fn__none", !isScript);
         fileFieldElement.classList.toggle("fn__none", actionElement.value !== "file");
+        commandFieldElement.classList.toggle("fn__none", actionElement.value !== "command");
         // 写 JavaScript 时才给窗口一个默认高度：编辑区会填满正文剩下的空间，窗口拖动改尺寸它也跟着变
         // （见 src/codeEditor.ts）。其余操作的字段很少，窗口按内容自适应就好，固定高度只会留一片空白
         if (containerElement) {
             containerElement.style.height = isScript ? "min(84vh, 720px)" : "";
         }
+    };
+    /** 命令按钮上显示选中命令的名字；还没选时显示「选择命令」。 */
+    const updateCommandElement = () => {
+        commandElement.textContent = commandLabel(context, command) || i18n.chooseCommand;
+        commandElement.classList.toggle("bis-command-button--empty", !command);
     };
     /**
      * 表单当前值 → 块内容配置。保存与「有没有改过」的判断共用它，两处口径必须一致：
@@ -329,6 +350,8 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
             const raw = fileElement.value.trim();
             // 本地脚本一律存成从工作空间根开始的完整路径；旧格式由 normalizeScriptPath 升级
             action = {type: "file", file: isRemoteScript(raw) ? raw : normalizeScriptPath(raw) || raw};
+        } else if (actionElement.value === "command") {
+            action = {type: "command", command};
         }
         return {
             text: textElement.value.trim() || defaultText,
@@ -347,6 +370,7 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
     fileElement.value = isRemoteScript(initialFile) ? initialFile : normalizeScriptPath(initialFile) || initialFile;
     updateIconElement();
     updateColorElement();
+    updateCommandElement();
     updateActionFields();
     if (!editable) {
         // 预览模式（笔记锁定）：只读，字段与操作按钮全部禁用，「确定」不出现，只留「取消」关窗。
@@ -356,6 +380,7 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
         linkElement.disabled = true;
         fileElement.readOnly = true;
         iconElement.disabled = true;
+        commandElement.disabled = true;
         // 脚本文件的四个按钮里只有「编辑」留到预览模式（下面单独放行）：它打开的是只读窗口，不写盘
         ["file-create", "file-info", "file-remove"].forEach((type) => {
             field<HTMLButtonElement>(type).disabled = true;
@@ -462,6 +487,20 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
         log.debug("cancelled the button block editor", {blockID});
         dialog.destroy();
     });
+    commandElement.addEventListener("click", () => {
+        if (!editable) {
+            log.warn("the command picker was rejected: the note is locked", {blockID});
+            return;
+        }
+        openCommandPicker(context, {
+            selected: command,
+            onSelect: (id) => {
+                command = id;
+                updateCommandElement();
+                log.debug("button command updated", {command: id});
+            },
+        });
+    });
     field<HTMLButtonElement>("docs").addEventListener("click", () => void openScriptDocs(context, {
         onLoad: (code) => {
             // 示例载入后把操作切到 JavaScript 并展开对应字段，不然用户看不到载进来的代码
@@ -489,6 +528,11 @@ export const openButtonBlockEditor = (context: IContext, options: IButtonEditorO
             log.warn("save rejected: the JavaScript code is empty", {blockID});
             showMessage(i18n.actionContentRequired);
             scriptEditor.focus();
+            return;
+        }
+        if (actionElement.value === "command" && !command) {
+            log.warn("save rejected: no command is chosen", {blockID});
+            showMessage(i18n.commandRequired);
             return;
         }
         if (actionElement.value === "file") {

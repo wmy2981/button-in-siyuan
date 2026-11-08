@@ -28,6 +28,7 @@ export type II18n = {
     actionLink: string;
     actionScript: string;
     actionFile: string;
+    actionCommand: string;
     actionContentRequired: string;
     linkAddress: string;
     linkAddressPlaceholder: string;
@@ -62,6 +63,14 @@ export type II18n = {
     cloudDownloadFailed: string;
     scriptDocs: string;
     scriptDocsFailed: string;
+    /** 命令操作（issue #38） */
+    chooseCommand: string;
+    commandTip: string;
+    commandRequired: string;
+    commandUnavailable: string;
+    commandPickerTitle: string;
+    searchCommand: string;
+    noMatchedCommand: string;
     docsLoad: string;
     scriptOutput: string;
     scriptUnavailable: string;

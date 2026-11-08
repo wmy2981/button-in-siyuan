@@ -17,7 +17,7 @@ import {
 import {openLink} from "../src/openLink";
 import {loadActionScript} from "../src/scriptFile";
 import {runScript} from "../src/scriptRunner";
-import {showMessage, fetchSyncPost} from "./mocks/siyuan";
+import {showMessage, fetchSyncPost, globalCommand} from "./mocks/siyuan";
 import {flushPromises, makeConfig, makeContext, makeI18n} from "./helpers";
 
 vi.mock("../src/openLink", () => ({openLink: vi.fn()}));
@@ -89,6 +89,8 @@ describe("serializeButtonConfig / parseButtonConfig", () => {
             .toEqual({type: "script", script: "x"});
         expect(parseButtonConfig(JSON.stringify({action: {type: "file", file: "data/assets/a.js"}}), DEFAULT_TEXT)?.action)
             .toEqual({type: "file", file: "data/assets/a.js"});
+        expect(parseButtonConfig(JSON.stringify({action: {type: "command", command: "globalSearch", extra: 1}}), DEFAULT_TEXT)?.action)
+            .toEqual({type: "command", command: "globalSearch"});
     });
 
     it.each([
@@ -96,6 +98,8 @@ describe("serializeButtonConfig / parseButtonConfig", () => {
         {type: "link", link: 1},
         {type: "script"},
         {type: "file"},
+        {type: "command"},
+        {type: "command", command: 1},
         {type: "unknown", link: "a"},
         {},
     ])("drops the invalid action %p", (action) => {
@@ -283,6 +287,21 @@ describe("runAction", () => {
         runAction(context, {blockID: "b", config: makeConfig({action: {type: "file", file: "data/assets/a.js"}})});
         await flushPromises();
         expect(showMessage).toHaveBeenCalledWith("load failed");
+    });
+
+    it("runs a command through the host", () => {
+        vi.mocked(globalCommand).mockReturnValue(true);
+        const context = makeContext();
+        runAction(context, {blockID: "b", config: makeConfig({action: {type: "command", command: "globalSearch"}})});
+        expect(globalCommand).toHaveBeenCalledWith("globalSearch", context.app);
+        expect(showMessage).not.toHaveBeenCalled();
+    });
+
+    it("tells the user when the command cannot run", () => {
+        vi.mocked(globalCommand).mockReturnValue(false);
+        const context = makeContext({i18n: makeI18n({commandUnavailable: "no such command"})});
+        runAction(context, {blockID: "b", config: makeConfig({action: {type: "command", command: "gone"}})});
+        expect(showMessage).toHaveBeenCalledWith("no such command");
     });
 });
 

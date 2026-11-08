@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
     openScriptFileEditor: vi.fn(),
     openScriptFileInfo: vi.fn(),
     openIconPicker: vi.fn(),
+    openCommandPicker: vi.fn(),
     useBottomSheet: vi.fn(() => vi.fn()),
     createCodeEditor: vi.fn(),
 }));
@@ -40,6 +41,13 @@ vi.mock("../src/icon", async (importOriginal) => {
 });
 vi.mock("../src/codeEditor", () => ({createCodeEditor: mocks.createCodeEditor}));
 vi.mock("../src/bottomSheet", () => ({useBottomSheet: mocks.useBottomSheet}));
+vi.mock("../src/commandPicker", () => ({openCommandPicker: mocks.openCommandPicker}));
+
+/** 宿主快捷键设置：命令按钮上显示的名字从这里查（见 src/commands.ts）。 */
+const setKeymap = (general: Record<string, unknown>, languages: Record<string, string>) => {
+    (window as any).siyuan.config.keymap = {general};
+    (window as any).siyuan.languages = languages;
+};
 
 beforeEach(() => {
     mocks.updateButtonContentAsync.mockResolvedValue(true);
@@ -413,6 +421,40 @@ describe("openButtonBlockEditor", () => {
         expect(field("link-field").classList.contains("fn__none")).toBe(false);
         expect(field("script-field").classList.contains("fn__none")).toBe(true);
         expect(dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.style.height).toBe("");
+
+        action.value = "command";
+        action.dispatchEvent(new Event("change"));
+        expect(field("command-field").classList.contains("fn__none")).toBe(false);
+        expect(field("link-field").classList.contains("fn__none")).toBe(true);
+    });
+
+    it("picks a command and saves it", async () => {
+        setKeymap({globalSearch: {}}, {globalSearch: "Global search"});
+        const {field} = open({config: makeConfig({action: {type: "command", command: ""}})});
+        expect((field("command") as HTMLButtonElement).textContent).toBe("chooseCommand");
+        (field("command") as HTMLButtonElement).click();
+        expect(mocks.openCommandPicker).toHaveBeenCalledTimes(1);
+        const {onSelect} = mocks.openCommandPicker.mock.calls.at(-1)?.[1] as {onSelect: (id: string) => void};
+        onSelect("globalSearch");
+        expect((field("command") as HTMLButtonElement).textContent).toBe("Global search");
+        await saveAndWait(field, mocks.updateButtonContentAsync);
+        expect(mocks.updateButtonContentAsync).toHaveBeenCalledWith("20240101000000-abcdefg",
+            expect.objectContaining({action: {type: "command", command: "globalSearch"}}));
+    });
+
+    it("shows the stored command name and rejects saving without one", () => {
+        setKeymap({globalSearch: {}}, {globalSearch: "Global search"});
+        const {field} = open({config: makeConfig({action: {type: "command", command: "globalSearch"}})});
+        expect((field("command") as HTMLButtonElement).textContent).toBe("Global search");
+        field("save").click();
+        expect(mocks.updateButtonContentAsync).toHaveBeenCalledWith("20240101000000-abcdefg",
+            expect.objectContaining({action: {type: "command", command: "globalSearch"}}));
+        mocks.updateButtonContentAsync.mockClear();
+
+        const empty = open({config: makeConfig({action: {type: "command", command: ""}})});
+        empty.field("save").click();
+        expect(showMessage).toHaveBeenCalledWith("commandRequired");
+        expect(mocks.updateButtonContentAsync).not.toHaveBeenCalled();
     });
 
     it("opens the create-file dialog and fills the field", () => {

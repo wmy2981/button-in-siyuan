@@ -4,6 +4,7 @@ import {createLogger} from "./logger";
 import {getMobileSafeMode} from "./safeMode";
 import type {IButtonConfig, TButtonAction} from "./buttonBlock";
 import {createButtonElement, isBlockEditable, parseButtonConfig, runAction} from "./buttonBlock";
+import {commandLabel} from "./commands";
 import type {IContext} from "./context";
 import {openButtonBlockEditor} from "./editDialog";
 import {openLink} from "./openLink";
@@ -52,6 +53,10 @@ export const describeButtonAction = (context: IContext, config: IButtonConfig) =
     }
     if (action.type === "file") {
         return `${i18n.actionFile}: ${action.file}`;
+    }
+    if (action.type === "command") {
+        // 命令显示它的名字，不显示 id：id 是宿主的内部标识，给用户看没有意义
+        return `${i18n.actionCommand}: ${commandLabel(context, action.command)}`;
     }
     const firstLine = action.script.split(/\r?\n/, 1)[0].trim();
     return `${i18n.actionScript}: ${firstLine ? `${firstLine}${action.script.includes("\n") ? " …" : ""}` : i18n.managerInlineScript}`;
@@ -132,6 +137,7 @@ export const openButtonBlockManager = (context: IContext, options: IButtonBlockM
             <option value="link">${i18n.actionLink}</option>
             <option value="script">${i18n.actionScript}</option>
             <option value="file">${i18n.actionFile}</option>
+            <option value="command">${i18n.actionCommand}</option>
         </select>
     </div>
     <div class="bis-manager__body">
@@ -178,7 +184,9 @@ export const openButtonBlockManager = (context: IContext, options: IButtonBlockM
                 ? action.file
                 : action?.type === "script"
                     ? action.script.substring(0, 500)
-                    : "";
+                    : action?.type === "command"
+                        ? commandLabel(context, action.command)
+                        : "";
         return [row.config.text, row.config.icon, target, row.rootTitle, row.hPath, row.notebook, row.id]
             .join("\n")
             .toLowerCase()

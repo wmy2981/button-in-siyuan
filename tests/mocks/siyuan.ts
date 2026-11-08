@@ -37,7 +37,8 @@ export const getAllEditor = vi.fn((..._args: TAny[]): TAny[] => []);
 export const getAllModels = vi.fn((..._args: TAny[]): TAny => undefined);
 export const getAllTabs = vi.fn((..._args: TAny[]): TAny => undefined);
 export const getModelByDockType = vi.fn((..._args: TAny[]): TAny => undefined);
-export const globalCommand = vi.fn((..._args: TAny[]): void => undefined);
+/** 宿主的内置命令入口：返回 false 表示「这条命令在当前环境跑不了」（见 src/commands.ts）。 */
+export const globalCommand = vi.fn((..._args: TAny[]): boolean => true);
 export const adaptHotkey = vi.fn((..._args: TAny[]): void => undefined);
 export const adjustEditorFontSize = vi.fn((..._args: TAny[]): void => undefined);
 export const exitSiYuan = vi.fn((..._args: TAny[]): void => undefined);
@@ -218,6 +219,7 @@ export const resetSiyuanMock = () => {
     isLeftDockVisible.mockReturnValue(false);
     isRightDockVisible.mockReturnValue(false);
     fetchSyncPost.mockResolvedValue({code: 0, data: undefined});
+    globalCommand.mockReturnValue(true);
     fetchPost.mockImplementation(() => undefined);
     fetchGet.mockImplementation(() => undefined);
     Dialog.instances.length = 0;

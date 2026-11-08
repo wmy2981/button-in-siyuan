@@ -447,3 +447,65 @@
         text-align: center;
     }
 }
+
+// 命令选择窗口（src/commandPicker.ts，issue #38）：与图标选择窗口同一套结构，逐行列出命令名。
+.bis-command-picker {
+    max-height: 320px;
+    // 只纵向滚动：命令名很长，横向滚动条会把窗口撑得很难看
+    overflow-x: hidden;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+
+    // 每一项是 <button>：行高、内边距与悬浮底色都来自 .b3-list-item，这里只清掉按钮自带的边框与底色，
+    // 再补上 .b3-list--background 才有的圆角（与按钮块管理器的列表行一致）。
+    // 宽度交给 flex 的拉伸：.b3-list-item 自带左右 8px 外边距，再写 width: 100% 就会溢出窗口；
+    // border-box 保证内边距算在拉伸出来的宽度里
+    &__item {
+        box-sizing: border-box;
+        border: 0;
+        border-radius: var(--b3-border-radius);
+        background-color: transparent;
+        font: inherit;
+        text-align: left;
+
+        &:hover,
+        &--current {
+            background-color: var(--b3-list-hover);
+        }
+
+        // 命令名（尤其插件命令的「插件名: 命令名」）比窗口宽时出省略号，不换行也不溢出
+        .b3-list-item__text {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
+}
+
+// 编辑窗口里的命令按钮：它是一个下拉框的替代品（点开选择窗口），所以直接用思源 .b3-select 的外观
+// （component/_select.scss 的边框、底色、高度与悬浮效果），而不是蓝色文字的线框按钮 —— 蓝色看起来像链接。
+// 选择器带上 .b3-select 提高特异性，保证这几条覆盖在宿主那份样式之后生效。
+// 只把下拉箭头的右侧内边距收掉，并让长命令名出省略号。
+.b3-select.bis-command-button {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding-right: 8px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+
+    &:disabled {
+        cursor: default;
+        opacity: .68;
+    }
+}
+
+// 还没选命令时用次要文字色，与输入框的占位符同一个观感
+.b3-select.bis-command-button--empty {
+    color: var(--b3-theme-on-surface);
+}

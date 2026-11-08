@@ -31,6 +31,18 @@
   思源修好 issue 20866 后，`.keyboard__slash-text` 里的 `.b3-list-item__first` 自带 flex 行，插件不再自己补。
 * **编辑入口**：三条入口（块菜单、按钮右键、按钮长按）都走 `context.openEditor(...)`，由插件入口注入，
   免得渲染器与对话框模块互相引用成环。
+* **命令操作**（issue #38，`src/commands.ts`）：按钮存命令 id（不是名字），点击时执行。宿主没有给插件
+  「列出并执行任意命令」的接口，所以只用两处公开能力：内置命令的清单就是 `window.siyuan.config.keymap.general`
+  的键（命令面板的 core 清单正好是它减去 `openContextMenu` / `commandPanel` / `agentChat` / `agentSend`
+  这四个纯输入框快捷键，见 `app/src/command/nativeCatalog.ts`），执行走插件 API 导出的 `globalCommand`
+  （`app/src/boot/globalEvent/command/global.ts`），**它返回 false 就是这条命令在当前环境跑不了**；
+  插件命令读 `app.plugins[].commands`，id 与命令面板同形 `plugin/<插件名>/<langKey>`
+  （`app/src/plugin/commandAdapter.ts`），执行时按命令面板的先后顺序调它自己注册的回调。
+  **搜索、替换、移动、插入标题/表格、折叠这类只在编辑器上下文里成立的命令没有 public 入口**
+  （它们在 `nativeRuntime.ts` / `contextCommands.ts` / `insertCommands.ts` 里，插件拿不到），
+  因此不列进选择窗口；用户选到跑不了的命令时只弹一条 toast。选择窗口只列命令名，**不显示快捷键**：
+  `keymap.general` 里存的是宿主自己的字符串（形如 `⌥⌘M`），不经宿主那套格式化直接摆出来既不准也
+  不好看，要看快捷键去「设置 - 快捷键」。
 * **移动端侧栏滑动**：宿主的自定义块渲染器给挂载元素挂了一组阻断冒泡的触摸监听
   （`app/src/plugin/customBlockRender.ts` 的 `isolateEditorEvents`），而侧栏滑动是挂在 `document` 上的
   冒泡监听（`app/src/mobile/util/touch.ts`），所以任何自定义块都滑不出侧面板。`src/mobileSwipe.ts` 在

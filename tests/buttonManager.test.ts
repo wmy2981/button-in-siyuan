@@ -56,6 +56,19 @@ describe("describeButtonAction", () => {
         expect(describeButtonAction(makeContext(), makeConfig({action: {type: "script", script: "   \nsecond();"}})))
             .toBe("actionScript: managerInlineScript");
     });
+
+    it("describes a command by its name", () => {
+        (window as any).siyuan.config.keymap = {general: {globalSearch: {}}};
+        (window as any).siyuan.languages = {globalSearch: "Global search"};
+        expect(describeButtonAction(makeContext(), makeConfig({action: {type: "command", command: "globalSearch"}})))
+            .toBe("actionCommand: Global search");
+    });
+
+    it("keeps the command id when the command is gone", () => {
+        (window as any).siyuan.config.keymap = {general: {}};
+        expect(describeButtonAction(makeContext(), makeConfig({action: {type: "command", command: "plugin/gone/x"}})))
+            .toBe("actionCommand: plugin/gone/x");
+    });
 });
 
 describe("openButtonBlockManager", () => {

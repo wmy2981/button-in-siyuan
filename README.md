@@ -2,7 +2,7 @@
 
 # Button Block (button-in-siyuan)
 
-Insert native SiYuan buttons into documents, with text, a built-in icon and a link or JavaScript action.
+Insert native SiYuan buttons into documents, with text, a built-in icon and a link, command or JavaScript action.
 
 ![preview](https://gcore.jsdelivr.net/gh/wmy2981/button-in-siyuan@f6cae6d/assets/preview.png)
 
@@ -15,7 +15,7 @@ Insert native SiYuan buttons into documents, with text, a built-in icon and a li
   set plus icons from icon packages and plugins.
 * The button colour is optional: the frame, the text and the icon share one colour taken from
   SiYuan's built-in palette; the default stays SiYuan's native blue.
-* A button action is optional and is one of: open a link, run JavaScript, or run a JavaScript file
+* A button action is optional and is one of: open a link, run JavaScript, run a JavaScript file, or run a SiYuan command
 * Top bar quick actions: clicking opens the quick action menu, each action is one JSON file and behaves
   like a button block.
 
@@ -56,6 +56,17 @@ A link address behaves like the same link inside a document, because SiYuan's li
 | `https://…`, `mailto:…`, other schemes | Handed to the host: the system browser on desktop, the matching app on mobile. |
 | `siyuan://blocks/<block ID>` | Opened (or zoomed to) by SiYuan itself; `siyuan://plugins/…` and `siyuan://bazaar/…` work as well. |
 | `assets/<asset path>`, `file://…`, an absolute path | Opened the way <kbd>Settings</kbd> > <kbd>Editor</kbd> > <kbd>Resource opening</kbd> says. |
+
+## Commands
+
+A command action binds one entry of SiYuan's command panel, picked by searching its name: core commands
+(daily note, sync, global search, settings…) and the commands other plugins register are both listed, and the
+button shows the same name the command panel does. When the command is gone (its plugin was disabled) or cannot
+run in the current environment (for example a command that only means something inside an editor), clicking the
+button only shows a toast.
+
+Command panel entries that need an editor context (insert heading, table, fold…) are not listed: they need a
+concrete selection to act on.
 
 ## JavaScript
 
