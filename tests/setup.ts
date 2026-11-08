@@ -40,6 +40,12 @@ export const resetWindow = () => {
                 `<pre class="code-block" data-language="javascript"><code class="hljs">${markdown.length}</code></pre>`,
         }),
     };
+    // 宿主的 highlight.js（思源渲染代码块时才加载）。默认「已经在、但什么都不着色」，
+    // 需要 token 的测试自己改 highlight 的返回值，见 tests/codeHighlight.test.ts
+    (window as any).hljs = {
+        getLanguage: (language: string) => (["javascript", "markdown"].includes(language) ? {} : undefined),
+        highlight: (code: string) => ({value: code}),
+    };
 };
 
 beforeEach(() => {

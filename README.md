@@ -70,11 +70,12 @@ concrete selection to act on.
 
 ## JavaScript
 
-The editor's colors follow the scheme in <kbd>Settings</kbd> > <kbd>Appearance</kbd> >
-<kbd>Code highlighting</kbd> (one for light, one for dark), and line wrapping and ligatures are decided by
-the "JavaScript editor line wrap" and "JavaScript editor ligatures" plugin settings. The font size
-matches SiYuan's code snippet input, the box resizes vertically, and right-clicking opens SiYuan's
-text menu (undo, redo, copy, cut, paste, paste as plain text, select all).
+Syntax highlighting is exactly what a code block in the document gives you: the same highlight.js, the same
+`hljs-…` classes and the palette picked in <kbd>Settings</kbd> > <kbd>Appearance</kbd> >
+<kbd>Code highlighting</kbd>, and the same monospace font and size (85% of the editor font size). Line wrapping
+and ligatures are decided by the "JavaScript editor line wrap" and "JavaScript editor ligatures" plugin
+settings; the box resizes vertically, and right-clicking opens SiYuan's text menu (undo, redo, copy, cut, paste,
+paste as plain text, select all).
 
 The code runs in the page context when the button is clicked, and `await` works. The `return` value,
 the console output and any thrown error appear in the result dialog, which can copy the output as

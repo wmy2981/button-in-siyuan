@@ -70,11 +70,25 @@
   描边色用 `currentColor`，不重抄主题变量。**提示气泡同理**：`.b3-tooltips` 的 `::after` 在
   `:hover` 与 `:focus-within` 时出现，点完按钮提示会一直挂着（删除按钮上方的「删除快捷操作」），
   所以同一窗口里 `:focus-within:not(:focus-visible)` 时把它 `display: none`。
-* **代码编辑器**：CodeMirror 6，配色从思源已加载的代码高亮主题实测后映射，不写死。改高沿用思源原生
-  textarea 那套（`.cm-editor` 上的 `resize: vertical`），命中区由浏览器给定：鼠标 **16×16**、触屏约
-  **30×30**（本机 Chromium 实测，`::-webkit-resizer` 的宽高与滚动条宽度都改不动它），鼠标那份从角外擦过
-  就抓不住，所以 `createCornerPad` 在角的外侧补了一块同样大小的透明命中区；**原生角本身一点不动**，两块
-  区域不重叠，触屏按 `(pointer: coarse)` 把补丁藏掉。
+* **代码编辑器**：CodeMirror 6。**高亮与文档里的代码块完全一致，不再自己映射颜色**（issue #44）：
+  思源渲染代码块用的是宿主自己的 highlight.js（`app/src/protyle/render/highlightRender.ts`），生成
+  `<span class="hljs-…">`，颜色来自「设置 - 外观 - 代码高亮」选中的那份 highlight.js 样式表。插件因此
+  也用同一个 highlight.js 切 token（`src/codeHighlight.ts`），把这些类名原样挂到 CodeMirror 的文本区间上，
+  颜色由那份样式表自己给 —— 同一个 token 必然是同一个颜色。底色、正文色、等宽字体与 85% 编辑器字号
+  照 `component/_typography.scss` 里代码块的取值（`.hljs` 的底色是透明的，字号是编辑器的 85%）。
+  **宿主只在渲染代码块时才加载 highlight.js 与那份样式表**，所以 `window.hljs` 缺席时先让宿主的
+  `ProtyleMethod.highlightRender` 渲染一个离屏代码块把两者带进来，就绪后再补 token 颜色（拿不到就只有
+  正文色，编辑器照常可用）。CodeMirror 自带的兜底高亮样式用一份空样式占位关掉，否则它会和 hljs 类抢颜色。
+  **输入过程中不重建着色装饰**：装饰一变，CodeMirror 就会重建那一段 DOM，组字中的字符与快速连打的按键
+  会被吞掉（issue #45 反馈）。所以组字期间只记下「脏」，等组字结束；连打期间先按变更映射旧装饰（区间
+  始终与正文对齐），停手 200ms 之后才整段重算一次颜色。重算包在 try/catch 里 —— 异常从 `update()` 抛
+  出去会打断 CodeMirror 自己的更新循环，DOM 与正文就此错开，同样表现为吞字符。编辑器在
+  `display: none` 的字段里建出来时量不到尺寸，字段切回可见要调 `ICodeEditor.refresh()`
+  （`view.requestMeasure()`），否则光标与点击落点错位。
+  改高沿用思源原生 textarea 那套（`.cm-editor` 上的 `resize: vertical`），命中区由浏览器给定：鼠标
+  **16×16**、触屏约 **30×30**（本机 Chromium 实测，`::-webkit-resizer` 的宽高与滚动条宽度都改不动它），
+  鼠标那份从角外擦过就抓不住，所以 `createCornerPad` 在角的外侧补了一块同样大小的透明命中区；
+  **原生角本身一点不动**，两块区域不重叠，触屏按 `(pointer: coarse)` 把补丁藏掉。
 * **弹窗不抢焦点**：插件自己的对话框打开时不聚焦输入框或编辑区（宿主 `Dialog` 本来只聚焦容器，Tab 与
   `Esc` 照常），免得顺手敲键盘就改掉了原来的内容。
   **移动端这一条是硬性的**：App 里 `HTMLElement.prototype.focus` 被宿主重写成不判 `isConnected` 就经原生桥接
