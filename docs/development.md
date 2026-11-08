@@ -31,6 +31,37 @@
   思源修好 issue 20866 后，`.keyboard__slash-text` 里的 `.b3-list-item__first` 自带 flex 行，插件不再自己补。
 * **编辑入口**：三条入口（块菜单、按钮右键、按钮长按）都走 `context.openEditor(...)`，由插件入口注入，
   免得渲染器与对话框模块互相引用成环。
+* **命令操作**（issue #38，`src/commands.ts`）：按钮存命令 id（不是名字），点击时执行。宿主没有给插件
+  「列出并执行任意命令」的接口，所以只用两处公开能力：内置命令的清单就是 `window.siyuan.config.keymap.general`
+  的键（命令面板的 core 清单正好是它减去 `openContextMenu` / `commandPanel` / `agentChat` / `agentSend`
+  这四个纯输入框快捷键，见 `app/src/command/nativeCatalog.ts`），执行走插件 API 导出的 `globalCommand`
+  （`app/src/boot/globalEvent/command/global.ts`），**它返回 false 就是这条命令在当前环境跑不了**；
+  插件命令读 `app.plugins[].commands`，id 与命令面板同形 `plugin/<插件名>/<langKey>`
+  （`app/src/plugin/commandAdapter.ts`），执行时按命令面板的先后顺序调它自己注册的回调。
+  **搜索、替换、移动、插入标题/表格、折叠这类只在编辑器上下文里成立的命令没有 public 入口**
+  （它们在 `nativeRuntime.ts` / `contextCommands.ts` / `insertCommands.ts` 里，插件拿不到），
+  因此不列进选择窗口；用户选到跑不了的命令时只弹一条 toast。选择窗口只列命令名，**不显示快捷键**：
+  `keymap.general` 里存的是宿主自己的字符串（形如 `⌥⌘M`），不经宿主那套格式化直接摆出来既不准也
+  不好看，要看快捷键去「设置 - 快捷键」。
+* **智能体提示词操作**（issue #45，`src/agentPrompt.ts`）：点按钮时打开智能体侧栏，把 Markdown 填进它的
+  输入框，需要时直接发送。宿主的 AgentChat 没有给插件留填文本的入口，所以只动界面：桌面端点右侧停靠栏的
+  `.dock__item[data-type="agentChat"]`（**已经展开时不要再点，那次点击会把它收起来**），移动端照宿主
+  `openDock("agent")` 的做法滑出 `[data-type="sidebar-agent-tab"]`（`app/src/mobile/dock/util.ts`）；
+  面板是异步建出来的（移动端还要等动态 import），所以轮询等 `.sy__agentChat` 出现。
+  发送框是 protyle-lite（`.agent-chat__composer-host .protyle-wysiwyg`），用 Lute 的 `Md2BlockDOM` 把
+  Markdown 渲染成块 DOM，**先清空再写**（提示词是按钮固定带的那一段，接在用户草稿后面会混起来），
+  发送时它自己用 `BlockDOM2StdMd` 还原回 Markdown，**格式因此原样保留** —— 直接把文本写进去会被当成
+  字面量。**不主动聚焦输入框**（移动端一聚焦就唤起软键盘、整页重排）。往输入框里写 DOM 走的是宿主的
+  `MutationObserver`，它会自己刷新发送按钮的可用状态，不用额外派发事件。
+  **每一步都要确认真的发生了**，这几个异步动作都会静默失败，只看「点了」就往下走会把提示词送到别处
+  （移动端反馈的两个症状都出在这里）：
+  打开「新对话」时先点面板头部的 `.block__icon[data-type="new-session"]`，再等 `.agent-welcome` 换成
+  另一个节点 —— 宿主的 `createSession` 先存上一轮、再清空消息区与输入框，中间夹着几次等内核的调用，
+  移动端更慢；给它 5 秒，没换成新节点就再点一次，两次都没成就提示一句并**不填**（填进旧对话就发错
+  地方了）。填完等 150ms 再看一眼内容还在不在，被 `composer.clear()` 清掉就再填一次。
+  自动发送**等 `.agent-chat__send` 可用再点**（面板第一次打开时 `AgentChat` 还在读会话与模型列表，
+  那一刻按钮是禁用的），点完再等输入框被清空 —— 那是宿主`sendMessage` 已经收下这轮的标志；没清空就
+  再点一次，两次都没清空（没配模型、上一轮还在回复）才提示一句，提示词留在输入框。
 * **移动端侧栏滑动**：宿主的自定义块渲染器给挂载元素挂了一组阻断冒泡的触摸监听
   （`app/src/plugin/customBlockRender.ts` 的 `isolateEditorEvents`），而侧栏滑动是挂在 `document` 上的
   冒泡监听（`app/src/mobile/util/touch.ts`），所以任何自定义块都滑不出侧面板。`src/mobileSwipe.ts` 在
@@ -58,39 +89,75 @@
   描边色用 `currentColor`，不重抄主题变量。**提示气泡同理**：`.b3-tooltips` 的 `::after` 在
   `:hover` 与 `:focus-within` 时出现，点完按钮提示会一直挂着（删除按钮上方的「删除快捷操作」），
   所以同一窗口里 `:focus-within:not(:focus-visible)` 时把它 `display: none`。
-* **代码编辑器**：CodeMirror 6，配色从思源已加载的代码高亮主题实测后映射，不写死。改高沿用思源原生
-  textarea 那套（`.cm-editor` 上的 `resize: vertical`），命中区由浏览器给定：鼠标 **16×16**、触屏约
-  **30×30**（本机 Chromium 实测，`::-webkit-resizer` 的宽高与滚动条宽度都改不动它），鼠标那份从角外擦过
-  就抓不住，所以 `createCornerPad` 在角的外侧补了一块同样大小的透明命中区；**原生角本身一点不动**，两块
-  区域不重叠，触屏按 `(pointer: coarse)` 把补丁藏掉。
+* **代码编辑器**：CodeMirror 6。**高亮与文档里的代码块完全一致，不再自己映射颜色**（issue #44）：
+  思源渲染代码块用的是宿主自己的 highlight.js（`app/src/protyle/render/highlightRender.ts`），生成
+  `<span class="hljs-…">`，颜色来自「设置 - 外观 - 代码高亮」选中的那份 highlight.js 样式表。插件因此
+  也用同一个 highlight.js 切 token（`src/codeHighlight.ts`），把这些类名原样挂到 CodeMirror 的文本区间上，
+  颜色由那份样式表自己给 —— 同一个 token 必然是同一个颜色。底色、正文色、等宽字体与 85% 编辑器字号
+  照 `component/_typography.scss` 里代码块的取值（`.hljs` 的底色是透明的，字号是编辑器的 85%）。
+  **宿主只在渲染代码块时才加载 highlight.js 与那份样式表**，所以 `window.hljs` 缺席时先让宿主的
+  `ProtyleMethod.highlightRender` 渲染一个离屏代码块把两者带进来，就绪后再补 token 颜色（拿不到就只有
+  正文色，编辑器照常可用）。CodeMirror 自带的兜底高亮样式用一份空样式占位关掉，否则它会和 hljs 类抢颜色。
+  **输入过程中不重建着色装饰**：装饰一变，CodeMirror 就会重建那一段 DOM，组字中的字符与快速连打的按键
+  会被吞掉（issue #45 反馈）。所以组字期间只记下「脏」，等组字结束；连打期间先按变更映射旧装饰（区间
+  始终与正文对齐），停手 200ms 之后才整段重算一次颜色。重算包在 try/catch 里 —— 异常从 `update()` 抛
+  出去会打断 CodeMirror 自己的更新循环，DOM 与正文就此错开，同样表现为吞字符。编辑器在
+  `display: none` 的字段里建出来时量不到尺寸，字段切回可见要调 `ICodeEditor.refresh()`
+  （`view.requestMeasure()`），否则光标与点击落点错位。
+  改高沿用思源原生 textarea 那套（`.cm-editor` 上的 `resize: vertical`），命中区由浏览器给定：鼠标
+  **16×16**、触屏约 **30×30**（本机 Chromium 实测，`::-webkit-resizer` 的宽高与滚动条宽度都改不动它），
+  鼠标那份从角外擦过就抓不住，所以 `createCornerPad` 在角的外侧补了一块同样大小的透明命中区；
+  **原生角本身一点不动**，两块区域不重叠，触屏按 `(pointer: coarse)` 把补丁藏掉。
 * **弹窗不抢焦点**：插件自己的对话框打开时不聚焦输入框或编辑区（宿主 `Dialog` 本来只聚焦容器，Tab 与
-  `Esc` 照常），免得顺手敲键盘就改掉了原来的内容。**新建 / 重命名脚本文件那两个窗口例外**：它们用的
-  `openInputDialog` 返回前会聚焦并全选输入框，`appendScriptFileSuffix` 里必须把它 `blur()` 掉；校验不通过
-  时的 `focus()` 与「载入示例」之后的聚焦是用户点出来的，保留。
-  **移动端这一条是硬性的**：App 里 `HTMLElement.prototype.focus` 被宿主重写成直接调 `JSAndroid.showKeyboard()`
-  （`app/src/mobile/index.ts`），键盘引起的 adjustResize 会改 WebView 高度、整页重排，打开的那一刻就闪一帧。
-  所以图标选择窗口在移动端不聚焦搜索框；设置面板是宿主的 `Setting`，它在 `open()` 末尾会对首个
-  `input, textarea` 补一次 `focus()`（`app/src/plugin/Setting.ts`），插件在 `open` 期间临时接管 `focus`
-  把输入控件拦下来。
-* **移动端设置面板用抽屉**：插件设置面板是宿主的 `Setting`，它建的是居中对话框（整屏遮罩淡入 + 面板从
-  `scale(.8)` 放大）。插件在 `Setting.open()` 返回后把那个对话框交给 `useBottomSheet()`，换成与编辑窗口、
-  移动端属性面板同一个抽屉：遮罩透明、只用 `translateY` 滑入。桌面端不动，仍是居中的设置窗口。
-  **别退回居中对话框**：居中那套在 App 上每次打开都会插一帧整屏旧画面（移动端其它面板要么铺满屏幕、
-  要么是抽屉，才躲过了它）。
-* **移动端底部抽屉**：`src/bottomSheet.ts` 只给宿主对话框挂 `mobile-bottom-sheet-dialog` /
-  `mobile-bottom-sheet` 与抓手，移出视口与滑入都交给宿主的 `transform: translateY(100%)` 与它自己的
-  transition（`app/src/assets/scss/main/_mobile.scss`），容器常驻 `bis-bottom-sheet` 的
-  `will-change: transform` 预热图层。**不要用 `visibility`、`display: none` 或延迟挂载来做「先藏、首帧之后再显示」，
-  也不要照抄宿主 `app/src/mobile/util/bindBottomSheetDialog.ts` 里 `visibility` 加两次 `offsetHeight` 的写法**：
-  渲染树一进一出会重建合成层，App 的 WebView 在那一帧只能提交旧纹理。打开前的不可见只靠行内 `opacity: 0`，
-  宿主加上 `b3-dialog--open` 时清掉；清掉之前先用 `getAnimations()` 取消挂抽屉样式时被带起来的那次位移动画，
-  这样打开时的过渡才是宿主自己那份「从屏幕外滑上来」。这一条 web 端复现不出来，`npm run check` 与
-  浏览器验证都证明不了，只能由维护者在移动端 App 上复测。
-* **对话框不重建合成层**：插件自己的对话框一律用 `src/dialog.ts` 的 `createDialog()` 创建（设置面板是宿主的
-  `Setting`，在 `open` 返回后补同一个类），给外壳挂 `bis-dialog-warm`；`src/index.scss` 让容器与遮罩常驻
-  `will-change`（`transform` / `opacity`）。宿主的 `scale` + `opacity` 入场过渡在起点与终点都会新建、销毁合成层，
-  App 的 WebView 在那一帧只能提交旧的页面纹理 —— 打开面板时插一帧整屏旧画面。**过渡本身一点不动**：时长、曲线与
-  `b3-dialog--open` 的切换时序都还是宿主那份，只把图层提前准备好。
+  `Esc` 照常），免得顺手敲键盘就改掉了原来的内容。
+  **移动端这一条是硬性的**：App 里 `HTMLElement.prototype.focus` 被宿主重写成不判 `isConnected` 就经原生桥接
+  调 `showKeyboard()`（`app/src/mobile/index.ts`），键盘引起的 adjustResize 会改 WebView 高度、整页重排，
+  打开的那一刻就闪一帧。所以图标选择窗口在移动端不聚焦搜索框；设置面板是宿主的 `Setting`，它在 `open()` 末尾
+  会对正文里第一个 `input, textarea` 补一次 `focus()`（`app/src/plugin/Setting.ts`），输入项还会被
+  `Dialog.bindInput` 在插入文档**之前**先聚焦一次（`app/src/dialog/index.ts`）—— 那次元素还游离在文档外，
+  事后 `blur()` 和按祖先节点判断都拦不住。`index.ts` 的 `openSetting()` 因此在移动端于同步的 `open` 期间按
+  元素类型接管 `HTMLElement.prototype.focus`，`finally` 里立刻还原；用户随后点输入框不经过这个重写，照常能编辑。
+  校验不通过时的 `focus()` 与「载入示例」之后的聚焦是用户点出来的，保留。
+* **对话框不重建合成层**：插件自己的对话框一律用 `src/dialog.ts` 的 `createDialog()` 创建，给外壳挂
+  `bis-dialog-warm`；`index.scss` 让容器与 `.b3-dialog__content` 常驻 `will-change: transform`（设置面板在
+  `openSetting()` 里补同一个类）。宿主的 `scale` +
+  `opacity` 入场过渡（`component/_dialog.scss`）在起点与终点都会新建、销毁合成层，App 的 WebView 在那一帧
+  只能提交旧的页面纹理 —— 打开面板时插一帧整屏旧画面。**过渡本身一点不动**：时长、曲线与
+  `b3-dialog--open` 的切换时序都还是宿主那份，只把图层提前准备好。正文也要预热：只处理外壳时，滚动正文会
+  单独混入旧画面。
+  **满屏页面（管理窗口、JavaScript 文件页、快捷操作面板）例外**：它们走 `makeFullscreenDialog()`，
+  入场同样预热，但入场结束（400ms）后把 `bis-dialog-warm` 收回来 —— 满屏页面会一直开着，常驻的整屏合成层
+  没有意义，而预热只对入场那一刻有用。释放用固定时钟而不是 `transitionend`：宿主的容器同时过渡
+  `transform` 与 `opacity`，两条事件先后到达，按事件释放有可能在 `transform` 还没走完时就把图层提前拆掉。
+* **移动端底部抽屉**：`src/bottomSheet.ts` 给宿主对话框挂 `mobile-bottom-sheet-dialog` /
+  `mobile-bottom-sheet` 与抓手，**入场与收起的时序照 `app/src/mobile/util/bindBottomSheetDialog.ts`
+  逐步实现**（issue #46，此前动画与原生对不上、滑动收起时没有过渡）：
+  - 建好面板先写 `transition: none` + `translateY(100%)` + `visibility: hidden`，谁也不抢跑；
+  - 宿主加上 `b3-dialog--open`、并且键盘与视口都稳定之后（`waitForSheetViewport`：没有键盘下一帧就开，
+    有键盘等它收起并稳定 32ms，最多等 1s），才放开 `visibility`、刷一次布局、恢复 `.mobile-bottom-sheet`
+    自己那份 `.15s` 过渡、再改成 `translateY(0)`；
+  - 收起时宿主先标 `data-dialog-closing` 再摘打开类，`updateOpen` 里冻住面板高度并清掉拖动留下的行内
+    `transition` / `transform`，同一份过渡把面板整块送出屏幕。宿主的 `destroy()` 190ms 之后才移除 DOM，
+    正好够这段过渡跑完；不清行内位移的话面板会停在手指松开的位置被直接抽走，就是「卡一下然后收起」。
+
+  位置与尺寸只在入场那一次按可见视口算好（`top` / `bottom` / `height`），之后只有视口真的变了（键盘弹出、
+  旋转、分屏）才重算，不在打开过程中跟着 `visualViewport` 的每个事件写。容器常驻 `bis-bottom-sheet` 的
+  `will-change: transform` 预热图层。
+  下拉关闭的阈值与宿主相同（120px / 面板高度的 1/4 / 0.6px/ms）；抓手只用于下拉关闭，不接管宿主那份
+  「拖抓手改高度」，面板高度由调用方决定。这一整套 web 端复现不出来（`npm run check` 与浏览器验证都证明
+  不了），只能由维护者在移动端 App 上复测。
+* **App 里压着满屏窗口再开对话框会卡死（安全模式）**：满屏对话框（管理窗口、JavaScript 文件页）还挂在
+  屏幕上时新建第二个对话框，App 的 WebView 会整帧卡死并重载前端。真机现象很具体：插件的 JS 38ms 就跑完
+  （`editor: ready`），之后宿主 50ms 的打开类、200ms 的定时器都不再执行，第二个窗口一帧都没画出来。
+  **抽屉、图层预热、CodeMirror 都不是原因**：去掉抽屉、去掉 `will-change`、不建 CodeMirror 都照样卡；
+  把下层窗口从渲染树里摘掉（`display: none`）就完全正常。这是宿主/WebView 侧的问题，而摘掉下层窗口
+  意味着打开期间看不到它，所以做成**默认关闭的可选安全模式**（`src/safeMode.ts`）：
+  - 开关在插件设置面板里，值只写 `localStorage`，**不进插件设置、不跟随思源同步**，默认关闭；
+  - 关闭时行为与以前完全一致；
+  - 打开时走 `hideWhileOpening()`（`src/dialog.ts`）：两个管理窗口（`buttonManager.ts` / `topBar.ts`）
+    在移动端打开编辑窗口前先藏起自己，编辑窗口的 `onClosed` 里恢复；编辑窗口打开 JavaScript 文件页时
+    把 `dialog.element` 交给 `openScriptFileEditor({hideBelow})`，那个页面关掉时恢复。
+  新增「从某个窗口再开一个窗口」的入口时按同样方式接安全模式，不要无条件藏窗口。
 * **图标**：从文档里的 `<symbol id="icon…">` 现取现用，元素带思源的 `.svg` 类以跟随 `currentColor`。
   选择器里**不要改 `color`**：悬浮与选中只换底色 / 描边，否则靠 `currentColor` 上色的图标会显示成主色。
 * **JavaScript 操作**：在页面上下文里整段包成 async 函数执行，执行期间接管 `console` 收集输出；弹窗策略

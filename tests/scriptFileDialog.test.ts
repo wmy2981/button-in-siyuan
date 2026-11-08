@@ -65,6 +65,15 @@ describe("openScriptFileEditor", () => {
         }));
     });
 
+    it("hides the window below while it is open in safe mode", async () => {
+        const below = document.createElement("div");
+        document.body.append(below);
+        const {dialog} = await open({hideBelow: below});
+        expect(below.style.display).toBe("none");
+        dialog.destroy();
+        expect(below.style.display).toBe("");
+    });
+
     it("shows the read error and opens nothing", async () => {
         mocks.readWorkspaceFile.mockRejectedValue(new Error("file not found"));
         await openScriptFileEditor(makeContext(), {path: "data/assets/a.js"});

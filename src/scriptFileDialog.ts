@@ -1,5 +1,5 @@
 import {showMessage} from "siyuan";
-import {createDialog} from "./dialog";
+import {createDialog, hideWhileOpening, makeFullscreenDialog} from "./dialog";
 import {createCodeEditor} from "./codeEditor";
 import type {IContext} from "./context";
 import {guardUnsavedChanges} from "./discardChanges";
@@ -20,6 +20,11 @@ const log = createLogger("scriptFileDialog");
 export const openScriptFileEditor = async (context: IContext, options: {
     path: string,
     editable?: boolean,
+    /**
+     * 安全模式：打开这个满屏页面期间，把下层已经开着的窗口（`dialog.element`）藏起来（issue #43）。
+     * App 里下层窗口还挂着时再建对话框会把 WebView 卡死，关窗后由这里恢复。
+     */
+    hideBelow?: HTMLElement,
 }) => {
     const {i18n} = context;
     const editable = options.editable !== false;
@@ -34,76 +39,90 @@ export const openScriptFileEditor = async (context: IContext, options: {
     log.info("opened the script file editor", {path: options.path, chars: content.length, editable});
     // 移动端占满整个可见页面（issue #24）：键盘弹起时也有足够高度写代码，不再是中间的小窗口。
     // 桌面端保持原来的宽度与默认高度，编辑区填满正文剩下的空间（见 src/codeEditor.ts）
-    const dialog = createDialog({
-        title: options.path,
-        width: context.isMobile ? "100%" : "min(880px, 92vw)",
-        height: context.isMobile ? "100%" : "min(84vh, 720px)",
-        content: `<div class="b3-dialog__content" data-bis="editor-body">
-    <div class="ft__on-surface ft__breakword fn__none" data-bis="readonly-tip"><strong>${i18n.readonlyPreviewTip}</strong></div>
-    <div data-bis="file-editor"></div>
-    <div class="fn__hr--small"></div>
-    <button type="button" class="bis-docs-link" data-bis="docs">${i18n.scriptDocs}</button>
-</div>
-<div class="b3-dialog__action">
-    <button class="b3-button b3-button--cancel" data-bis="cancel">${i18n.cancel}</button>
-    <div class="fn__space"></div>
-    <button class="b3-button b3-button--text fn__none" data-bis="save">${i18n.save}</button>
-</div>`,
-    });
-    if (context.isMobile) {
-        // 满屏时去掉圆角与描边，让它看起来就是一个页面而不是浮在页面上的卡片
-        dialog.element.querySelector(".b3-dialog__container")?.classList.add("bis-dialog-fullscreen");
-    }
-    const field = <T extends HTMLElement>(type: string) => dialog.element.querySelector<T>(`[data-bis="${type}"]`);
-    const editorSettings = context.getSettings();
-    const editor = createCodeEditor({
-        value: content,
-        placeholder: i18n.scriptCodePlaceholder,
-        codeWrap: editorSettings.codeWrap,
-        codeLigatures: editorSettings.codeLigatures,
-        editable,
-    });
-    field<HTMLElement>("file-editor")?.append(editor.element);
-    if (!editable) {
-        dialog.element.querySelector('[data-bis="readonly-tip"]')?.classList.remove("fn__none");
-    } else {
-        field<HTMLButtonElement>("save")?.classList.remove("fn__none");
-    }
-    // 与「编辑按钮块」一样：改了内容还没保存时，关窗前先问一次（取消、×、Esc、点遮罩都拦）。
-    // 只读预览没有可丢的改动，不用拦
-    const openedWith = content;
-    let saved = false;
-    guardUnsavedChanges(context, dialog, {path: options.path}, () =>
-        editable && !saved && editor.getValue() !== openedWith);
-    field<HTMLButtonElement>("cancel")?.addEventListener("click", () => {
-        log.debug("cancelled the script file editor", {path: options.path});
-        dialog.destroy();
-    });
-    // 与内联脚本一样可以从文档里载入示例，只是这里改的是文件内容，保存后才落盘
-    field<HTMLButtonElement>("docs")?.addEventListener("click", () => void openScriptDocs(context, {
-        onLoad: (code) => {
-            editor.setValue(code);
-            editor.focus();
-        },
-        editable,
-    }));
-    field<HTMLButtonElement>("save")?.addEventListener("click", async () => {
+    /** 构建并接好这个窗口；安全模式下由 `hideWhileOpening()` 包起来调用。 */
+    const open = () => {
+        const dialog = createDialog({
+            title: options.path,
+            width: context.isMobile ? "100%" : "min(880px, 92vw)",
+            height: context.isMobile ? "100%" : "min(84vh, 720px)",
+            content: `<div class="b3-dialog__content" data-bis="editor-body">
+        <div class="ft__on-surface ft__breakword fn__none" data-bis="readonly-tip"><strong>${i18n.readonlyPreviewTip}</strong></div>
+        <div data-bis="file-editor"></div>
+        <div class="fn__hr--small"></div>
+        <button type="button" class="bis-docs-link" data-bis="docs">${i18n.scriptDocs}</button>
+    </div>
+    <div class="b3-dialog__action">
+        <button class="b3-button b3-button--cancel" data-bis="cancel">${i18n.cancel}</button>
+        <div class="fn__space"></div>
+        <button class="b3-button b3-button--text fn__none" data-bis="save">${i18n.save}</button>
+    </div>`,
+            destroyCallback: () => {
+                // 安全模式把它藏起来的那个窗口露回来（见 src/dialog.ts）
+                if (options.hideBelow) {
+                    options.hideBelow.style.display = "";
+                }
+            },
+        });
+        if (context.isMobile) {
+            // 满屏时去掉圆角与描边，让它看起来就是一个页面而不是浮在页面上的卡片
+            makeFullscreenDialog(dialog);
+        }
+        const field = <T extends HTMLElement>(type: string) => dialog.element.querySelector<T>(`[data-bis="${type}"]`);
+        const editorSettings = context.getSettings();
+        const editor = createCodeEditor({
+            value: content,
+            placeholder: i18n.scriptCodePlaceholder,
+            codeWrap: editorSettings.codeWrap,
+            codeLigatures: editorSettings.codeLigatures,
+            editable,
+        });
+        field<HTMLElement>("file-editor")?.append(editor.element);
         if (!editable) {
-            log.warn("save rejected: the note is locked, the editor is a preview", {path: options.path});
-            return;
+            dialog.element.querySelector('[data-bis="readonly-tip"]')?.classList.remove("fn__none");
+        } else {
+            field<HTMLButtonElement>("save")?.classList.remove("fn__none");
         }
-        const next = editor.getValue();
-        try {
-            await writeWorkspaceFile(options.path, next);
-        } catch (error) {
-            log.error("failed to save the script file", {path: options.path, error});
-            showMessage(error instanceof Error && error.message ? error.message : i18n.scriptFileFailed);
-            return;
-        }
-        log.info("saved the script file", {path: options.path, chars: next.length});
-        // 已经落盘了，关窗时不必再问一次
-        saved = true;
-        dialog.destroy();
-    });
-    // 打开窗口时不聚焦编辑区：焦点留在宿主的对话框容器上，要写代码用户自己点（「载入示例」之后才聚焦）
+        // 与「编辑按钮块」一样：改了内容还没保存时，关窗前先问一次（取消、×、Esc、点遮罩都拦）。
+        // 只读预览没有可丢的改动，不用拦
+        const openedWith = content;
+        let saved = false;
+        guardUnsavedChanges(context, dialog, {path: options.path}, () =>
+            editable && !saved && editor.getValue() !== openedWith);
+        field<HTMLButtonElement>("cancel")?.addEventListener("click", () => {
+            log.debug("cancelled the script file editor", {path: options.path});
+            dialog.destroy();
+        });
+        // 与内联脚本一样可以从文档里载入示例，只是这里改的是文件内容，保存后才落盘
+        field<HTMLButtonElement>("docs")?.addEventListener("click", () => void openScriptDocs(context, {
+            onLoad: (code) => {
+                editor.setValue(code);
+                editor.focus();
+            },
+            editable,
+        }));
+        field<HTMLButtonElement>("save")?.addEventListener("click", async () => {
+            if (!editable) {
+                log.warn("save rejected: the note is locked, the editor is a preview", {path: options.path});
+                return;
+            }
+            const next = editor.getValue();
+            try {
+                await writeWorkspaceFile(options.path, next);
+            } catch (error) {
+                log.error("failed to save the script file", {path: options.path, error});
+                showMessage(error instanceof Error && error.message ? error.message : i18n.scriptFileFailed);
+                return;
+            }
+            log.info("saved the script file", {path: options.path, chars: next.length});
+            // 已经落盘了，关窗时不必再问一次
+            saved = true;
+            dialog.destroy();
+        });
+        // 打开窗口时不聚焦编辑区：焦点留在宿主的对话框容器上，要写代码用户自己点（「载入示例」之后才聚焦）
+    };
+    if (options.hideBelow) {
+        hideWhileOpening(options.hideBelow, open);
+    } else {
+        open();
+    }
 };

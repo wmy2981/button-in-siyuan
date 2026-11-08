@@ -1,8 +1,9 @@
 import {describe, expect, it, vi} from "vitest";
 import {TOPBAR_DIR, loadTopBarActions, openTopBarManager, openTopBarMenu, removeTopBarAction, writeTopBarAction} from "../src/topBar";
 import {openButtonBlockEditor} from "../src/editDialog";
-import {fetchSyncPost, Menu, platformUtils, showMessage} from "./mocks/siyuan";
+import {Dialog, fetchSyncPost, Menu, platformUtils, showMessage} from "./mocks/siyuan";
 import {makeConfig, makeContext, readFileText, textResponse} from "./helpers";
+import {setMobileSafeMode} from "../src/safeMode";
 
 // 管理器只通过这个入口开编辑窗口，换成替身就能看到它拿到的初始表单值
 vi.mock("../src/editDialog", () => ({openButtonBlockEditor: vi.fn()}));
@@ -252,6 +253,32 @@ describe("openTopBarManager", () => {
             // 编辑窗口按快捷操作的口径取文案，不说「按钮块」
             quickAction: true,
         }));
+    });
+
+    it("hides itself while the quick action editor is open when the safe mode is on", async () => {
+        setMobileSafeMode(true);
+        fetchSyncPost.mockResolvedValue({code: 0, data: [{name: "a.json"}]});
+        mockFiles({[topBarPath("a.json")]: configJson({text: "Quick"})});
+        openTopBarManager(makeContext({isMobile: true}));
+        await waitForRows();
+        const managerElement = Dialog.instances.at(-1)?.element as HTMLElement;
+        document.querySelector<HTMLElement>(".bis-manager__row")?.click();
+        document.querySelector<HTMLElement>(".bis-manager__actions button")?.click();
+        expect(managerElement.style.display).toBe("none");
+        const {onClosed} = vi.mocked(openButtonBlockEditor).mock.calls.at(-1)?.[1] as {onClosed?: () => void};
+        onClosed?.();
+        expect(managerElement.style.display).toBe("");
+    });
+
+    it("keeps the quick action manager visible unless the safe mode is on", async () => {
+        fetchSyncPost.mockResolvedValue({code: 0, data: [{name: "a.json"}]});
+        mockFiles({[topBarPath("a.json")]: configJson({text: "Quick"})});
+        openTopBarManager(makeContext({isMobile: true}));
+        await waitForRows();
+        const managerElement = Dialog.instances.at(-1)?.element as HTMLElement;
+        document.querySelector<HTMLElement>(".bis-manager__row")?.click();
+        document.querySelector<HTMLElement>(".bis-manager__actions button")?.click();
+        expect(managerElement.style.display).toBe("");
     });
 
     it("shows the empty hint and the count", async () => {

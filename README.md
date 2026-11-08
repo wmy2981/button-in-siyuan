@@ -2,7 +2,7 @@
 
 # Button Block (button-in-siyuan)
 
-Insert native SiYuan buttons into documents, with text, a built-in icon and a link or JavaScript action.
+Insert native SiYuan buttons into documents, with text, a built-in icon and a link, command or JavaScript action.
 
 ![preview](https://gcore.jsdelivr.net/gh/wmy2981/button-in-siyuan@f6cae6d/assets/preview.png)
 
@@ -15,7 +15,7 @@ Insert native SiYuan buttons into documents, with text, a built-in icon and a li
   set plus icons from icon packages and plugins.
 * The button colour is optional: the frame, the text and the icon share one colour taken from
   SiYuan's built-in palette; the default stays SiYuan's native blue.
-* A button action is optional and is one of: open a link, run JavaScript, or run a JavaScript file
+* A button action is optional and is one of: open a link, run JavaScript, run a JavaScript file, run a SiYuan command, or hand an agent prompt to the AI
 * Top bar quick actions: clicking opens the quick action menu, each action is one JSON file and behaves
   like a button block.
 
@@ -43,6 +43,8 @@ The desktop top bar has a lightning icon; on mobile the same entry sits in the t
 
 ## Plugin settings
 
+Mobile has one extra switch, "Mobile safe mode", off by default and stored on this device only (it never follows SiYuan sync). When it is on, opening the editor from a manager, or the JavaScript file page from the editor, hides the full-screen window below first — on some devices two stacked full-screen windows freeze SiYuan and reload its frontend, and the switch works around that. With it off, nothing changes.
+
 Uninstalling the plugin deletes only its settings file (`data/storage/petal/button-in-siyuan/settings`): scripts under `scripts/`, script data under `storage/` and top bar actions under `topbar/` are kept, and a reinstall starts from the default settings. If the plugin is disabled before uninstalling, there is no instance to run the cleanup, so the settings file stays.
 
 ## Link addresses
@@ -55,13 +57,35 @@ A link address behaves like the same link inside a document, because SiYuan's li
 | `siyuan://blocks/<block ID>` | Opened (or zoomed to) by SiYuan itself; `siyuan://plugins/…` and `siyuan://bazaar/…` work as well. |
 | `assets/<asset path>`, `file://…`, an absolute path | Opened the way <kbd>Settings</kbd> > <kbd>Editor</kbd> > <kbd>Resource opening</kbd> says. |
 
+## Commands
+
+A command action binds one entry of SiYuan's command panel, picked by searching its name: core commands
+(daily note, sync, global search, settings…) and the commands other plugins register are both listed, and the
+button shows the same name the command panel does. When the command is gone (its plugin was disabled) or cannot
+run in the current environment (for example a command that only means something inside an editor), clicking the
+button only shows a toast.
+
+Command panel entries that need an editor context (insert heading, table, fold…) are not listed: they need a
+concrete selection to act on.
+
+## Agent prompts
+
+An agent prompt action binds a piece of Markdown: clicking the button opens the AI agent sidebar and puts that
+text into its input, **replacing** whatever was there, with the formatting kept as it is (headings, lists and
+code blocks stay what they are). With "Start a new chat" on, a new conversation is opened first and the prompt
+goes into that one. With "Send automatically" on, it is sent right away. The prompt is edited with
+Markdown syntax highlighting in the same editor the JavaScript action uses. When no model is configured, or the
+agent is still answering, nothing is sent: the plugin waits for the send button to become usable and only then
+says so, leaving the prompt in the input.
+
 ## JavaScript
 
-The editor's colors follow the scheme in <kbd>Settings</kbd> > <kbd>Appearance</kbd> >
-<kbd>Code highlighting</kbd> (one for light, one for dark), and line wrapping and ligatures are decided by
-the "JavaScript editor line wrap" and "JavaScript editor ligatures" plugin settings. The font size
-matches SiYuan's code snippet input, the box resizes vertically, and right-clicking opens SiYuan's
-text menu (undo, redo, copy, cut, paste, paste as plain text, select all).
+Syntax highlighting is exactly what a code block in the document gives you: the same highlight.js, the same
+`hljs-…` classes and the palette picked in <kbd>Settings</kbd> > <kbd>Appearance</kbd> >
+<kbd>Code highlighting</kbd>, and the same monospace font and size (85% of the editor font size). Line wrapping
+and ligatures are decided by the "JavaScript editor line wrap" and "JavaScript editor ligatures" plugin
+settings; the box resizes vertically, and right-clicking opens SiYuan's text menu (undo, redo, copy, cut, paste,
+paste as plain text, select all).
 
 The code runs in the page context when the button is clicked, and `await` works. The `return` value,
 the console output and any thrown error appear in the result dialog, which can copy the output as

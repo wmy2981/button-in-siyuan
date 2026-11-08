@@ -1,8 +1,10 @@
 import {fetchSyncPost, showMessage} from "siyuan";
-import {createDialog} from "./dialog";
+import {createDialog, hideWhileOpening, makeFullscreenDialog} from "./dialog";
 import {createLogger} from "./logger";
+import {getMobileSafeMode} from "./safeMode";
 import type {IButtonConfig, TButtonAction} from "./buttonBlock";
 import {createButtonElement, isBlockEditable, parseButtonConfig, runAction} from "./buttonBlock";
+import {commandLabel} from "./commands";
 import type {IContext} from "./context";
 import {openButtonBlockEditor} from "./editDialog";
 import {openLink} from "./openLink";
@@ -51,6 +53,17 @@ export const describeButtonAction = (context: IContext, config: IButtonConfig) =
     }
     if (action.type === "file") {
         return `${i18n.actionFile}: ${action.file}`;
+    }
+    if (action.type === "command") {
+        // 命令显示它的名字，不显示 id：id 是宿主的内部标识，给用户看没有意义
+        return `${i18n.actionCommand}: ${commandLabel(context, action.command)}`;
+    }
+    if (action.type === "prompt") {
+        // 提示词与内联脚本一样只给第一行，多行的补一个省略号
+        const firstLine = action.prompt.split(/\r?\n/, 1)[0].trim();
+        return firstLine
+            ? `${i18n.actionPrompt}: ${firstLine}${action.prompt.includes("\n") ? " …" : ""}`
+            : i18n.actionPrompt;
     }
     const firstLine = action.script.split(/\r?\n/, 1)[0].trim();
     return `${i18n.actionScript}: ${firstLine ? `${firstLine}${action.script.includes("\n") ? " …" : ""}` : i18n.managerInlineScript}`;
@@ -131,6 +144,8 @@ export const openButtonBlockManager = (context: IContext, options: IButtonBlockM
             <option value="link">${i18n.actionLink}</option>
             <option value="script">${i18n.actionScript}</option>
             <option value="file">${i18n.actionFile}</option>
+            <option value="command">${i18n.actionCommand}</option>
+            <option value="prompt">${i18n.actionPrompt}</option>
         </select>
     </div>
     <div class="bis-manager__body">
@@ -144,7 +159,7 @@ export const openButtonBlockManager = (context: IContext, options: IButtonBlockM
 </div>`,
     });
     if (context.isMobile) {
-        dialog.element.querySelector(".b3-dialog__container")?.classList.add("bis-dialog-fullscreen");
+        makeFullscreenDialog(dialog);
     }
     const field = <T extends HTMLElement>(type: string) => {
         const element = dialog.element.querySelector<T>(`[data-bis="${type}"]`);
@@ -171,13 +186,17 @@ export const openButtonBlockManager = (context: IContext, options: IButtonBlockM
             return true;
         }
         const action = row.config.action;
-        const target = action?.type === "link"
-            ? action.link
-            : action?.type === "file"
-                ? action.file
-                : action?.type === "script"
-                    ? action.script.substring(0, 500)
-                    : "";
+        const target = action
+            ? action.type === "link"
+                ? action.link
+                : action.type === "file"
+                    ? action.file
+                    : action.type === "script"
+                        ? action.script.substring(0, 500)
+                        : action.type === "command"
+                            ? commandLabel(context, action.command)
+                            : action.prompt.substring(0, 500)
+            : "";
         return [row.config.text, row.config.icon, target, row.rootTitle, row.hPath, row.notebook, row.id]
             .join("\n")
             .toLowerCase()
@@ -237,12 +256,22 @@ export const openButtonBlockManager = (context: IContext, options: IButtonBlockM
         edit.textContent = i18n.managerEdit;
         edit.addEventListener("click", () => {
             const blockElement = document.querySelector<HTMLElement>(`[data-type="NodeCustomBlock"][data-node-id="${row.id}"]`);
-            openButtonBlockEditor(context, {
+            const open = () => openButtonBlockEditor(context, {
                 blockID: row.id,
                 config: row.config,
                 editable: isBlockEditable(blockElement),
-                onClosed: () => void reload(),
+                onClosed: () => {
+                    // 安全模式下编辑窗口关掉之后管理窗口再露出来（见 dialog.ts）
+                    dialog.element.style.display = "";
+                    void reload();
+                },
             });
+            if (context.isMobile && getMobileSafeMode()) {
+                // App 里下层还挂着这个满屏窗口时再建对话框会把 WebView 卡死并重载前端（issue #43）
+                hideWhileOpening(dialog.element, open);
+            } else {
+                open();
+            }
         });
         const locate = document.createElement("button");
         locate.type = "button";

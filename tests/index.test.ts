@@ -99,13 +99,14 @@ describe("plugin lifecycle", () => {
         await waitForSettings(plugin);
 
         const setting = Setting.instances.at(-1);
-        expect(setting?.items).toHaveLength(7);
+        expect(setting?.items).toHaveLength(8);
         expect(setting?.items.map((item) => item.title)).toEqual([
             "settingsOutputMode",
             "settingsDebugMode",
             "settingsCodeWrap",
             "settingsCodeLigatures",
             "settingsAgentSkill",
+            "settingsSafeMode",
             "manageButtonBlocks",
             "settingsDownloadSkill",
         ]);
@@ -115,6 +116,22 @@ describe("plugin lifecycle", () => {
             "always", "output", "console", "warn", "error", "never",
         ]);
         expect(outputSelect.value).toBe("output");
+    });
+
+    it("stores the mobile safe mode on this device only", async () => {
+        const plugin = makePlugin();
+        plugin.onload();
+        await waitForSettings(plugin);
+        const setting = Setting.instances.at(-1);
+        const item = setting?.items.find((entry) => entry.title === "settingsSafeMode");
+        const safeModeSwitch = item?.createActionElement() as HTMLInputElement;
+        // 默认关闭，行为与以前一致
+        expect(safeModeSwitch.checked).toBe(false);
+        safeModeSwitch.checked = true;
+        safeModeSwitch.dispatchEvent(new Event("change"));
+        // 只写 localStorage，不写插件设置（因此不跟随思源同步）
+        expect(window.localStorage.getItem("button-in-siyuan/mobile-safe-mode")).toBe("true");
+        expect((item?.createActionElement() as HTMLInputElement).checked).toBe(true);
     });
 
     it("removes the listeners, the top bar entry and the agent skill on unload", async () => {
@@ -226,7 +243,7 @@ describe("settings panel", () => {
         plugin.onload();
         await waitForSettings(plugin);
         const setting = Setting.instances.at(-1);
-        const button = setting?.items[6].createActionElement() as HTMLButtonElement;
+        const button = setting?.items[7].createActionElement() as HTMLButtonElement;
         button.click();
         await vi.waitFor(() => expect(saveExportFile).toHaveBeenCalledWith("/export/button-block.zip"));
     });
@@ -237,7 +254,7 @@ describe("settings panel", () => {
         await waitForSettings(plugin);
         fetchSyncPost.mockResolvedValue({code: -1, msg: "zip failed"});
         const setting = Setting.instances.at(-1);
-        (setting?.items[6].createActionElement() as HTMLButtonElement).click();
+        (setting?.items[7].createActionElement() as HTMLButtonElement).click();
         await vi.waitFor(() => expect(showMessage).toHaveBeenCalledWith("downloadSkillFailed"));
     });
 
@@ -246,18 +263,16 @@ describe("settings panel", () => {
         plugin.onload();
         await waitForSettings(plugin);
         const setting = Setting.instances.at(-1);
-        (setting?.items[5].createActionElement() as HTMLButtonElement).click();
+        (setting?.items[6].createActionElement() as HTMLButtonElement).click();
         expect(Dialog.instances.at(-1)?.options.title).toBe("manageButtonBlocks");
     });
 
-    it("focuses the first input when the host opens the panel on desktop", async () => {
+    it("keeps the host focus behaviour on desktop", async () => {
         const plugin = makePlugin();
         plugin.onload();
         await waitForSettings(plugin);
-        const input = document.createElement("input");
-        document.body.append(input);
-        Setting.instances.at(-1)?.open("Button in SiYuan");
-        expect(document.activeElement).toBe(input);
+        plugin.openSetting();
+        expect(document.activeElement).toBe(document.body.querySelector(".b3-dialog__content input"));
     });
 
     it("does not focus an input while the panel opens on mobile", async () => {
@@ -265,31 +280,21 @@ describe("settings panel", () => {
         const plugin = makePlugin();
         plugin.onload();
         await waitForSettings(plugin);
-        const input = document.createElement("input");
-        document.body.append(input);
-        Setting.instances.at(-1)?.open("Button in SiYuan");
-        // 面板打开期间不聚焦输入控件：App 里那一下 focus 会唤起键盘、改 WebView 高度，整页重排闪一帧
+        plugin.openSetting();
+        // 面板打开期间不聚焦输入控件：App 里那一下 focus 会经桥接唤起键盘、改 WebView 高度，整页重排闪一帧
+        const input = document.body.querySelector(".b3-dialog__content input");
+        expect(input).not.toBeNull();
         expect(document.activeElement).not.toBe(input);
     });
 
-    it("opens the panel as the native bottom sheet on mobile", async () => {
+    it("pre-warms the layer of the settings dialog on mobile", async () => {
         getFrontend.mockReturnValue("mobile");
         const plugin = makePlugin();
         plugin.onload();
         await waitForSettings(plugin);
-        // 宿主的 Setting 打开时会自己建对话框；这里先放一个替身，模拟它已经建好的状态
-        const dialog = new Dialog({content: "<div class=\"b3-dialog__content\"></div>"});
-        (window as any).siyuan.dialogs = [dialog];
-        Setting.instances.at(-1)?.open("Button in SiYuan");
-        const sheet = dialog.element.querySelector<HTMLElement>(".b3-dialog__container");
-        // 居中对话框的遮罩淡入 + 面板放大在 App 里会插一帧旧画面，改用与编辑窗口同一个抽屉
-        expect(dialog.element.classList.contains("bis-dialog-warm")).toBe(true);
-        expect(dialog.element.classList.contains("mobile-bottom-sheet-dialog")).toBe(true);
-        expect(sheet?.classList.contains("mobile-bottom-sheet")).toBe(true);
-        expect(sheet?.classList.contains("bis-bottom-sheet")).toBe(true);
-        expect(sheet?.style.transform).toBe("translateY(100%)");
-        expect(sheet?.style.opacity).toBe("0");
-        expect(sheet?.querySelector(".b3-menu__title--root")).not.toBeNull();
+        plugin.openSetting();
+        // index.scss 给 bis-dialog-warm 的容器与正文挂常驻 will-change，见 src/index.ts 的 openSetting
+        expect((plugin.setting as any).dialog?.element.classList.contains("bis-dialog-warm")).toBe(true);
     });
 });
 

@@ -1,6 +1,7 @@
 import {beforeEach, describe, expect, it, vi} from "vitest";
 import {openButtonBlockEditor} from "../src/editDialog";
 import {makeConfig, makeContext, makeSettings} from "./helpers";
+import {setMobileSafeMode} from "../src/safeMode";
 import {Dialog, fetchSyncPost, showMessage} from "./mocks/siyuan";
 
 const mocks = vi.hoisted(() => ({
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
     openScriptFileEditor: vi.fn(),
     openScriptFileInfo: vi.fn(),
     openIconPicker: vi.fn(),
+    openCommandPicker: vi.fn(),
     useBottomSheet: vi.fn(() => vi.fn()),
     createCodeEditor: vi.fn(),
 }));
@@ -39,6 +41,13 @@ vi.mock("../src/icon", async (importOriginal) => {
 });
 vi.mock("../src/codeEditor", () => ({createCodeEditor: mocks.createCodeEditor}));
 vi.mock("../src/bottomSheet", () => ({useBottomSheet: mocks.useBottomSheet}));
+vi.mock("../src/commandPicker", () => ({openCommandPicker: mocks.openCommandPicker}));
+
+/** 宿主快捷键设置：命令按钮上显示的名字从这里查（见 src/commands.ts）。 */
+const setKeymap = (general: Record<string, unknown>, languages: Record<string, string>) => {
+    (window as any).siyuan.config.keymap = {general};
+    (window as any).siyuan.languages = languages;
+};
 
 beforeEach(() => {
     mocks.updateButtonContentAsync.mockResolvedValue(true);
@@ -54,6 +63,7 @@ beforeEach(() => {
                 value = next;
             },
             focus: vi.fn(),
+            refresh: vi.fn(),
         };
     });
 });
@@ -177,6 +187,7 @@ describe("openButtonBlockEditor", () => {
             getValue: () => "   ",
             setValue: vi.fn(),
             focus: vi.fn(),
+            refresh: vi.fn(),
         });
         const {field} = open({config: makeConfig({action: {type: "script", script: "1;"}})});
         field("save").click();
@@ -412,6 +423,93 @@ describe("openButtonBlockEditor", () => {
         expect(field("link-field").classList.contains("fn__none")).toBe(false);
         expect(field("script-field").classList.contains("fn__none")).toBe(true);
         expect(dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.style.height).toBe("");
+
+        action.value = "command";
+        action.dispatchEvent(new Event("change"));
+        expect(field("command-field").classList.contains("fn__none")).toBe(false);
+        expect(field("link-field").classList.contains("fn__none")).toBe(true);
+
+        action.value = "prompt";
+        action.dispatchEvent(new Event("change"));
+        expect(field("prompt-field").classList.contains("fn__none")).toBe(false);
+        expect(field("command-field").classList.contains("fn__none")).toBe(true);
+        expect(dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.style.height)
+            .toBe("min(84vh, 720px)");
+    });
+
+    it("saves the agent prompt and the auto-send switch", async () => {
+        const {field} = open({config: makeConfig({action: {type: "prompt", prompt: "旧的", autoSend: true}})});
+        expect((field("prompt-auto-send") as HTMLInputElement).checked).toBe(true);
+        expect(mocks.createCodeEditor).toHaveBeenLastCalledWith(expect.objectContaining({language: "markdown"}));
+        await saveAndWait(field, mocks.updateButtonContentAsync);
+        expect(mocks.updateButtonContentAsync).toHaveBeenCalledWith("20240101000000-abcdefg",
+            expect.objectContaining({action: {type: "prompt", prompt: "旧的", autoSend: true}}));
+
+        mocks.updateButtonContentAsync.mockClear();
+        const plain = open({config: makeConfig({action: {type: "prompt", prompt: "旧的"}})});
+        expect((plain.field("prompt-auto-send") as HTMLInputElement).checked).toBe(false);
+        await saveAndWait(plain.field, mocks.updateButtonContentAsync);
+        // 关着的开关不写进 payload
+        expect(mocks.updateButtonContentAsync).toHaveBeenCalledWith("20240101000000-abcdefg",
+            expect.objectContaining({action: {type: "prompt", prompt: "旧的"}}));
+    });
+
+    it("saves the new-chat switch of an agent prompt", async () => {
+        const {field} = open({config: makeConfig({action: {type: "prompt", prompt: "旧的", newChat: true}})});
+        expect((field("prompt-new-chat") as HTMLInputElement).checked).toBe(true);
+        await saveAndWait(field, mocks.updateButtonContentAsync);
+        expect(mocks.updateButtonContentAsync).toHaveBeenCalledWith("20240101000000-abcdefg",
+            expect.objectContaining({action: {type: "prompt", prompt: "旧的", newChat: true}}));
+
+        mocks.updateButtonContentAsync.mockClear();
+        const off = open({config: makeConfig({action: {type: "prompt", prompt: "旧的"}})});
+        expect((off.field("prompt-new-chat") as HTMLInputElement).checked).toBe(false);
+        await saveAndWait(off.field, mocks.updateButtonContentAsync);
+        expect(mocks.updateButtonContentAsync).toHaveBeenCalledWith("20240101000000-abcdefg",
+            expect.objectContaining({action: {type: "prompt", prompt: "旧的"}}));
+    });
+
+    it("rejects an empty agent prompt", () => {
+        mocks.createCodeEditor.mockReturnValue({
+            element: document.createElement("div"),
+            getValue: () => "   ",
+            setValue: vi.fn(),
+            focus: vi.fn(),
+            refresh: vi.fn(),
+        });
+        const {field} = open({config: makeConfig({action: {type: "prompt", prompt: "x"}})});
+        field("save").click();
+        expect(showMessage).toHaveBeenCalledWith("promptRequired");
+        expect(mocks.updateButtonContentAsync).not.toHaveBeenCalled();
+    });
+
+    it("picks a command and saves it", async () => {
+        setKeymap({globalSearch: {}}, {globalSearch: "Global search"});
+        const {field} = open({config: makeConfig({action: {type: "command", command: ""}})});
+        expect((field("command") as HTMLButtonElement).textContent).toBe("chooseCommand");
+        (field("command") as HTMLButtonElement).click();
+        expect(mocks.openCommandPicker).toHaveBeenCalledTimes(1);
+        const {onSelect} = mocks.openCommandPicker.mock.calls.at(-1)?.[1] as {onSelect: (id: string) => void};
+        onSelect("globalSearch");
+        expect((field("command") as HTMLButtonElement).textContent).toBe("Global search");
+        await saveAndWait(field, mocks.updateButtonContentAsync);
+        expect(mocks.updateButtonContentAsync).toHaveBeenCalledWith("20240101000000-abcdefg",
+            expect.objectContaining({action: {type: "command", command: "globalSearch"}}));
+    });
+
+    it("shows the stored command name and rejects saving without one", () => {
+        setKeymap({globalSearch: {}}, {globalSearch: "Global search"});
+        const {field} = open({config: makeConfig({action: {type: "command", command: "globalSearch"}})});
+        expect((field("command") as HTMLButtonElement).textContent).toBe("Global search");
+        field("save").click();
+        expect(mocks.updateButtonContentAsync).toHaveBeenCalledWith("20240101000000-abcdefg",
+            expect.objectContaining({action: {type: "command", command: "globalSearch"}}));
+        mocks.updateButtonContentAsync.mockClear();
+
+        const empty = open({config: makeConfig({action: {type: "command", command: ""}})});
+        empty.field("save").click();
+        expect(showMessage).toHaveBeenCalledWith("commandRequired");
+        expect(mocks.updateButtonContentAsync).not.toHaveBeenCalled();
     });
 
     it("opens the create-file dialog and fills the field", () => {
@@ -445,7 +543,20 @@ describe("openButtonBlockEditor", () => {
         expect(mocks.openScriptFileEditor).toHaveBeenCalledWith(expect.anything(), {
             path: "data/assets/a.js",
             editable: true,
+            hideBelow: undefined,
         });
+    });
+
+    it("hides this editor while the script file page is open in safe mode", () => {
+        setMobileSafeMode(true);
+        const {field, dialog} = open(
+            {config: makeConfig({action: {type: "file", file: "data/assets/a.js"}})},
+            makeContext({isMobile: true}),
+        );
+        field("file-edit").click();
+        const options = mocks.openScriptFileEditor.mock.calls.at(-1)?.[1] as {hideBelow?: HTMLElement};
+        // App 里下层窗口还挂着时再建对话框会把 WebView 卡死（issue #43），安全模式把它交出去藏起来
+        expect(options.hideBelow).toBe(dialog.element);
     });
 
     it("removes the script file after the confirmation", async () => {

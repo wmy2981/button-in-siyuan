@@ -2,7 +2,6 @@ import {getFrontend, Plugin, Setting, showMessage} from "siyuan";
 import type {IEventBusMap, Protyle} from "siyuan";
 import {downloadAgentSkill, installAgentSkill, removeAgentSkill} from "./agentSkill";
 import {syncAssetReferences, syncRenderedAssetReference} from "./assetReference";
-import {useBottomSheet} from "./bottomSheet";
 import {createButtonBlockIconHtml} from "./buttonIcon";
 import {openButtonBlockManager} from "./buttonManager";
 import {BUTTON_BLOCK_TYPE, DEFAULT_BUTTON_ICON, parseButtonConfig, renderButtonBlock, serializeButtonConfig} from "./buttonBlock";
@@ -10,6 +9,7 @@ import type {IContext} from "./context";
 import {openButtonBlockEditor} from "./editDialog";
 import type {II18n} from "./i18nKeys";
 import {createLogger, setDebugEnabled} from "./logger";
+import {getMobileSafeMode, setMobileSafeMode} from "./safeMode";
 import type {ISettings, TCodeMode, TOutputMode} from "./settings";
 import {CODE_MODES, DEFAULT_SETTINGS, loadSettings, OUTPUT_MODES, removeSettings, saveSettings} from "./settings";
 import {openTopBarManager, openTopBarMenu, TOPBAR_ICON, TOPBAR_ID} from "./topBar";
@@ -209,6 +209,14 @@ export default class ButtonInSiYuan extends Plugin {
         const debugSwitch = document.createElement("input");
         debugSwitch.type = "checkbox";
         debugSwitch.className = "b3-switch fn__flex-center";
+        // 安全模式不进插件设置：只写本机，立即生效，也不跟随思源同步（见 src/safeMode.ts）
+        const safeModeSwitch = document.createElement("input");
+        safeModeSwitch.type = "checkbox";
+        safeModeSwitch.className = "b3-switch fn__flex-center";
+        safeModeSwitch.addEventListener("change", () => {
+            setMobileSafeMode(safeModeSwitch.checked);
+            log.info("mobile safe mode toggled", {enabled: safeModeSwitch.checked});
+        });
         // 下载按钮与思源自己的设置按钮同款：b3-button--outline，尺寸交给面板里的 fn__size200
         const skillDownload = document.createElement("button");
         skillDownload.className = "b3-button b3-button--outline";
@@ -279,6 +287,14 @@ export default class ButtonInSiYuan extends Plugin {
             },
         });
         this.setting.addItem({
+            title: i18n.settingsSafeMode,
+            description: i18n.settingsSafeModeTip,
+            createActionElement: () => {
+                safeModeSwitch.checked = getMobileSafeMode();
+                return safeModeSwitch;
+            },
+        });
+        this.setting.addItem({
             title: i18n.manageButtonBlocks,
             description: i18n.manageButtonBlocksTip,
             createActionElement: () => managerButton,
@@ -288,46 +304,45 @@ export default class ButtonInSiYuan extends Plugin {
             description: i18n.settingsDownloadSkillTip,
             createActionElement: () => skillDownload,
         });
-        // 移动端打开设置面板期间不聚焦输入控件：宿主 `Setting.open()` 结尾会对首个 `input, textarea` 补一次
-        // `focus()`，输入项还会经过 `dialog.bindInput()` 再聚焦一次（`app/src/plugin/Setting.ts`）；而 App 里
-        // `HTMLElement.prototype.focus` 被重写成不判 `isConnected` 就调 `JSAndroid.showKeyboard()`
-        // （`app/src/mobile/index.ts`），键盘引起的 adjustResize 会改 WebView 高度、整页重排，面板打开就闪一帧。
-        // 这里在打开期间临时接管 `focus` 只拦输入控件：宿主的对话框容器照常拿到焦点，Tab 与 Esc 不受影响
-        const openSetting = this.setting.open.bind(this.setting);
-        this.setting.open = (name: string) => {
-            if (!this.isMobile) {
-                openSetting(name);
-                return;
-            }
-            const prototype = HTMLElement.prototype;
-            const focus = prototype.focus;
-            prototype.focus = function (this: HTMLElement, options?: FocusOptions) {
-                if (this.tagName !== "INPUT" && this.tagName !== "TEXTAREA") {
-                    focus.call(this, options);
-                }
-            };
-            try {
-                openSetting(name);
-                // 宿主的 `Setting` 建的是普通居中对话框：遮罩整屏淡入、面板从 scale(.8) 淡入放大。App 的 WebView
-                // 在这两处图层变动的那一帧只能提交旧纹理 —— 面板打开时插一帧整屏旧画面（编辑窗口与移动端属性面板都用
-                // 抽屉，遮罩透明、只用位移滑入，没有这个问题）。这里把面板换成同一个抽屉（见 src/bottomSheet.ts）。
-                // 宿主的 `Setting.dialog` 还没写进 siyuan 的类型声明，取最后打开的那个
-                const dialogs = window.siyuan.dialogs;
-                const dialog = dialogs[dialogs.length - 1];
-                if (dialog) {
-                    dialog.element.classList.add("bis-dialog-warm");
-                    const disposeSheet = useBottomSheet(dialog);
-                    const destroyDialog = dialog.destroy.bind(dialog);
-                    dialog.destroy = (options?: Parameters<typeof destroyDialog>[0]) => {
-                        disposeSheet();
-                        destroyDialog(options);
-                    };
-                }
-            } finally {
-                prototype.focus = focus;
+        log.debug("registered the plugin setting panel", {outputModes: OUTPUT_MODES.length});
+    }
+
+    /**
+     * 打开设置面板（移动端要额外挡两件事）。
+     *
+     * 一是聚焦：宿主的 `Setting.open` 构建完面板会对正文里第一个 `input, textarea` 补一次 `focus()`
+     * （`app/src/plugin/Setting.ts`），输入项还会经过 `Dialog.bindInput` 先聚焦一次再插入文档
+     * （`app/src/dialog/index.ts`）。而移动端 `mobile/index.ts` 重写的 `HTMLElement.prototype.focus`
+     * 不判 `isConnected` 就经原生桥接唤起软键盘，键盘引起的 adjustResize 会改 WebView 高度、整页重排，
+     * 面板弹出那一帧就闪旧画面。`bindInput` 那次聚焦发生在控件插入之前，元素还游离在文档外，
+     * 事后 blur 和按祖先节点判断都拦不住，所以在同步的 `open` 期间按元素类型接管 `focus`，返回后立即还原；
+     * 用户随后点输入框不经过这个重写，照常可编辑。
+     *
+     * 二是图层：容器的 `scale` / `opacity` 入场过渡在起点与终点都会新建、销毁合成层，App 的 WebView
+     * 在那一帧只能提交旧纹理。这里给面板挂上 `bis-dialog-warm`，`index.scss` 让容器与正文常驻
+     * `will-change`，见 src/dialog.ts。宿主的过渡与 `b3-dialog--open` 时序一点不动。
+     */
+    openSetting() {
+        if (!this.isMobile) {
+            super.openSetting();
+            return;
+        }
+        const prototype = HTMLElement.prototype;
+        const focus = prototype.focus;
+        prototype.focus = function (this: HTMLElement, options?: FocusOptions) {
+            // 对话框容器等非输入控件的聚焦照常放行，不会唤键盘
+            if (!(this instanceof HTMLInputElement || this instanceof HTMLTextAreaElement)) {
+                focus.call(this, options);
             }
         };
-        log.debug("registered the plugin setting panel", {outputModes: OUTPUT_MODES.length});
+        try {
+            super.openSetting();
+        } finally {
+            prototype.focus = focus;
+        }
+        // 宿主的 `Setting.dialog` 运行时一定存在，当前 siyuan 类型声明里还没写，这里只做窄类型
+        const dialogElement = (this.setting as Setting & {dialog?: {element?: HTMLElement};}).dialog?.element;
+        dialogElement?.classList.add("bis-dialog-warm");
     }
 
     /**

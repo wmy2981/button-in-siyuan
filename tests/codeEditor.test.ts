@@ -2,12 +2,53 @@ import {describe, expect, it, vi} from "vitest";
 import {createCodeEditor} from "../src/codeEditor";
 import {Constants} from "./mocks/siyuan";
 
+/** 宿主 highlight.js 的替身：只把关键字包起来（issue #44 的着色来自它的类名）。 */
+const fakeHighlight = () => {
+    (window as any).hljs.highlight = (code: string) => ({
+        value: code.replace(/\bconst\b/g, '<span class="hljs-keyword">const</span>'),
+    });
+};
+
 describe("createCodeEditor", () => {
     it("creates an editor with the initial value and the SiYuan wrapper", () => {
         const editor = createCodeEditor({value: "const a = 1;", placeholder: "code"});
         expect(editor.element.classList.contains("bis-code")).toBe(true);
         expect(editor.element.querySelector(".cm-editor")).not.toBeNull();
         expect(editor.getValue()).toBe("const a = 1;");
+    });
+
+    it("colours the tokens with the classes the host highlighter emits", () => {
+        fakeHighlight();
+        const editor = createCodeEditor({value: "const a = 1;"});
+        expect(editor.element.querySelector(".cm-content .hljs-keyword")?.textContent).toBe("const");
+    });
+
+    it("adds the token colours once the host highlighter arrives", async () => {
+        vi.useFakeTimers();
+        const instance = (window as any).hljs;
+        delete (window as any).hljs;
+        const editor = createCodeEditor({value: "const a = 1;"});
+        // 编辑器要真的挂在文档里：宿主的高亮到得比编辑器晚时，只有还挂着的编辑器才补着色
+        document.body.append(editor.element);
+        expect(editor.element.querySelector(".cm-content .hljs-keyword")).toBeNull();
+        (window as any).hljs = instance;
+        fakeHighlight();
+        await vi.advanceTimersByTimeAsync(100);
+        expect(editor.element.querySelector(".cm-content .hljs-keyword")?.textContent).toBe("const");
+        vi.useRealTimers();
+    });
+
+    it("waits for a pause in typing before re-colouring", async () => {
+        vi.useFakeTimers();
+        fakeHighlight();
+        const editor = createCodeEditor({value: "a"});
+        document.body.append(editor.element);
+        editor.setValue("const b = 2;");
+        // 打字期间不重算装饰：每个按键都换一段 DOM，输入法与快速连打会把字符吞掉
+        expect(editor.element.querySelector(".cm-content .hljs-keyword")).toBeNull();
+        await vi.advanceTimersByTimeAsync(300);
+        expect(editor.element.querySelector(".cm-content .hljs-keyword")?.textContent).toBe("const");
+        vi.useRealTimers();
     });
 
     it("replaces the whole document and moves the cursor to the end", () => {
@@ -27,6 +68,12 @@ describe("createCodeEditor", () => {
     it("focuses the editor when asked to", () => {
         const editor = createCodeEditor({value: ""});
         expect(() => editor.focus()).not.toThrow();
+    });
+
+    it("re-measures when its field becomes visible again", () => {
+        const editor = createCodeEditor({value: "a"});
+        // 字段在 display: none 里时量不到尺寸，切回可见要重新测量（见 ICodeEditor.refresh）
+        expect(() => editor.refresh()).not.toThrow();
     });
 
     it("opens the native text menu for a desktop right click", () => {

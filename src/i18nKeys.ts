@@ -28,6 +28,8 @@ export type II18n = {
     actionLink: string;
     actionScript: string;
     actionFile: string;
+    actionCommand: string;
+    actionPrompt: string;
     actionContentRequired: string;
     linkAddress: string;
     linkAddressPlaceholder: string;
@@ -62,6 +64,25 @@ export type II18n = {
     cloudDownloadFailed: string;
     scriptDocs: string;
     scriptDocsFailed: string;
+    /** 命令操作（issue #38） */
+    chooseCommand: string;
+    commandTip: string;
+    commandRequired: string;
+    commandUnavailable: string;
+    commandPickerTitle: string;
+    searchCommand: string;
+    noMatchedCommand: string;
+    /** 智能体提示词操作（issue #45） */
+    promptText: string;
+    promptPlaceholder: string;
+    promptAutoSend: string;
+    promptNewChat: string;
+    promptNewChatTip: string;
+    promptTip: string;
+    promptRequired: string;
+    agentUnavailable: string;
+    agentNewChatBlocked: string;
+    agentSendBlocked: string;
     docsLoad: string;
     scriptOutput: string;
     scriptUnavailable: string;
@@ -89,6 +110,8 @@ export type II18n = {
     settingsCodeLigaturesTip: string;
     settingsAgentSkill: string;
     settingsAgentSkillTip: string;
+    settingsSafeMode: string;
+    settingsSafeModeTip: string;
     settingsDownloadSkill: string;
     settingsDownloadSkillTip: string;
     downloadSkill: string;

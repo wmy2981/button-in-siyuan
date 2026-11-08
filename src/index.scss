@@ -39,19 +39,18 @@
     border-radius: 0;
 }
 
-// 插件自己的对话框（src/dialog.ts）与插件设置面板：宿主的容器与遮罩带 opacity / scale 入场过渡，
-// 过渡起点与终点浏览器都会新建、销毁合成层，而 App 的 WebView 在那一帧只能提交旧的页面纹理 ——
-// 打开面板时插一帧整屏旧画面。这里常驻 will-change，图层在打开之前就已经存在。
-.bis-dialog-warm .b3-dialog__container {
+// 插件自己的对话框（src/dialog.ts 的 createDialog）与设置面板：宿主的容器带
+// `transform: scale(.8)` + `opacity: 0` 入场过渡（`component/_dialog.scss`），过渡起点与终点浏览器都会
+// 新建、销毁合成层，而 App 的 WebView 在那一帧只能提交旧纹理 —— 打开面板时插一帧整屏旧画面。
+// 这里让容器与可滚动正文常驻 `will-change`，图层在入场开始之前就已经存在；宿主的过渡本身一点不动。
+// 正文也要预热：只处理外壳时，滚动正文仍会单独混入旧画面。
+.bis-dialog-warm .b3-dialog__container,
+.bis-dialog-warm .b3-dialog__content {
     will-change: transform;
 }
 
-.bis-dialog-warm .b3-dialog__scrim {
-    will-change: opacity;
-}
-
-// 移动端的底部抽屉（src/bottomSheet.ts）：面板靠宿主的 `.mobile-bottom-sheet` 用 `translateY(100%)` 移出视口，
-// 这里常驻 `will-change: transform`，让它的图层在打开之前就已经存在（打开时不再新建合成层）。
+// 移动端的底部抽屉（src/bottomSheet.ts）：面板由宿主的 `.mobile-bottom-sheet` 用
+// `transform: translateY(100%)` 挪出视口，这里常驻 `will-change`，让它的图层在滑入之前就存在。
 .bis-bottom-sheet {
     will-change: transform;
 }
@@ -294,7 +293,8 @@
 
 // 编辑区的挂载点只是占位 div，不参与布局，好让 .bis-code 直接成为上面那个 flex 容器的子项
 [data-bis="file-editor"],
-[data-bis="script-editor"] {
+[data-bis="script-editor"],
+[data-bis="prompt-editor"] {
     display: contents;
 }
 
@@ -305,7 +305,8 @@
 
 // 「JavaScript」操作里的代码字段：展开时占满剩余空间；收起时整段带 fn__none（display: none），
 // 不参与布局
-[data-bis="script-field"] {
+[data-bis="script-field"],
+[data-bis="prompt-field"] {
     display: flex;
     flex: 1 0 0;
     flex-direction: column;
@@ -447,4 +448,66 @@
         color: var(--b3-theme-on-surface);
         text-align: center;
     }
+}
+
+// 命令选择窗口（src/commandPicker.ts，issue #38）：与图标选择窗口同一套结构，逐行列出命令名。
+.bis-command-picker {
+    max-height: 320px;
+    // 只纵向滚动：命令名很长，横向滚动条会把窗口撑得很难看
+    overflow-x: hidden;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+
+    // 每一项是 <button>：行高、内边距与悬浮底色都来自 .b3-list-item，这里只清掉按钮自带的边框与底色，
+    // 再补上 .b3-list--background 才有的圆角（与按钮块管理器的列表行一致）。
+    // 宽度交给 flex 的拉伸：.b3-list-item 自带左右 8px 外边距，再写 width: 100% 就会溢出窗口；
+    // border-box 保证内边距算在拉伸出来的宽度里
+    &__item {
+        box-sizing: border-box;
+        border: 0;
+        border-radius: var(--b3-border-radius);
+        background-color: transparent;
+        font: inherit;
+        text-align: left;
+
+        &:hover,
+        &--current {
+            background-color: var(--b3-list-hover);
+        }
+
+        // 命令名（尤其插件命令的「插件名: 命令名」）比窗口宽时出省略号，不换行也不溢出
+        .b3-list-item__text {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
+}
+
+// 编辑窗口里的命令按钮：它是一个下拉框的替代品（点开选择窗口），所以直接用思源 .b3-select 的外观
+// （component/_select.scss 的边框、底色、高度与悬浮效果），而不是蓝色文字的线框按钮 —— 蓝色看起来像链接。
+// 选择器带上 .b3-select 提高特异性，保证这几条覆盖在宿主那份样式之后生效。
+// 只把下拉箭头的右侧内边距收掉，并让长命令名出省略号。
+.b3-select.bis-command-button {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding-right: 8px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+
+    &:disabled {
+        cursor: default;
+        opacity: .68;
+    }
+}
+
+// 还没选命令时用次要文字色，与输入框的占位符同一个观感
+.b3-select.bis-command-button--empty {
+    color: var(--b3-theme-on-surface);
 }

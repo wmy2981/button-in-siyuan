@@ -97,8 +97,15 @@ describe("openIconPicker", () => {
         addSymbols("iconPlay");
         openIconPicker(makeContext({isMobile: true}), {selected: "", onSelect: vi.fn()});
         const dialog = Dialog.instances.at(-1);
-        // App 里打开弹窗就聚焦输入框会直接唤起键盘，整页重排让弹窗闪一帧
+        // App 里打开弹窗就聚焦输入框会直接经桥接唤起键盘，整页重排让弹窗闪一帧
         expect(document.activeElement).not.toBe(dialog?.element.querySelector('[data-bis="search"]'));
+    });
+
+    it("pre-warms the dialog layer", () => {
+        addSymbols("iconPlay");
+        const {dialog} = open();
+        // 见 src/dialog.ts：入场过渡不再新建、销毁合成层
+        expect(dialog.element.classList.contains("bis-dialog-warm")).toBe(true);
     });
 
     it("selects an icon and closes", () => {

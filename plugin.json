@@ -2,7 +2,7 @@
   "name": "button-in-siyuan",
   "author": "wmy2981",
   "url": "https://github.com/wmy2981/button-in-siyuan",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "minAppVersion": "3.8.6",
   "backends": [
     "all"
@@ -16,8 +16,8 @@
     "zh-CN": "按钮块"
   },
   "description": {
-    "default": "Insert native SiYuan buttons into documents, with a link or JavaScript action. It is friendly to AI agents.",
-    "zh-CN": "在文档中插入思源原生样式的按钮块，支持链接跳转或 JavaScript 操作。对 AI Agent 操作友好。"
+    "default": "Insert native SiYuan buttons into documents, with a link, a SiYuan command, an agent prompt or a JavaScript action. It is friendly to AI agents.",
+    "zh-CN": "在文档中插入思源原生样式的按钮块，支持链接跳转、思源命令、智能体提示词或 JavaScript 操作。对 AI Agent 操作友好。"
   },
   "readme": {
     "default": "README.md",

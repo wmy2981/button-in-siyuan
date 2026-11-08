@@ -1,7 +1,7 @@
 import {describe, expect, it, vi} from "vitest";
 import {useBottomSheet} from "../src/bottomSheet";
 import {Dialog} from "./mocks/siyuan";
-import {flushPromises, touchEvent} from "./helpers";
+import {touchEvent} from "./helpers";
 
 const makeDialog = (extra = "") => {
     const dialog = new Dialog({
@@ -11,9 +11,15 @@ const makeDialog = (extra = "") => {
     return {dialog, sheet};
 };
 
-const openSheet = () => {
-    const {dialog, sheet} = makeDialog();
+/** 等一帧：入场的展开与宿主一样压在 `requestAnimationFrame` 上（`waitForSheetViewport`）。 */
+const nextFrame = () => new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+
+/** 打开并等入场跑完：宿主加打开类之后，插件才放开 `visibility` / 过渡 / 位移。 */
+const openSheet = async (extra = "") => {
+    const {dialog, sheet} = makeDialog(extra);
     const cleanup = useBottomSheet(dialog as never);
+    dialog.element.classList.add("b3-dialog--open");
+    await nextFrame();
     return {dialog, sheet, cleanup};
 };
 
@@ -32,7 +38,8 @@ describe("useBottomSheet", () => {
     });
 
     it("adds the native sheet classes and the drag handle", () => {
-        const {dialog, sheet} = openSheet();
+        const {dialog, sheet} = makeDialog();
+        useBottomSheet(dialog as never);
         expect(dialog.element.classList.contains("mobile-bottom-sheet-dialog")).toBe(true);
         expect(sheet.classList.contains("mobile-bottom-sheet")).toBe(true);
         // 常驻的 will-change 由自己的类预热图层（样式在 index.scss）
@@ -53,41 +60,171 @@ describe("useBottomSheet", () => {
         expect(header?.classList.contains("resize__move")).toBe(false);
     });
 
-    it("hides the sheet with a transform until the host opens the dialog", async () => {
-        const {dialog, sheet} = openSheet();
-        // 隐藏只靠位移与透明度：不用 visibility / display，也不延迟挂载
+    it("starts off-screen with its own transition suspended", () => {
+        const {dialog, sheet} = makeDialog();
+        useBottomSheet(dialog as never);
+        // 与宿主的 bindBottomSheetDialog 一致：先压到屏幕下方、藏起来，过渡留给展开那一刻
+        expect(sheet.style.transition).toBe("none");
         expect(sheet.style.transform).toBe("translateY(100%)");
-        expect(sheet.style.opacity).toBe("0");
+        expect(sheet.style.visibility).toBe("hidden");
+    });
+
+    it("keeps the off-screen panel untouched when the viewport changes before it opens", () => {
+        const listeners = new Map<string, () => void>();
+        Object.defineProperty(window, "visualViewport", {
+            configurable: true,
+            value: {
+                offsetTop: 0,
+                height: 400,
+                addEventListener: (type: string, listener: () => void) => listeners.set(type, listener),
+                removeEventListener: (type: string) => listeners.delete(type),
+            },
+        });
+        try {
+            const {dialog, sheet} = makeDialog();
+            useBottomSheet(dialog as never);
+            listeners.get("resize")?.();
+            // 视口变化只作废「正在进行的下拉手势」，不能把还没展开的面板从屏幕外拉回来
+            expect(sheet.style.transform).toBe("translateY(100%)");
+            expect(sheet.style.visibility).toBe("hidden");
+            expect(sheet.style.transition).toBe("none");
+        } finally {
+            delete (window as any).visualViewport;
+        }
+    });
+
+    it("slides in with the host transition once the open class arrives", async () => {
+        const {dialog, sheet} = makeDialog();
+        useBottomSheet(dialog as never);
+        const dialogElement = dialog.element.querySelector<HTMLElement>(".b3-dialog");
+        // 打开之前不算布局，免得在入场过程中把整页重排一遍
+        expect(dialogElement?.style.height).toBe("");
+
+        dialog.element.classList.add("b3-dialog--open");
+        await nextFrame();
+
         expect(sheet.style.visibility).toBe("");
         expect(sheet.style.transition).toBe("");
-        expect(sheet.isConnected).toBe(true);
-
-        dialog.element.classList.add("b3-dialog--open");
-        await flushPromises();
         expect(sheet.style.transform).toBe("");
-        expect(sheet.style.opacity).toBe("");
+        // 整屏可用时直接贴住布局底边，不写死高度
+        expect(dialogElement?.style.top).toBe("0px");
+        expect(dialogElement?.style.bottom).toBe("0px");
+        expect(dialogElement?.style.height).toBe("auto");
     });
 
-    it("cancels the transition the sheet classes kicked off before opening", async () => {
-        const {dialog, sheet} = openSheet();
-        const cancel = vi.fn();
-        (sheet as unknown as {getAnimations: () => Array<{cancel: () => void}>}).getAnimations = () => [{cancel}];
-        dialog.element.classList.add("b3-dialog--open");
-        await flushPromises();
-        expect(cancel).toHaveBeenCalledTimes(1);
-        expect(sheet.style.transform).toBe("");
+    it("follows the visible viewport when the keyboard shrinks it", async () => {
+        const listeners = new Map<string, () => void>();
+        // 视口只收窄了一点点（不到 100px），不算键盘弹起，直接展开
+        const viewport = {offsetTop: 10, height: 700};
+        Object.defineProperty(window, "visualViewport", {
+            configurable: true,
+            value: {
+                get offsetTop() {
+                    return viewport.offsetTop;
+                },
+                get height() {
+                    return viewport.height;
+                },
+                addEventListener: (type: string, listener: () => void) => listeners.set(type, listener),
+                removeEventListener: (type: string) => listeners.delete(type),
+            },
+        });
+        try {
+            const {dialog, sheet, cleanup} = await openSheet();
+            const dialogElement = dialog.element.querySelector<HTMLElement>(".b3-dialog");
+            expect(dialogElement?.style.top).toBe("10px");
+            expect(dialogElement?.style.height).toBe("700px");
+            expect(dialogElement?.style.bottom).toBe("auto");
+            expect(listeners.has("resize")).toBe(true);
+
+            // 视口真的变了才重算：键盘继续上抬，整层跟着缩小
+            viewport.height = 620;
+            viewport.offsetTop = 0;
+            listeners.get("resize")?.();
+            expect(dialogElement?.style.top).toBe("0px");
+            expect(dialogElement?.style.height).toBe("620px");
+
+            cleanup();
+            expect(listeners.size).toBe(0);
+            expect(sheet.style.transform).toBe("");
+        } finally {
+            delete (window as any).visualViewport;
+        }
     });
 
-    it("opens immediately when the dialog is already open", () => {
+    it("waits for the keyboard to settle before sliding in", async () => {
+        // 真机上 `innerHeight` 就是整屏高度（Android 自己把 WebView 缩到键盘上方）
+        (window.siyuan as any).mobile = {size: {isLandscape: false, portrait: {height1: window.innerHeight, height2: 400}}};
+        const viewport = {offsetTop: 0, height: 400};
+        Object.defineProperty(window, "visualViewport", {
+            configurable: true,
+            value: {
+                get offsetTop() {
+                    return viewport.offsetTop;
+                },
+                get height() {
+                    return viewport.height;
+                },
+                addEventListener: () => undefined,
+                removeEventListener: () => undefined,
+            },
+        });
+        try {
+            const {dialog, sheet} = makeDialog();
+            useBottomSheet(dialog as never);
+            dialog.element.classList.add("b3-dialog--open");
+            await nextFrame();
+            await nextFrame();
+            // 键盘还压着视口，面板继续藏在屏幕下方
+            expect(sheet.style.visibility).toBe("hidden");
+            expect(sheet.style.transform).toBe("translateY(100%)");
+
+            viewport.height = window.innerHeight;
+            for (let i = 0; i < 5; i++) {
+                await nextFrame();
+            }
+            expect(sheet.style.visibility).toBe("");
+            expect(sheet.style.transform).toBe("");
+        } finally {
+            delete (window as any).visualViewport;
+        }
+    });
+
+    it("hands the exit over to the host transition when the dialog closes", async () => {
+        const {dialog, sheet} = await openSheet();
+        Object.defineProperty(sheet, "getBoundingClientRect", {
+            configurable: true,
+            value: () => ({x: 0, y: 0, top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 512}) as DOMRect,
+        });
+        const body = sheet.querySelector<HTMLElement>('[data-bis="body"]') as HTMLElement;
+        startAt(body);
+        moveTo(body, 10, 200);
+        expect(sheet.style.transition).toBe("none");
+
+        // 宿主开始销毁：先标 closing，再摘掉打开类（app/src/dialog/index.ts）
+        dialog.element.dataset.dialogClosing = "true";
+        dialog.element.classList.remove("b3-dialog--open");
+        await Promise.resolve();
+
+        // 清掉拖动留下的行内过渡与位移，高度冻在当前值：面板整块滑出屏幕，而不是被抽走
+        expect(sheet.style.transition).toBe("");
+        expect(sheet.style.transform).toBe("");
+        expect(sheet.style.height).toBe("512px");
+        expect(sheet.style.maxHeight).toBe("512px");
+    });
+
+    it("does not start a drag before the sheet has opened", () => {
         const {dialog, sheet} = makeDialog();
-        dialog.element.classList.add("b3-dialog--open");
         useBottomSheet(dialog as never);
-        expect(sheet.style.transform).toBe("");
-        expect(sheet.style.opacity).toBe("");
+        const body = sheet.querySelector<HTMLElement>('[data-bis="body"]') as HTMLElement;
+        startAt(body);
+        moveTo(body, 10, 300);
+        expect(sheet.style.transform).toBe("translateY(100%)");
+        expect(dialog.destroyed).toBe(false);
     });
 
-    it("closes after a long drag down", () => {
-        const {dialog, sheet} = openSheet();
+    it("closes after a long drag down", async () => {
+        const {dialog, sheet} = await openSheet();
         Object.defineProperty(sheet, "clientHeight", {value: 600, configurable: true});
         const body = sheet.querySelector<HTMLElement>('[data-bis="body"]') as HTMLElement;
         startAt(body);
@@ -97,8 +234,8 @@ describe("useBottomSheet", () => {
         expect(dialog.destroyed).toBe(true);
     });
 
-    it("snaps back after a short drag", () => {
-        const {dialog, sheet} = openSheet();
+    it("snaps back after a short drag", async () => {
+        const {dialog, sheet} = await openSheet();
         Object.defineProperty(sheet, "clientHeight", {value: 600, configurable: true});
         vi.spyOn(performance, "now").mockReturnValueOnce(0).mockReturnValue(1000);
         const body = sheet.querySelector<HTMLElement>('[data-bis="body"]') as HTMLElement;
@@ -109,25 +246,24 @@ describe("useBottomSheet", () => {
         expect(sheet.style.transform).toBe("");
     });
 
-    it("ignores an upward drag", () => {
-        const {sheet} = openSheet();
+    it("ignores an upward drag", async () => {
+        const {sheet} = await openSheet();
         const body = sheet.querySelector<HTMLElement>('[data-bis="body"]') as HTMLElement;
         startAt(body);
         moveTo(body, 10, 50);
         expect(sheet.style.transform).toBe("");
     });
 
-    it("ignores a mostly-horizontal drag", () => {
-        const {sheet} = openSheet();
+    it("ignores a mostly-horizontal drag", async () => {
+        const {sheet} = await openSheet();
         const body = sheet.querySelector<HTMLElement>('[data-bis="body"]') as HTMLElement;
         startAt(body);
         moveTo(body, 200, 110);
         expect(sheet.style.transform).toBe("");
     });
 
-    it("does not start from an input", () => {
-        const {dialog, sheet} = makeDialog(`<input data-bis="input">`);
-        useBottomSheet(dialog as never);
+    it("does not start from an input", async () => {
+        const {dialog, sheet} = await openSheet(`<input data-bis="input">`);
         const input = sheet.querySelector<HTMLInputElement>('[data-bis="input"]') as HTMLInputElement;
         startAt(input);
         moveTo(input, 10, 300);
@@ -135,9 +271,8 @@ describe("useBottomSheet", () => {
         expect(dialog.destroyed).toBe(false);
     });
 
-    it("does not start inside a scrolled container", () => {
-        const {dialog, sheet} = makeDialog(`<div data-bis="scroller"><span data-bis="inner">x</span></div>`);
-        useBottomSheet(dialog as never);
+    it("does not start inside a scrolled container", async () => {
+        const {dialog, sheet} = await openSheet(`<div data-bis="scroller"><span data-bis="inner">x</span></div>`);
         const scroller = sheet.querySelector<HTMLElement>('[data-bis="scroller"]') as HTMLElement;
         scroller.style.overflowY = "auto";
         Object.defineProperties(scroller, {
@@ -152,8 +287,8 @@ describe("useBottomSheet", () => {
         expect(dialog.destroyed).toBe(false);
     });
 
-    it("resets the drag when a second finger appears", () => {
-        const {dialog, sheet} = openSheet();
+    it("resets the drag when a second finger appears", async () => {
+        const {dialog, sheet} = await openSheet();
         const body = sheet.querySelector<HTMLElement>('[data-bis="body"]') as HTMLElement;
         startAt(body);
         moveTo(body, 10, 200);
@@ -166,8 +301,8 @@ describe("useBottomSheet", () => {
         expect(dialog.destroyed).toBe(false);
     });
 
-    it("swallows the click that follows a drag", () => {
-        const {sheet} = openSheet();
+    it("swallows the click that follows a drag", async () => {
+        const {sheet} = await openSheet();
         Object.defineProperty(sheet, "clientHeight", {value: 600, configurable: true});
         const body = sheet.querySelector<HTMLElement>('[data-bis="body"]') as HTMLElement;
         startAt(body);
@@ -178,8 +313,8 @@ describe("useBottomSheet", () => {
         expect(click.defaultPrevented).toBe(true);
     });
 
-    it("cleans up its listeners and the handle", () => {
-        const {dialog, sheet, cleanup} = openSheet();
+    it("cleans up its listeners and the handle", async () => {
+        const {dialog, sheet, cleanup} = await openSheet();
         const handle = sheet.firstElementChild;
         cleanup();
         expect(handle?.isConnected).toBe(false);
@@ -188,29 +323,5 @@ describe("useBottomSheet", () => {
         moveTo(body, 10, 300);
         endAt(body, 10, 300);
         expect(dialog.destroyed).toBe(false);
-    });
-
-    it("follows the visual viewport when the keyboard opens", () => {
-        const listeners = new Map<string, () => void>();
-        Object.defineProperty(window, "visualViewport", {
-            configurable: true,
-            value: {
-                offsetTop: 10,
-                height: 500,
-                addEventListener: (type: string, listener: () => void) => listeners.set(type, listener),
-                removeEventListener: (type: string) => listeners.delete(type),
-            },
-        });
-        try {
-            const {dialog, cleanup} = openSheet();
-            const dialogElement = dialog.element.querySelector<HTMLElement>(".b3-dialog");
-            expect(dialogElement?.style.top).toBe("10px");
-            expect(dialogElement?.style.height).toBe("500px");
-            expect(listeners.has("resize")).toBe(true);
-            cleanup();
-            expect(listeners.size).toBe(0);
-        } finally {
-            delete (window as any).visualViewport;
-        }
     });
 });

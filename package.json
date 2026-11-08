@@ -1,6 +1,6 @@
 {
   "name": "button-in-siyuan",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Insert native SiYuan button blocks into documents",
   "scripts": {
     "dev": "webpack --mode development",
@@ -41,10 +41,10 @@
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",
     "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/lang-markdown": "^6.5.2",
     "@codemirror/language": "^6.12.4",
     "@codemirror/state": "^6.7.6",
     "@codemirror/view": "^6.43.13",
-    "@lezer/highlight": "^1.2.5",
     "codemirror": "^6.0.2"
   }
 }

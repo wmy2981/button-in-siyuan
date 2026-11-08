@@ -12,6 +12,8 @@ export const resetWindow = () => {
     // 宿主在桌面端注入的 Electron 入口与移动端的 visualViewport，都不该从一个测试漏到下一个
     delete (window as any).require;
     delete (window as any).visualViewport;
+    // 安全模式存在 localStorage（不跟随同步），不能从一个用例漏到下一个
+    window.localStorage.clear();
     (window as any).siyuan = {
         config: {
             lang: "zh_CN",
@@ -36,7 +38,16 @@ export const resetWindow = () => {
         New: () => ({
             ProtylePreviewStr: (_id: string, markdown: string) =>
                 `<pre class="code-block" data-language="javascript"><code class="hljs">${markdown.length}</code></pre>`,
+            // 智能体提示词把 Markdown 渲染成块 DOM（src/agentPrompt.ts）：一行一个段落，够断言了
+            Md2BlockDOM: (markdown: string) => markdown.split("\n").map((line) =>
+                `<div data-type="NodeParagraph" class="p"><div contenteditable="true">${line}</div></div>`).join(""),
         }),
+    };
+    // 宿主的 highlight.js（思源渲染代码块时才加载）。默认「已经在、但什么都不着色」，
+    // 需要 token 的测试自己改 highlight 的返回值，见 tests/codeHighlight.test.ts
+    (window as any).hljs = {
+        getLanguage: (language: string) => (["javascript", "markdown"].includes(language) ? {} : undefined),
+        highlight: (code: string) => ({value: code}),
     };
 };
 
