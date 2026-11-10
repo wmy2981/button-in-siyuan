@@ -1,5 +1,5 @@
 import {afterEach, describe, expect, it, vi} from "vitest";
-import {ensureHighlighter, highlightTokens, isHighlighterReady} from "../src/codeHighlight";
+import {ensureHighlighter, highlightTokens, isHighlighterReady} from "../src/editor/codeHighlight";
 import {ProtyleMethod} from "./mocks/siyuan";
 
 const hljs = () => (window as any).hljs;

@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vitest";
-import {createScriptPlugin} from "../src/scriptStorage";
+import {createScriptPlugin} from "../src/script/scriptStorage";
 
 /** 一个最小的插件替身：三个存储方法都记下调用。 */
 const makePlugin = () => ({

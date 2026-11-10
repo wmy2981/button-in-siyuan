@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vitest";
-import {confirmDiscard, guardUnsavedChanges} from "../src/discardChanges";
+import {confirmDiscard, guardUnsavedChanges} from "../src/ui/discardChanges";
 import {Dialog} from "./mocks/siyuan";
 import {makeContext} from "./helpers";
 

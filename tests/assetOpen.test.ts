@@ -5,7 +5,7 @@ import {
     resolveAssetOpenAction,
     resolveAvailableAssetOpenAction,
     resolveExecutableAssetOpenAction,
-} from "../src/assetOpen";
+} from "../src/action/assetOpen";
 
 describe("resolveAssetOpenAction", () => {
     it("uses the defaults when the host config is missing", () => {

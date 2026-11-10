@@ -1,12 +1,12 @@
 import {describe, expect, it, vi} from "vitest";
-import {TOPBAR_DIR, loadTopBarActions, openTopBarManager, openTopBarMenu, removeTopBarAction, writeTopBarAction} from "../src/topBar";
-import {openButtonBlockEditor} from "../src/editDialog";
+import {TOPBAR_DIR, loadTopBarActions, openTopBarManager, openTopBarMenu, removeTopBarAction, writeTopBarAction} from "../src/ui/managers/topBar";
+import {openButtonBlockEditor} from "../src/ui/dialogs/editDialog";
 import {Dialog, fetchSyncPost, Menu, platformUtils, showMessage} from "./mocks/siyuan";
 import {makeConfig, makeContext, readFileText, textResponse} from "./helpers";
-import {setMobileSafeMode} from "../src/safeMode";
+import {setMobileSafeMode} from "../src/ui/safeMode";
 
 // 管理器只通过这个入口开编辑窗口，换成替身就能看到它拿到的初始表单值
-vi.mock("../src/editDialog", () => ({openButtonBlockEditor: vi.fn()}));
+vi.mock("../src/ui/dialogs/editDialog", () => ({openButtonBlockEditor: vi.fn()}));
 
 const topBarPath = (name: string) => `${TOPBAR_DIR}/${name}`;
 

@@ -1,5 +1,5 @@
 import {afterEach, describe, expect, it, vi} from "vitest";
-import {isDebugEnabled} from "../src/logger";
+import {isDebugEnabled} from "../src/core/logger";
 import {
     CODE_MODES,
     DEFAULT_SETTINGS,
@@ -10,7 +10,7 @@ import {
     resolveCodeMode,
     saveSettings,
     SETTINGS_STORAGE,
-} from "../src/settings";
+} from "../src/core/settings";
 import {Plugin} from "./mocks/siyuan";
 
 const makePlugin = (): any => new Plugin();

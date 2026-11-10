@@ -1,8 +1,8 @@
 // 校验 docs/ 里的 JavaScript 文档与代码一致：
 // 1. 每段 ```javascript 示例都能被 new Function 解析（与按钮执行时的包装方式完全一致）
 // 2. 示例的代码块语言必须是 javascript（思源代码块的高亮语言名，不用缩写 js）
-// 3. 文档第 2 节（注入接口清单）里列出的名字，与 src/scriptApi.ts 实际注入的名字一致（不多不少）
-// 4. 两份文档都带着官方 API 文档链接的版本占位符（常量取自 src/siyuanRef.ts，避免两边各写一份字面量）
+// 3. 文档第 2 节（注入接口清单）里列出的名字，与 src/script/scriptApi.ts 实际注入的名字一致（不多不少）
+// 4. 两份文档都带着官方 API 文档链接的版本占位符（常量取自 src/core/siyuanRef.ts，避免两边各写一份字面量）
 //
 // 文档是内嵌进插件里的，用户会照着抄；示例写错、接口表漏项或链接钉不到本机版本都在这里拦住。
 // 用法：node scripts/check-docs.mjs（已挂在 npm run check 上）
@@ -96,7 +96,7 @@ export const toggleRightDock = noop;
 `);
     const bundlePath = path.join(tempDir, "scriptApi.mjs");
     await build({
-        entryPoints: [path.join(root, "src", "scriptApi.ts")],
+        entryPoints: [path.join(root, "src", "script", "scriptApi.ts")],
         bundle: true,
         outfile: bundlePath,
         format: "esm",
@@ -120,7 +120,7 @@ export const toggleRightDock = noop;
     }
     const refBundlePath = path.join(tempDir, "siyuanRef.mjs");
     await build({
-        entryPoints: [path.join(root, "src", "siyuanRef.ts")],
+        entryPoints: [path.join(root, "src", "core", "siyuanRef.ts")],
         bundle: true,
         outfile: refBundlePath,
         format: "esm",

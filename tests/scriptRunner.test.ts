@@ -1,7 +1,7 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
-import {isDebugEnabled, setDebugEnabled} from "../src/logger";
-import {formatValue, runScript, shouldShowOutput} from "../src/scriptRunner";
-import type {IScriptEntry} from "../src/scriptOutput";
+import {isDebugEnabled, setDebugEnabled} from "../src/core/logger";
+import {formatValue, runScript, shouldShowOutput} from "../src/script/scriptRunner";
+import type {IScriptEntry} from "../src/script/scriptOutput";
 import {Dialog, showMessage} from "./mocks/siyuan";
 import {makeContext, makeI18n, makeSettings} from "./helpers";
 

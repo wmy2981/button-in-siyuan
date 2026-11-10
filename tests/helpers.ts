@@ -1,9 +1,9 @@
 import {vi} from "vitest";
-import type {IButtonConfig} from "../src/buttonBlock";
-import type {IContext} from "../src/context";
+import type {IButtonConfig} from "../src/button/buttonBlock";
+import type {IContext} from "../src/core/context";
 import type {II18n} from "../src/i18nKeys";
-import type {ISettings} from "../src/settings";
-import {DEFAULT_SETTINGS} from "../src/settings";
+import type {ISettings} from "../src/core/settings";
+import {DEFAULT_SETTINGS} from "../src/core/settings";
 import {Plugin} from "./mocks/siyuan";
 
 /**
@@ -65,7 +65,7 @@ export const jsonResponse = (data: unknown, init: ResponseInit = {}) => new Resp
 
 export const textResponse = (text: string, init: ResponseInit = {}) => new Response(text, {status: 200, ...init});
 
-/** 内核出错时是 HTTP 202 + JSON 信封（见 src/scriptFile.ts）。 */
+/** 内核出错时是 HTTP 202 + JSON 信封（见 src/script/scriptFile.ts）。 */
 export const kernelErrorResponse = (msg: string, status = 202) => new Response(
     JSON.stringify({code: -1, msg}),
     {status, headers: {"content-type": "application/json"}},

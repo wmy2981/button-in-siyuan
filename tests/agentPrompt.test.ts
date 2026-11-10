@@ -1,5 +1,5 @@
 import {afterEach, describe, expect, it, vi} from "vitest";
-import {runAgentPrompt} from "../src/agentPrompt";
+import {runAgentPrompt} from "../src/agent/agentPrompt";
 import {showMessage} from "./mocks/siyuan";
 import {makeContext, makeI18n} from "./helpers";
 

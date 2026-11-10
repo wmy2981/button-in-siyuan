@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {BUTTON_ICON_SVG, createButtonBlockIconHtml} from "../src/buttonIcon";
+import {BUTTON_ICON_SVG, createButtonBlockIconHtml} from "../src/button/buttonIcon";
 
 describe("createButtonBlockIconHtml", () => {
     it("returns a list icon that follows the current text color", () => {

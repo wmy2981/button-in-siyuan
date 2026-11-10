@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vitest";
-import type {IScriptResult} from "../src/scriptOutput";
-import {showScriptOutput, stripAnsi} from "../src/scriptOutput";
+import type {IScriptResult} from "../src/script/scriptOutput";
+import {showScriptOutput, stripAnsi} from "../src/script/scriptOutput";
 import {Dialog, platformUtils, showMessage} from "./mocks/siyuan";
 import {makeContext, makeI18n} from "./helpers";
 

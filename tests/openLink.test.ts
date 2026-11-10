@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vitest";
-import {openLink, resolvePdfAssetLink} from "../src/openLink";
+import {openLink, resolvePdfAssetLink} from "../src/action/openLink";
 import {
     Constants,
     fetchPost,

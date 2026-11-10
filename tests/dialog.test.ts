@@ -1,12 +1,12 @@
 import {describe, expect, it, vi} from "vitest";
-import {createDialog, hideWhileOpening, makeFullscreenDialog} from "../src/dialog";
+import {createDialog, hideWhileOpening, makeFullscreenDialog} from "../src/ui/dialog";
 import {Dialog} from "./mocks/siyuan";
 
 describe("createDialog", () => {
     it("creates the host dialog and pre-warms its compositing layer", () => {
         const dialog = createDialog({content: "<div class=\"b3-dialog__content\"></div>"});
         expect(dialog).toBeInstanceOf(Dialog);
-        // 图层预热靠这个类（index.scss 里给容器与正文挂 will-change），见 src/dialog.ts
+        // 图层预热靠这个类（index.scss 里给容器与正文挂 will-change），见 src/ui/dialog.ts
         expect(dialog.element.classList.contains("bis-dialog-warm")).toBe(true);
         expect(dialog.element.querySelector(".b3-dialog__container")).not.toBeNull();
     });

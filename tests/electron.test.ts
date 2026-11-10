@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vitest";
-import {getIpcRenderer} from "../src/electron";
+import {getIpcRenderer} from "../src/core/electron";
 
 describe("getIpcRenderer", () => {
     it("returns undefined when window.require is missing", () => {

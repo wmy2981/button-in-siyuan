@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vitest";
-import {createCodeEditor} from "../src/codeEditor";
+import {createCodeEditor} from "../src/editor/codeEditor";
 import {Constants} from "./mocks/siyuan";
 
 /** 宿主 highlight.js 的替身：只把关键字包起来（issue #44 的着色来自它的类名）。 */

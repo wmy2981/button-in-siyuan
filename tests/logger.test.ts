@@ -1,5 +1,5 @@
 import {afterEach, describe, expect, it, vi} from "vitest";
-import {createLogger, isDebugEnabled, setDebugEnabled} from "../src/logger";
+import {createLogger, isDebugEnabled, setDebugEnabled} from "../src/core/logger";
 
 describe("logger", () => {
     afterEach(() => {

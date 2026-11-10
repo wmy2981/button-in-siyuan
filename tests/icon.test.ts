@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vitest";
-import {collectIconNames, createIconElement, openIconPicker} from "../src/icon";
+import {collectIconNames, createIconElement, openIconPicker} from "../src/ui/dialogs/icon";
 import {Dialog} from "./mocks/siyuan";
 import {makeContext} from "./helpers";
 
@@ -104,7 +104,7 @@ describe("openIconPicker", () => {
     it("pre-warms the dialog layer", () => {
         addSymbols("iconPlay");
         const {dialog} = open();
-        // 见 src/dialog.ts：入场过渡不再新建、销毁合成层
+        // 见 src/ui/dialog.ts：入场过渡不再新建、销毁合成层
         expect(dialog.element.classList.contains("bis-dialog-warm")).toBe(true);
     });
 

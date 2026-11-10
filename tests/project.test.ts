@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
 import {describe, expect, it} from "vitest";
-import {PLUGIN_NAME, PLUGIN_SCRIPT_DIR, PLUGIN_STORAGE_DIR} from "../src/pluginPaths";
+import {PLUGIN_NAME, PLUGIN_SCRIPT_DIR, PLUGIN_STORAGE_DIR} from "../src/core/pluginPaths";
 
 const root = path.dirname(fileURLToPath(import.meta.url)) + path.sep + "..";
 const readJson = (name: string) => JSON.parse(fs.readFileSync(path.join(root, name), "utf8"));

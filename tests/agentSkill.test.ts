@@ -4,7 +4,7 @@ import {
     downloadAgentSkill,
     installAgentSkill,
     removeAgentSkill,
-} from "../src/agentSkill";
+} from "../src/agent/agentSkill";
 import {fetchSyncPost, saveExportFile} from "./mocks/siyuan";
 import {readFileText} from "./helpers";
 

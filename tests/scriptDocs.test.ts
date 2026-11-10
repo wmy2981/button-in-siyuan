@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vitest";
-import {openScriptDocs} from "../src/scriptDocs";
+import {openScriptDocs} from "../src/script/scriptDocs";
 import {Dialog, ProtyleMethod, platformUtils, showMessage} from "./mocks/siyuan";
 import {makeContext} from "./helpers";
 

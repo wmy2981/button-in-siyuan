@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vitest";
-import {confirmDanger} from "../src/confirmDanger";
+import {confirmDanger} from "../src/ui/confirmDanger";
 import {Dialog} from "./mocks/siyuan";
 import {makeContext} from "./helpers";
 

@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vitest";
-import {commandLabel, listCommands, pluginCommandId, runCommand} from "../src/commands";
+import {commandLabel, listCommands, pluginCommandId, runCommand} from "../src/action/commands";
 import {getActiveEditor, globalCommand} from "./mocks/siyuan";
 import {makeContext} from "./helpers";
 

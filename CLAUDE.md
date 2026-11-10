@@ -26,6 +26,12 @@ npm run dev        # watch 构建，只写仓库根的 index.js / index.css / i1
 * 开发都在 `dev` 分支，`main` 只接可发布的合并；只有 push `main` 会触发发布（CD 不监测 `dev`）。
 * 包管理器是 **npm**（`package-lock.json` + CI `npm ci`），不要引入 pnpm / yarn。
 
+## 源码结构
+
+* `src/` 按功能分层（`core/` `button/` `action/` `agent/` `script/` `editor/` `ui/` `types/`），
+  根上只留 `index.ts`、`index.scss`、`i18nKeys.ts` 与 `i18n/`；新模块放进已有目录，不要摊回根上。
+* 每个目录放什么、依赖方向怎么走，见 [docs/development.md](./docs/development.md) 的「源码结构」。
+
 ## 代码风格
 
 * 4 空格缩进、双引号、分号；源码注释与文档用中文。

@@ -1,5 +1,5 @@
 import {afterEach, beforeEach, vi} from "vitest";
-import {setDebugEnabled} from "../src/logger";
+import {setDebugEnabled} from "../src/core/logger";
 import {resetSiyuanMock} from "./mocks/siyuan";
 
 /**
@@ -38,7 +38,7 @@ export const resetWindow = () => {
         New: () => ({
             ProtylePreviewStr: (_id: string, markdown: string) =>
                 `<pre class="code-block" data-language="javascript"><code class="hljs">${markdown.length}</code></pre>`,
-            // 智能体提示词把 Markdown 渲染成块 DOM（src/agentPrompt.ts）：一行一个段落，够断言了
+            // 智能体提示词把 Markdown 渲染成块 DOM（src/agent/agentPrompt.ts）：一行一个段落，够断言了
             Md2BlockDOM: (markdown: string) => markdown.split("\n").map((line) =>
                 `<div data-type="NodeParagraph" class="p"><div contenteditable="true">${line}</div></div>`).join(""),
         }),

@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vitest";
-import {createScriptScope} from "../src/scriptApi";
+import {createScriptScope} from "../src/script/scriptApi";
 import {
     fetchGet,
     fetchPost,

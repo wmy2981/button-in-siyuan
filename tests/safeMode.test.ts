@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vitest";
-import {getMobileSafeMode, setMobileSafeMode} from "../src/safeMode";
+import {getMobileSafeMode, setMobileSafeMode} from "../src/ui/safeMode";
 
 describe("mobile safe mode", () => {
     it("is off by default", () => {

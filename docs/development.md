@@ -3,13 +3,45 @@
 面向本插件的维护与二次开发。这里只写「不说就会做错」的约定，且不重复 CLAUDE.md 里已有的硬规则与代码里
 一眼可见的实现细节。
 
+## 源码结构
+
+`src/` 按功能分层，**不要再往 `src/` 根上放模块**：新模块放进现有的功能目录，确实不属于任何一类时
+才新建一层。根上只留插件入口、样式、文案键与目录。
+
+```text
+src/
+├── index.ts            插件入口：生命周期、块图标菜单、斜杠项、设置面板、顶栏与卸载
+├── index.scss          插件的全部自有样式（类名统一 bis- 前缀）
+├── i18nKeys.ts         文案键类型，与 i18n/*.json 同键
+├── i18n/               en.json、zh-CN.json
+├── types/              *.md、*.scss 的模块声明
+├── core/               运行上下文与通用设施：context、logger、settings、pluginPaths、electron、siyuanRef
+├── button/             按钮块本体：解析与渲染（buttonBlock）、自绘图形（buttonIcon）
+├── action/             按钮点下去做什么：链接解析与打开（openLink、assetOpen、assetReference）、命令（commands）
+├── agent/              智能体相关：提示词填入（agentPrompt）、技能目录写入（agentSkill）
+├── script/             JavaScript 操作：执行、文件读写、文件信息、元数据、输出、存储、注入作用域、内置文档
+├── editor/             CodeMirror 编辑器（codeEditor）与宿主 highlight.js 桥接（codeHighlight）
+├── ui/                 窗口外壳与移动端行为：dialog、bottomSheet、mobileSwipe、safeMode、confirmDanger、discardChanges
+│   ├── dialogs/        具体窗口：编辑按钮块、脚本文件编辑、命令选择、图标选择
+│   └── managers/       两个管理窗口：按钮块管理（buttonManager）、顶栏快捷操作（topBar）
+```
+
+约定：
+
+* `core/` 只放不依赖界面的东西（上下文、日志、设置、路径、宿主能力取用），不要把窗口或 DOM 结构写进来。
+* 窗口与面板一律放 `ui/`：外壳与移动端行为在 `ui/` 根，具体窗口在 `ui/dialogs/`，管理窗口在 `ui/managers/`。
+* 跨模块调用走 `core/context.ts` 里的 `IContext`（例如编辑入口 `openEditor` 由插件入口注入），
+  免得渲染器和对话框互相引用成环。
+* 文件名与模块同名、全小驼峰；文档、注释与日志里的引用按新路径写（`src/ui/dialog.ts` 这种），
+  不写裸文件名。
+
 ## 实现约定
 
 * `siyuan` 必须保持 external，bundle 必须保持 CommonJS：思源用 `eval` 包住执行，ESM 输出会直接
   `SyntaxError: Cannot use import statement outside a module`。
 * 写回块内容只能用宿主传给渲染器的 `setContent`（见 `updateButtonContent`）。自己改 `data-content`
   再提交事务不会刷新界面 —— `updateTransaction` 打的 `data-editing` 标记会让事务保留本地 DOM。
-* `src/scriptApi.ts` 里注入的 `fetchPost` / `fetchGet` 是**包装过的**（宿主的回调式实现不给回调时
+* `src/script/scriptApi.ts` 里注入的 `fetchPost` / `fetchGet` 是**包装过的**（宿主的回调式实现不给回调时
   Promise 解析成 `undefined`），不要删掉包装；增删注入项必须同步 `docs/javascript*.md` 第 2 节的接口清单。
 * `docs/*.md` 的代码块语言统一写 `javascript`，`js` 之类会被 `scripts/check-docs.mjs` 拦下。
 * 加文案键要同时改 `src/i18n/en.json`、`src/i18n/zh-CN.json` 与 `src/i18nKeys.ts`，
@@ -31,7 +63,7 @@
   思源修好 issue 20866 后，`.keyboard__slash-text` 里的 `.b3-list-item__first` 自带 flex 行，插件不再自己补。
 * **编辑入口**：三条入口（块菜单、按钮右键、按钮长按）都走 `context.openEditor(...)`，由插件入口注入，
   免得渲染器与对话框模块互相引用成环。
-* **命令操作**（issue #38，`src/commands.ts`）：按钮存命令 id（不是名字），点击时执行。宿主没有给插件
+* **命令操作**（issue #38，`src/action/commands.ts`）：按钮存命令 id（不是名字），点击时执行。宿主没有给插件
   「列出并执行任意命令」的接口，所以只用两处公开能力：内置命令的清单就是 `window.siyuan.config.keymap.general`
   的键（命令面板的 core 清单正好是它减去 `openContextMenu` / `commandPanel` / `agentChat` / `agentSend`
   这四个纯输入框快捷键，见 `app/src/command/nativeCatalog.ts`），执行走插件 API 导出的 `globalCommand`
@@ -43,7 +75,7 @@
   因此不列进选择窗口；用户选到跑不了的命令时只弹一条 toast。选择窗口只列命令名，**不显示快捷键**：
   `keymap.general` 里存的是宿主自己的字符串（形如 `⌥⌘M`），不经宿主那套格式化直接摆出来既不准也
   不好看，要看快捷键去「设置 - 快捷键」。
-* **智能体提示词操作**（issue #45，`src/agentPrompt.ts`）：点按钮时打开智能体侧栏，把 Markdown 填进它的
+* **智能体提示词操作**（issue #45，`src/agent/agentPrompt.ts`）：点按钮时打开智能体侧栏，把 Markdown 填进它的
   输入框，需要时直接发送。宿主的 AgentChat 没有给插件留填文本的入口，所以只动界面：桌面端点右侧停靠栏的
   `.dock__item[data-type="agentChat"]`（**已经展开时不要再点，那次点击会把它收起来**），移动端照宿主
   `openDock("agent")` 的做法滑出 `[data-type="sidebar-agent-tab"]`（`app/src/mobile/dock/util.ts`）；
@@ -64,7 +96,7 @@
   再点一次，两次都没清空（没配模型、上一轮还在回复）才提示一句，提示词留在输入框。
 * **移动端侧栏滑动**：宿主的自定义块渲染器给挂载元素挂了一组阻断冒泡的触摸监听
   （`app/src/plugin/customBlockRender.ts` 的 `isolateEditorEvents`），而侧栏滑动是挂在 `document` 上的
-  冒泡监听（`app/src/mobile/util/touch.ts`），所以任何自定义块都滑不出侧面板。`src/mobileSwipe.ts` 在
+  冒泡监听（`app/src/mobile/util/touch.ts`），所以任何自定义块都滑不出侧面板。`src/ui/mobileSwipe.ts` 在
   认出横向滑动之后照宿主的桥接写法合成触摸事件派发到块元素上，方向判断、跟手位移与松手提交仍全部交给
   宿主；点击与长按不转发。**移动端插件 API 打不开侧面板**（`toggleLeftDock` / `toggleRightDock` 在移动端
   构建里直接返回 false），别改走那条路。
@@ -78,7 +110,7 @@
 * **关窗前的「放弃修改」确认**：不是逐条拦取消 / × / `Esc` / 点遮罩，而是把实例上的 `dialog.destroy` 换成
   自己的函数（宿主这四条路最后都调它）。**`disableClose` 只挡遮罩与 ×，挡不住 `Esc`**；判断「有没有改过」
   与保存必须共用同一个 `currentConfig()` 口径，否则会出现「什么都没改也弹确认」。
-* **危险操作确认**：删除按钮块、删除快捷操作、删除 JS 文件与「放弃修改」共用 `src/confirmDanger.ts`
+* **危险操作确认**：删除按钮块、删除快捷操作、删除 JS 文件与「放弃修改」共用 `src/ui/confirmDanger.ts`
   这一个窗口（确认按钮是红色线框 `b3-button--remove`）。**不要退回宿主的 `confirm`**：它在打开时就
   `focus()` 确认按钮（`app/src/dialog/confirmDialog.ts` 末尾），而宿主的 `.b3-button--remove` 把
   `:hover` 与 `:focus` 写成同一套样式，窗口一出现按钮就已经是「悬停」外观。正文可能是脚本路径这类
@@ -92,7 +124,7 @@
 * **代码编辑器**：CodeMirror 6。**高亮与文档里的代码块完全一致，不再自己映射颜色**（issue #44）：
   思源渲染代码块用的是宿主自己的 highlight.js（`app/src/protyle/render/highlightRender.ts`），生成
   `<span class="hljs-…">`，颜色来自「设置 - 外观 - 代码高亮」选中的那份 highlight.js 样式表。插件因此
-  也用同一个 highlight.js 切 token（`src/codeHighlight.ts`），把这些类名原样挂到 CodeMirror 的文本区间上，
+  也用同一个 highlight.js 切 token（`src/editor/codeHighlight.ts`），把这些类名原样挂到 CodeMirror 的文本区间上，
   颜色由那份样式表自己给 —— 同一个 token 必然是同一个颜色。底色、正文色、等宽字体与 85% 编辑器字号
   照 `component/_typography.scss` 里代码块的取值（`.hljs` 的底色是透明的，字号是编辑器的 85%）。
   **宿主只在渲染代码块时才加载 highlight.js 与那份样式表**，所以 `window.hljs` 缺席时先让宿主的
@@ -118,7 +150,7 @@
   事后 `blur()` 和按祖先节点判断都拦不住。`index.ts` 的 `openSetting()` 因此在移动端于同步的 `open` 期间按
   元素类型接管 `HTMLElement.prototype.focus`，`finally` 里立刻还原；用户随后点输入框不经过这个重写，照常能编辑。
   校验不通过时的 `focus()` 与「载入示例」之后的聚焦是用户点出来的，保留。
-* **对话框不重建合成层**：插件自己的对话框一律用 `src/dialog.ts` 的 `createDialog()` 创建，给外壳挂
+* **对话框不重建合成层**：插件自己的对话框一律用 `src/ui/dialog.ts` 的 `createDialog()` 创建，给外壳挂
   `bis-dialog-warm`；`index.scss` 让容器与 `.b3-dialog__content` 常驻 `will-change: transform`（设置面板在
   `openSetting()` 里补同一个类）。宿主的 `scale` +
   `opacity` 入场过渡（`component/_dialog.scss`）在起点与终点都会新建、销毁合成层，App 的 WebView 在那一帧
@@ -129,7 +161,7 @@
   入场同样预热，但入场结束（400ms）后把 `bis-dialog-warm` 收回来 —— 满屏页面会一直开着，常驻的整屏合成层
   没有意义，而预热只对入场那一刻有用。释放用固定时钟而不是 `transitionend`：宿主的容器同时过渡
   `transform` 与 `opacity`，两条事件先后到达，按事件释放有可能在 `transform` 还没走完时就把图层提前拆掉。
-* **移动端底部抽屉**：`src/bottomSheet.ts` 给宿主对话框挂 `mobile-bottom-sheet-dialog` /
+* **移动端底部抽屉**：`src/ui/bottomSheet.ts` 给宿主对话框挂 `mobile-bottom-sheet-dialog` /
   `mobile-bottom-sheet` 与抓手，**入场与收起的时序照 `app/src/mobile/util/bindBottomSheetDialog.ts`
   逐步实现**（issue #46，此前动画与原生对不上、滑动收起时没有过渡）：
   - 建好面板先写 `transition: none` + `translateY(100%)` + `visibility: hidden`，谁也不抢跑；
@@ -151,10 +183,10 @@
   （`editor: ready`），之后宿主 50ms 的打开类、200ms 的定时器都不再执行，第二个窗口一帧都没画出来。
   **抽屉、图层预热、CodeMirror 都不是原因**：去掉抽屉、去掉 `will-change`、不建 CodeMirror 都照样卡；
   把下层窗口从渲染树里摘掉（`display: none`）就完全正常。这是宿主/WebView 侧的问题，而摘掉下层窗口
-  意味着打开期间看不到它，所以做成**默认关闭的可选安全模式**（`src/safeMode.ts`）：
+  意味着打开期间看不到它，所以做成**默认关闭的可选安全模式**（`src/ui/safeMode.ts`）：
   - 开关在插件设置面板里，值只写 `localStorage`，**不进插件设置、不跟随思源同步**，默认关闭；
   - 关闭时行为与以前完全一致；
-  - 打开时走 `hideWhileOpening()`（`src/dialog.ts`）：两个管理窗口（`buttonManager.ts` / `topBar.ts`）
+  - 打开时走 `hideWhileOpening()`（`src/ui/dialog.ts`）：两个管理窗口（`src/ui/managers/buttonManager.ts` / `src/ui/managers/topBar.ts`）
     在移动端打开编辑窗口前先藏起自己，编辑窗口的 `onClosed` 里恢复；编辑窗口打开 JavaScript 文件页时
     把 `dialog.element` 交给 `openScriptFileEditor({hideBelow})`，那个页面关掉时恢复。
   新增「从某个窗口再开一个窗口」的入口时按同样方式接安全模式，不要无条件藏窗口。
@@ -163,7 +195,7 @@
 * **JavaScript 操作**：在页面上下文里整段包成 async 函数执行，执行期间接管 `console` 收集输出；弹窗策略
   改动时要同步 `docs/javascript*.md` 第 4 节。接管的同时把每一行原样放回宿主控制台，所以脚本的输出既在
   弹窗里、也在思源控制台里；`console.debug` 一档受设置里的「调试模式」控制，关着时既不进弹窗也不进控制台。
-  **脚本开头的 `@bis-*` 声明**（`src/scriptMeta.ts`，issue #21）在每次执行前解析：`@bis-output` 覆盖这一次的
+  **脚本开头的 `@bis-*` 声明**（`src/script/scriptMeta.ts`，issue #21）在每次执行前解析：`@bis-output` 覆盖这一次的
   弹窗策略；`@bis-frontends` / `@bis-backends` 用集市包同名列表的取值，当前环境不在列表里时只弹 Toast、
   不执行代码也不弹结果弹窗。声明只认第一行代码之前的 `//` 注释，取值非法时输出策略回落设置、环境列表
   退化成「哪儿都不能跑」（与集市包「列表非空且不匹配」的语义一致）。
@@ -173,7 +205,7 @@
   不存在」要用的；写接口用 `fetchSyncPost` 并关掉 `processMessage`。**按钮里的 `file` 字段从 issue #20 起
   统一存工作空间相对路径**：`data/assets/x.js` 或 `data/storage/petal/button-in-siyuan/scripts/x.js`，
   与 `/api/file/*` 和 Agent 的 `file` 工具同一个口径；旧按钮里的 `assets/x.js` 由 `normalizeScriptPath()`
-  补成 `data/assets/x.js` 继续读取，编辑保存时升级。路径只允许落在这两个脚本目录（`src/pluginPaths.ts`），
+  补成 `data/assets/x.js` 继续读取，编辑保存时升级。路径只允许落在这两个脚本目录（`src/core/pluginPaths.ts`），
   不在别处读写 `.js`。**云端脚本必须二次确认**（可放弃 / 直接使用 / 下载到 `data/assets/` 之后与云端再无
   关系）；只有本地文件才提供编辑代码、编辑文件信息（改名 / 移动）与删除；脚本文件读写一律不走
   `plugin.loadData`。用户资源目录里的脚本仍要写 `custom-data-assets-button-in-siyuan` 属性，但内核的
@@ -181,7 +213,7 @@
   插件 `scripts/` 下的脚本不是资源，属性会被清掉。
 * **顶栏快捷操作**（issue #30）：在 `onload` 里 `addTopBar` 注册一个 `iconZap` 条目，`onunload`
   用 `removeTopBar` 配对移除；带 icon 的条目在桌面端是顶栏图标，移动端由宿主放进顶栏的「插件」菜单。点击时现读
-  `data/storage/petal/button-in-siyuan/topbar/`（`src/topBar.ts`）：一个快捷操作一个 JSON 文件，按文件名排序，
+  `data/storage/petal/button-in-siyuan/topbar/`（`src/ui/managers/topBar.ts`）：一个快捷操作一个 JSON 文件，按文件名排序，
   内容与块 payload 同形但丢掉 `color`（只允许文本、图标与操作，配色不可改）；文件内容非法或没有认识字段的跳过并记日志。
   菜单每次展开都重新列目录，Agent 新建 / 编辑文件后无需重载。**菜单只执行、末尾只给一个「管理」入口**，
   新建与编辑都在管理面板里；面板的加号是思源原生图标按钮（`b3-button--outline b3-button--icon`），
@@ -193,7 +225,7 @@
   的提示都换成快捷操作那一套（`topBarTextLabel` / `topBarIconLabel` / `topBarActionLabel` /
   `topBarDiscardChangesTip`），不再出现「按钮块」。保存失败时窗口不再补一条 `blockNotEditable` ——
   快捷操作的保存出口自己已经给了提示。
-* **按钮块管理**（issue #28）：入口是设置面板里的一个按钮，窗口在 `src/buttonManager.ts`。列表用一条 SQL
+* **按钮块管理**（issue #28）：入口是设置面板里的一个按钮，窗口在 `src/ui/managers/buttonManager.ts`。列表用一条 SQL
   取 `type = 'custom' AND markdown LIKE ';;;button-in-siyuan/button%'` 的块（显式 `LIMIT`，理由同
   `assetReference.ts`），同时取 `box` 与 `hpath`：`hpath` 是内核按文档整篇写进每个块的
   （`kernel/sql/database.go` 的 `batchUpdateHPath`），笔记本名字去宿主的 `window.siyuan.notebooks` 里按 box
@@ -220,12 +252,12 @@
   也不方正；同一窗口的 JS 文件路径行是 28×28，因为那圈 `.fn__flex`（`display: flex`，默认 stretch）把它
   拉到了与输入框同高。`.bis-action-start` 因此用 `align-self: stretch` 撑满整行，外观仍然全部来自
   `.b3-button--icon`。
-* **脚本数据文件**（issue #25）：注入给脚本的 `plugin` 是插件实例的代理（`src/scriptStorage.ts`），只把
+* **脚本数据文件**（issue #25）：注入给脚本的 `plugin` 是插件实例的代理（`src/script/scriptStorage.ts`），只把
   `saveData` / `loadData` / `removeData` 的名字改写到插件目录下的 `storage/` 子目录，其余属性与方法原样
   转发，方法都绑回真实实例（宿主的生命周期检查按实例身份判断）。旧版本写在插件目录根的数据文件在第一次
   读取时迁到 `storage/` 并删掉旧文件；写入时也会清掉旧位置的同名文件。插件自己的设置仍走原路径，不经过
   这层代理。
-* **链接操作**（`src/openLink.ts`）：效果要与文档里点 `[]()` 链接一致，即对齐宿主的
+* **链接操作**（`src/action/openLink.ts`）：效果要与文档里点 `[]()` 链接一致，即对齐宿主的
   `app/src/editor/openLink.ts`。非本地地址一律交给 `platformUtils.openByMobile`（宿主用的同一个函数，
   `siyuan://` 与插件事件也在里面处理）；本地路径按 `window.siyuan.config.editor.assetOpen` 算动作，移动端
   与宿主一致、不认配置。**打开之前必须先把 `open-asset` / `open-link` 发给其他插件**（`emitToPlugins`，
@@ -244,7 +276,7 @@
   下；插件 `scripts/` 下的脚本不是资源，任何导出都不会带走它。Markdown `.zip` 与 Pandoc 是导出后重新解析
   正文再收集，块属性已经丢掉，所以 `.zip` 里也没有 `data/assets/` 的脚本（README 的「限制」写明了）；
   `.sy.zip` 按思源自身的设计不带资源。
-* **Agent 技能**：技能是**一个目录**，由 `src/agentSkill.ts` 写成
+* **Agent 技能**：技能是**一个目录**，由 `src/agent/agentSkill.ts` 写成
   `data/storage/ai/agent/skills/button-block/`：正文来自 `docs/skill.md`，两份参考文档来自
   `docs/javascript.md` 与 `docs/icons.md`。正文走内核的 `/api/ai/agent/saveSkill`（它只肯写 `SKILL.md`，
   会顺手建好技能目录），附件走 `/api/file/putFile`（自动建出 `references/`，对已存在的文件是无条件覆盖），
@@ -260,7 +292,7 @@
 * **内置文档**：`docs/*.md` 由 webpack 的 `asset/source` 内嵌进 index.js，入口用 Lute 的富文本预览渲染器
   转成 HTML，按界面语言选文档；`scriptDocs.ts` 按预览输出的
   `<pre class="code-block" data-language="javascript">` 结构给每个示例套一层并加「载入 / 复制」按钮。正文
-  里的 `{{siyuan-ref}}`（常量在 `src/siyuanRef.ts`）是官方 API 文档链接的版本占位符：渲染文档与写技能时
+  里的 `{{siyuan-ref}}`（常量在 `src/core/siyuanRef.ts`）是官方 API 文档链接的版本占位符：渲染文档与写技能时
   都替换成 `v<内核版本>`（优先 `window.siyuan.config.system.kernelVersion`，回落 `/api/system/version`，
   都取不到时换成 `dev`），要指向本机思源版本。改了文档跑 `node scripts/check-docs.mjs`（示例语法、接口
   清单、版本占位符都在那里校验）。
@@ -288,7 +320,8 @@
 
 * `npm test` 跑 `tests/` 下的 vitest 单元测试（jsdom 环境）。`vitest.config.mts` 把 `siyuan` 指到
   `tests/mocks/siyuan.ts`，宿主对象、内核接口与对话框都有可控替身，测试不会启动思源、也不碰本机工作区。
-* 测试文件按 `src/` 模块一一对应；`npm run typecheck:tests` 用 `tsconfig.tests.json` 单独检查测试类型
+* 测试文件按 `src/` 模块一一对应（一模块一个同名 `tests/<模块>.test.ts`，`tests/` 本身平铺，
+  不跟随 `src/` 的分层目录）；`npm run typecheck:tests` 用 `tsconfig.tests.json` 单独检查测试类型
   （`tsconfig.json` 仍只覆盖 `src/`，打包与插件类型不受影响）。
 * CI 的 `test` job 跑 `npm test`；`check` job 的 `npm run check` 还包含测试类型检查与打包构建。
 

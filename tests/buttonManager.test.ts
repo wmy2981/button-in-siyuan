@@ -1,11 +1,11 @@
 import {describe, expect, it, vi} from "vitest";
-import {describeButtonAction, openButtonBlockManager} from "../src/buttonManager";
-import {serializeButtonConfig} from "../src/buttonBlock";
+import {describeButtonAction, openButtonBlockManager} from "../src/ui/managers/buttonManager";
+import {serializeButtonConfig} from "../src/button/buttonBlock";
 import {Dialog, fetchSyncPost, platformUtils, showMessage} from "./mocks/siyuan";
 import {makeConfig, makeContext} from "./helpers";
-import {setMobileSafeMode} from "../src/safeMode";
+import {setMobileSafeMode} from "../src/ui/safeMode";
 
-vi.mock("../src/editDialog", () => ({openButtonBlockEditor: vi.fn()}));
+vi.mock("../src/ui/dialogs/editDialog", () => ({openButtonBlockEditor: vi.fn()}));
 
 const configOf = (overrides: Parameters<typeof makeConfig>[0] = {}) => serializeButtonConfig(makeConfig(overrides));
 
@@ -213,7 +213,7 @@ describe("openButtonBlockManager", () => {
         await waitForRows(1);
         document.querySelector<HTMLElement>(".bis-manager__row")?.click();
         document.querySelector<HTMLElement>(".bis-manager__actions button")?.click();
-        const {openButtonBlockEditor} = await import("../src/editDialog");
+        const {openButtonBlockEditor} = await import("../src/ui/dialogs/editDialog");
         const {onClosed} = vi.mocked(openButtonBlockEditor).mock.calls.at(-1)?.[1] as {onClosed?: () => void};
 
         const list = document.querySelector<HTMLElement>('[data-bis="list"]') as HTMLElement;
@@ -241,7 +241,7 @@ describe("openButtonBlockManager", () => {
         document.querySelector<HTMLElement>(".bis-manager__row")?.click();
         const edit = document.querySelector<HTMLElement>(".bis-manager__actions button");
         edit?.click();
-        const {openButtonBlockEditor} = await import("../src/editDialog");
+        const {openButtonBlockEditor} = await import("../src/ui/dialogs/editDialog");
         expect(openButtonBlockEditor).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
             blockID: "a",
             config: expect.objectContaining({text: "Alpha"}),
@@ -272,7 +272,7 @@ describe("openButtonBlockManager", () => {
 
         // App 里压着满屏管理窗口再建对话框会把 WebView 卡死，安全模式把它摘出渲染树
         expect(managerElement.style.display).toBe("none");
-        const {openButtonBlockEditor} = await import("../src/editDialog");
+        const {openButtonBlockEditor} = await import("../src/ui/dialogs/editDialog");
         const {onClosed} = vi.mocked(openButtonBlockEditor).mock.calls.at(-1)?.[1] as {onClosed?: () => void};
         onClosed?.();
         expect(managerElement.style.display).toBe("");

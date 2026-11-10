@@ -1,7 +1,7 @@
 import {beforeEach, describe, expect, it, vi} from "vitest";
-import {openButtonBlockEditor} from "../src/editDialog";
+import {openButtonBlockEditor} from "../src/ui/dialogs/editDialog";
 import {makeConfig, makeContext, makeSettings} from "./helpers";
-import {setMobileSafeMode} from "../src/safeMode";
+import {setMobileSafeMode} from "../src/ui/safeMode";
 import {Dialog, fetchSyncPost, showMessage} from "./mocks/siyuan";
 
 const mocks = vi.hoisted(() => ({
@@ -19,31 +19,31 @@ const mocks = vi.hoisted(() => ({
     createCodeEditor: vi.fn(),
 }));
 
-vi.mock("../src/buttonBlock", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("../src/buttonBlock")>();
+vi.mock("../src/button/buttonBlock", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("../src/button/buttonBlock")>();
     return {...actual, runAction: mocks.runAction, updateButtonContentAsync: mocks.updateButtonContentAsync};
 });
-vi.mock("../src/assetReference", () => ({setAssetReference: mocks.setAssetReference}));
-vi.mock("../src/scriptFile", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("../src/scriptFile")>();
+vi.mock("../src/action/assetReference", () => ({setAssetReference: mocks.setAssetReference}));
+vi.mock("../src/script/scriptFile", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("../src/script/scriptFile")>();
     return {
         ...actual,
         downloadScriptToAssets: mocks.downloadScriptToAssets,
         removeWorkspaceFile: mocks.removeWorkspaceFile,
     };
 });
-vi.mock("../src/scriptDocs", () => ({openScriptDocs: mocks.openScriptDocs}));
-vi.mock("../src/scriptFileDialog", () => ({openScriptFileEditor: mocks.openScriptFileEditor}));
-vi.mock("../src/scriptFileInfo", () => ({openScriptFileInfo: mocks.openScriptFileInfo}));
-vi.mock("../src/icon", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("../src/icon")>();
+vi.mock("../src/script/scriptDocs", () => ({openScriptDocs: mocks.openScriptDocs}));
+vi.mock("../src/ui/dialogs/scriptFileDialog", () => ({openScriptFileEditor: mocks.openScriptFileEditor}));
+vi.mock("../src/script/scriptFileInfo", () => ({openScriptFileInfo: mocks.openScriptFileInfo}));
+vi.mock("../src/ui/dialogs/icon", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("../src/ui/dialogs/icon")>();
     return {...actual, openIconPicker: mocks.openIconPicker};
 });
-vi.mock("../src/codeEditor", () => ({createCodeEditor: mocks.createCodeEditor}));
-vi.mock("../src/bottomSheet", () => ({useBottomSheet: mocks.useBottomSheet}));
-vi.mock("../src/commandPicker", () => ({openCommandPicker: mocks.openCommandPicker}));
+vi.mock("../src/editor/codeEditor", () => ({createCodeEditor: mocks.createCodeEditor}));
+vi.mock("../src/ui/bottomSheet", () => ({useBottomSheet: mocks.useBottomSheet}));
+vi.mock("../src/ui/dialogs/commandPicker", () => ({openCommandPicker: mocks.openCommandPicker}));
 
-/** 宿主快捷键设置：命令按钮上显示的名字从这里查（见 src/commands.ts）。 */
+/** 宿主快捷键设置：命令按钮上显示的名字从这里查（见 src/action/commands.ts）。 */
 const setKeymap = (general: Record<string, unknown>, languages: Record<string, string>) => {
     (window as any).siyuan.config.keymap = {general};
     (window as any).siyuan.languages = languages;

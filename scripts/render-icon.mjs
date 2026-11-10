@@ -6,7 +6,7 @@
 //
 // 先按 4 倍密度栅格化再缩放，边缘比直接栅格化到目标尺寸更锐利。
 //
-// 软件内显示的图标不走这里：它以 24x24 内联在 src/icons.ts 里，
+// 软件内显示的图标不走这里：它以 24x24 内联在 src/button/buttonIcon.ts 里，
 // 由 addIcons 注入，不随插件包分发文件。
 import sharp from "sharp";
 import fs from "node:fs";

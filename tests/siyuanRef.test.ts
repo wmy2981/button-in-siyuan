@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {fillSiyuanRef, resolveSiyuanRef, SIYUAN_REF_PLACEHOLDER} from "../src/siyuanRef";
+import {fillSiyuanRef, resolveSiyuanRef, SIYUAN_REF_PLACEHOLDER} from "../src/core/siyuanRef";
 import {fetchSyncPost} from "./mocks/siyuan";
 
 describe("fillSiyuanRef", () => {

@@ -1,7 +1,7 @@
 import {describe, expect, it, vi} from "vitest";
-import {openScriptFileInfo} from "../src/scriptFileInfo";
+import {openScriptFileInfo} from "../src/script/scriptFileInfo";
 import {Dialog, fetchSyncPost, showMessage} from "./mocks/siyuan";
-import {PLUGIN_SCRIPT_DIR} from "../src/pluginPaths";
+import {PLUGIN_SCRIPT_DIR} from "../src/core/pluginPaths";
 import {makeContext, readFileText} from "./helpers";
 
 const open = (options: Parameters<typeof openScriptFileInfo>[1], context = makeContext()) => {

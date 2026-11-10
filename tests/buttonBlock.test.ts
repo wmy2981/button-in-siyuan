@@ -13,19 +13,19 @@ import {
     serializeButtonConfig,
     updateButtonContent,
     updateButtonContentAsync,
-} from "../src/buttonBlock";
-import {openLink} from "../src/openLink";
-import {runAgentPrompt} from "../src/agentPrompt";
-import {loadActionScript} from "../src/scriptFile";
-import {runScript} from "../src/scriptRunner";
+} from "../src/button/buttonBlock";
+import {openLink} from "../src/action/openLink";
+import {runAgentPrompt} from "../src/agent/agentPrompt";
+import {loadActionScript} from "../src/script/scriptFile";
+import {runScript} from "../src/script/scriptRunner";
 import {showMessage, fetchSyncPost, globalCommand} from "./mocks/siyuan";
 import {flushPromises, makeConfig, makeContext, makeI18n} from "./helpers";
 
-vi.mock("../src/openLink", () => ({openLink: vi.fn()}));
-vi.mock("../src/agentPrompt", () => ({runAgentPrompt: vi.fn(async () => undefined)}));
-vi.mock("../src/scriptRunner", () => ({runScript: vi.fn(async () => undefined)}));
-vi.mock("../src/scriptFile", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("../src/scriptFile")>();
+vi.mock("../src/action/openLink", () => ({openLink: vi.fn()}));
+vi.mock("../src/agent/agentPrompt", () => ({runAgentPrompt: vi.fn(async () => undefined)}));
+vi.mock("../src/script/scriptRunner", () => ({runScript: vi.fn(async () => undefined)}));
+vi.mock("../src/script/scriptFile", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("../src/script/scriptFile")>();
     return {...actual, loadActionScript: vi.fn()};
 });
 

@@ -1,7 +1,7 @@
 import {beforeEach, describe, expect, it, vi} from "vitest";
 import ButtonInSiYuan from "../src/index";
-import {serializeButtonConfig} from "../src/buttonBlock";
-import {DEFAULT_SETTINGS} from "../src/settings";
+import {serializeButtonConfig} from "../src/button/buttonBlock";
+import {DEFAULT_SETTINGS} from "../src/core/settings";
 import {makeI18n} from "./helpers";
 import {
     Dialog,
@@ -13,7 +13,7 @@ import {
     showMessage,
 } from "./mocks/siyuan";
 
-vi.mock("../src/editDialog", () => ({openButtonBlockEditor: vi.fn()}));
+vi.mock("../src/ui/dialogs/editDialog", () => ({openButtonBlockEditor: vi.fn()}));
 
 const APP = {plugins: []};
 
@@ -377,7 +377,7 @@ describe("block icon menu", () => {
         await runMenu(event);
         const menu = event.detail.menu as Menu;
         menu.items[0].click();
-        const {openButtonBlockEditor} = await import("../src/editDialog");
+        const {openButtonBlockEditor} = await import("../src/ui/dialogs/editDialog");
         expect(openButtonBlockEditor).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
             blockID: "20240101000000-abcdefg",
             config: expect.objectContaining({text: "Click"}),

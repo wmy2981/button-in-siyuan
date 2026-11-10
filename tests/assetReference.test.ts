@@ -4,8 +4,8 @@ import {
     setAssetReference,
     syncAssetReferences,
     syncRenderedAssetReference,
-} from "../src/assetReference";
-import {serializeButtonConfig} from "../src/buttonBlock";
+} from "../src/action/assetReference";
+import {serializeButtonConfig} from "../src/button/buttonBlock";
 import {fetchSyncPost} from "./mocks/siyuan";
 import {flushPromises, makeConfig, makeContext} from "./helpers";
 

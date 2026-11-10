@@ -5,7 +5,7 @@ import {
     parseScriptMeta,
     SCRIPT_BACKENDS,
     SCRIPT_FRONTENDS,
-} from "../src/scriptMeta";
+} from "../src/script/scriptMeta";
 
 describe("parseScriptMeta", () => {
     it("returns no restrictions when the script has no declarations", () => {

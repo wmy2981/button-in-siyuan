@@ -1,18 +1,18 @@
 import {getFrontend, Plugin, Setting, showMessage} from "siyuan";
 import type {IEventBusMap, Protyle} from "siyuan";
-import {downloadAgentSkill, installAgentSkill, removeAgentSkill} from "./agentSkill";
-import {syncAssetReferences, syncRenderedAssetReference} from "./assetReference";
-import {createButtonBlockIconHtml} from "./buttonIcon";
-import {openButtonBlockManager} from "./buttonManager";
-import {BUTTON_BLOCK_TYPE, DEFAULT_BUTTON_ICON, parseButtonConfig, renderButtonBlock, serializeButtonConfig} from "./buttonBlock";
-import type {IContext} from "./context";
-import {openButtonBlockEditor} from "./editDialog";
+import {downloadAgentSkill, installAgentSkill, removeAgentSkill} from "./agent/agentSkill";
+import {syncAssetReferences, syncRenderedAssetReference} from "./action/assetReference";
+import {createButtonBlockIconHtml} from "./button/buttonIcon";
+import {openButtonBlockManager} from "./ui/managers/buttonManager";
+import {BUTTON_BLOCK_TYPE, DEFAULT_BUTTON_ICON, parseButtonConfig, renderButtonBlock, serializeButtonConfig} from "./button/buttonBlock";
+import type {IContext} from "./core/context";
+import {openButtonBlockEditor} from "./ui/dialogs/editDialog";
 import type {II18n} from "./i18nKeys";
-import {createLogger, setDebugEnabled} from "./logger";
-import {getMobileSafeMode, setMobileSafeMode} from "./safeMode";
-import type {ISettings, TCodeMode, TOutputMode} from "./settings";
-import {CODE_MODES, DEFAULT_SETTINGS, loadSettings, OUTPUT_MODES, removeSettings, saveSettings} from "./settings";
-import {openTopBarManager, openTopBarMenu, TOPBAR_ICON, TOPBAR_ID} from "./topBar";
+import {createLogger, setDebugEnabled} from "./core/logger";
+import {getMobileSafeMode, setMobileSafeMode} from "./ui/safeMode";
+import type {ISettings, TCodeMode, TOutputMode} from "./core/settings";
+import {CODE_MODES, DEFAULT_SETTINGS, loadSettings, OUTPUT_MODES, removeSettings, saveSettings} from "./core/settings";
+import {openTopBarManager, openTopBarMenu, TOPBAR_ICON, TOPBAR_ID} from "./ui/managers/topBar";
 import "./index.scss";
 
 const log = createLogger("plugin");
@@ -122,7 +122,7 @@ export default class ButtonInSiYuan extends Plugin {
             // filter 是斜杠菜单的搜索关键字（不显示给用户，所以不放进 i18n）：
             // 中文界面按「按钮块」、英文界面按 button / btn 都能搜到
             filter: [context.i18n.insertButtonBlock, "button", "btn", "按钮块", "anniu"],
-            // 斜杠菜单里的图标是本插件自绘的按钮块图形（src/buttonIcon.ts），与市集图标同源；
+            // 斜杠菜单里的图标是本插件自绘的按钮块图形（src/button/buttonIcon.ts），与市集图标同源；
             // html 与官方插件示例一致：`.b3-list-item__first` 的 flex 行由宿主管，
             // 移动端斜杠菜单（插件项 html 塞进 `.keyboard__slash-text`）也一样（思源 issue 20866 已修复）。
             html: `<div class="b3-list-item__first">${createButtonBlockIconHtml()}<span class="b3-list-item__text">${context.i18n.insertButtonBlock}</span></div>`,
@@ -209,7 +209,7 @@ export default class ButtonInSiYuan extends Plugin {
         const debugSwitch = document.createElement("input");
         debugSwitch.type = "checkbox";
         debugSwitch.className = "b3-switch fn__flex-center";
-        // 安全模式不进插件设置：只写本机，立即生效，也不跟随思源同步（见 src/safeMode.ts）
+        // 安全模式不进插件设置：只写本机，立即生效，也不跟随思源同步（见 src/ui/safeMode.ts）
         const safeModeSwitch = document.createElement("input");
         safeModeSwitch.type = "checkbox";
         safeModeSwitch.className = "b3-switch fn__flex-center";
@@ -320,7 +320,7 @@ export default class ButtonInSiYuan extends Plugin {
      *
      * 二是图层：容器的 `scale` / `opacity` 入场过渡在起点与终点都会新建、销毁合成层，App 的 WebView
      * 在那一帧只能提交旧纹理。这里给面板挂上 `bis-dialog-warm`，`index.scss` 让容器与正文常驻
-     * `will-change`，见 src/dialog.ts。宿主的过渡与 `b3-dialog--open` 时序一点不动。
+     * `will-change`，见 src/ui/dialog.ts。宿主的过渡与 `b3-dialog--open` 时序一点不动。
      */
     openSetting() {
         if (!this.isMobile) {

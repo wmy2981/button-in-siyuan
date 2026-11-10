@@ -1,9 +1,9 @@
 // 把 assets/preview.html 里的代码编辑器替换成真实 CodeMirror 的静态快照。
 //
-// 预览图里那一段编辑器不是手写的 HTML：这里用 esbuild 打包 src/codeEditor.ts，
+// 预览图里那一段编辑器不是手写的 HTML：这里用 esbuild 打包 src/editor/codeEditor.ts，
 // 在 Chromium 里真的挂载一次，再把 CodeMirror 自己注入的样式和渲染出的 DOM 抓出来，
 // 写回 preview.html 的两个标记之间。这样预览图里的编辑器与插件对话框里的编辑器逐像素一致
-// （行号位置、缩进、配色都来自同一份样式），改了 src/codeEditor.ts 之后重跑本脚本即可。
+// （行号位置、缩进、配色都来自同一份样式），改了 src/editor/codeEditor.ts 之后重跑本脚本即可。
 //
 // 用法：node scripts/snapshot-editor.mjs
 // 依赖：playwright（首次需 npx playwright install chromium）、esbuild（随 esbuild-loader 安装）。
@@ -74,7 +74,7 @@ const PAGE = `<!DOCTYPE html>
 </html>
 `;
 
-const ENTRY = `import {createCodeEditor} from "./src/codeEditor";
+const ENTRY = `import {createCodeEditor} from "./src/editor/codeEditor";
 
 const editor = createCodeEditor({
     value: [

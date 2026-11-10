@@ -12,8 +12,8 @@ import {
     toScriptPath,
     workspaceFileExists,
     writeWorkspaceFile,
-} from "../src/scriptFile";
-import {ASSET_SCRIPT_DIR, PLUGIN_SCRIPT_DIR} from "../src/pluginPaths";
+} from "../src/script/scriptFile";
+import {ASSET_SCRIPT_DIR, PLUGIN_SCRIPT_DIR} from "../src/core/pluginPaths";
 import {fetchSyncPost} from "./mocks/siyuan";
 import {kernelErrorResponse, readFileText, textResponse} from "./helpers";
 

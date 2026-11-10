@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vitest";
-import {useBottomSheet} from "../src/bottomSheet";
+import {useBottomSheet} from "../src/ui/bottomSheet";
 import {Dialog} from "./mocks/siyuan";
 import {touchEvent} from "./helpers";
 

@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vitest";
-import {openCommandPicker} from "../src/commandPicker";
+import {openCommandPicker} from "../src/ui/dialogs/commandPicker";
 import {Dialog} from "./mocks/siyuan";
 import {makeContext} from "./helpers";
 

@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vitest";
-import {bindMobileSwipe} from "../src/mobileSwipe";
+import {bindMobileSwipe} from "../src/ui/mobileSwipe";
 import {touchEvent} from "./helpers";
 
 const setup = () => {

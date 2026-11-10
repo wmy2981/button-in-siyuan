@@ -1,5 +1,5 @@
 import {beforeEach, describe, expect, it, vi} from "vitest";
-import {openScriptFileEditor} from "../src/scriptFileDialog";
+import {openScriptFileEditor} from "../src/ui/dialogs/scriptFileDialog";
 import {Dialog, showMessage} from "./mocks/siyuan";
 import {makeContext, makeSettings} from "./helpers";
 
@@ -10,16 +10,16 @@ const mocks = vi.hoisted(() => ({
     createCodeEditor: vi.fn(),
 }));
 
-vi.mock("../src/scriptFile", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("../src/scriptFile")>();
+vi.mock("../src/script/scriptFile", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("../src/script/scriptFile")>();
     return {
         ...actual,
         readWorkspaceFile: mocks.readWorkspaceFile,
         writeWorkspaceFile: mocks.writeWorkspaceFile,
     };
 });
-vi.mock("../src/scriptDocs", () => ({openScriptDocs: mocks.openScriptDocs}));
-vi.mock("../src/codeEditor", () => ({createCodeEditor: mocks.createCodeEditor}));
+vi.mock("../src/script/scriptDocs", () => ({openScriptDocs: mocks.openScriptDocs}));
+vi.mock("../src/editor/codeEditor", () => ({createCodeEditor: mocks.createCodeEditor}));
 
 beforeEach(() => {
     mocks.readWorkspaceFile.mockResolvedValue("const a = 1;");
