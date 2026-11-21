@@ -6,8 +6,8 @@ import {defineConfig} from "vitest/config";
 const root = path.dirname(fileURLToPath(import.meta.url));
 
 /**
- * 把 `docs/*.md` 当作字符串导入。webpack 用 `asset/source` 内嵌这些文件（见 docs/development.md），
- * Vite 默认会把 `.md` 当静态资源返回 URL，两者不一致，所以在这里按同样的语义处理。
+ * 把 `docs/*.md` 当作字符串导入。`vite.config.mts` 里有一份同样的实现（打包时内嵌这些文件），
+ * 测试跑在不加载构建配置的环境里，所以在这里按同样的语义再声明一次。
  */
 const markdownAsSource = {
     name: "markdown-as-source",

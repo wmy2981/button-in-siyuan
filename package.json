@@ -3,8 +3,8 @@
   "version": "0.4.0",
   "description": "Insert native SiYuan button blocks into documents",
   "scripts": {
-    "dev": "webpack --mode development",
-    "build": "webpack --mode production",
+    "dev": "vite build --mode development --watch",
+    "build": "vite build && node scripts/pack.mjs",
     "typecheck": "tsc --noEmit",
     "typecheck:tests": "tsc -p tsconfig.tests.json",
     "test": "vitest run",
@@ -19,24 +19,20 @@
   "author": "wmy2981",
   "license": "MIT",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.19.0"
   },
   "devDependencies": {
-    "copy-webpack-plugin": "^14.0.0",
-    "css-loader": "^7.1.5",
-    "esbuild-loader": "^4.5.0",
+    "@types/node": "^20.19.43",
+    "esbuild": "^0.28.2",
     "jsdom": "^26.1.0",
-    "mini-css-extract-plugin": "^2.10.2",
     "playwright": "^1.63.0",
     "sass": "^1.105.1",
-    "sass-loader": "^17.0.1",
     "sharp": "^0.35.5",
     "siyuan": "^1.2.9",
     "typescript": "^6.0.3",
+    "vite": "^8.3.8",
     "vitest": "^4.1.12",
-    "webpack": "^5.111.1",
-    "webpack-cli": "^7.2.3",
-    "zip-webpack-plugin": "^4.0.3"
+    "yazl": "^3.3.1"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",

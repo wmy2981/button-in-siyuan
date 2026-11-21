@@ -64,7 +64,7 @@ const decorateCodeBlocks = (context: IContext, container: HTMLElement, onLoad?: 
 /**
  * 在弹窗里显示内置的 JavaScript 文档。
  *
- * 文档在构建时由 webpack 作为字符串内嵌进 index.js（docs/*.md），所以离线也能看，不需要联网或读文件；
+ * 文档在构建时由 vite.config.mts 作为字符串内嵌进 index.js（docs/*.md），所以离线也能看，不需要联网或读文件；
  * 渲染用思源自己的 markdown 渲染器：Lute.ProtylePreviewStr（思源的富文本预览、Agent 消息都是这一套），
  * 外面套 .b3-typography，排版与思源自己的预览一致。
  *

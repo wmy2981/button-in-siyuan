@@ -32,7 +32,7 @@ describe("plugin manifest", () => {
     it("points at files that exist", () => {
         expect(exists(plugin.readme.default)).toBe(true);
         expect(exists(plugin.readme["zh-CN"])).toBe(true);
-        // 集市只认包根的 icon.png / preview.png，源文件在 assets/ 下，由 webpack 复制到包根
+        // 集市只认包根的 icon.png / preview.png，源文件在 assets/ 下，由构建复制到包根
         expect(exists(path.join("assets", plugin.icon))).toBe(true);
         expect(exists(path.join("assets", plugin.preview))).toBe(true);
     });

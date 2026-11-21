@@ -289,7 +289,7 @@ src/
   `/api/archive/zip` 压成 `button-block.zip`，再交给宿主的 `saveExportFile`；而它只肯复制
   `<工作空间>/temp/export/` 下的文件，所以三个文件与压缩包都先写进那个目录，保存对话框里的默认文件名就是
   压缩包名；内容取包内自带的那份，技能开关关着也能导出。
-* **内置文档**：`docs/*.md` 由 webpack 的 `asset/source` 内嵌进 index.js，入口用 Lute 的富文本预览渲染器
+* **内置文档**：`docs/*.md` 由 `vite.config.mts` 里的 `markdown-as-source` 内嵌进 index.js，入口用 Lute 的富文本预览渲染器
   转成 HTML，按界面语言选文档；`scriptDocs.ts` 按预览输出的
   `<pre class="code-block" data-language="javascript">` 结构给每个示例套一层并加「载入 / 复制」按钮。正文
   里的 `{{siyuan-ref}}`（常量在 `src/core/siyuanRef.ts`）是官方 API 文档链接的版本占位符：渲染文档与写技能时
@@ -327,6 +327,9 @@ src/
 
 ## 构建产物与发布
 
+* 构建用 Vite，配置在 `vite.config.mts`：`npm run dev` 是 watch 构建，写仓库根的 `index.js` / `index.css` /
+  `i18n/`；`npm run build` 写 `dist/`，再由 `scripts/pack.mjs` 压成 `package.zip`（zip 内是扁平布局，
+  manifest、`index.js` 都在根）。`siyuan` 恒为 external、输出恒为 CommonJS。
 * 集市图片的图源是手绘的 `assets/icon.svg` 与 `assets/preview.html`，改完必须重跑渲染脚本：`icon.png` 由
   `render-icon.mjs` 栅格化；`preview.html` 的编辑器部分由 `snapshot-editor.mjs` 真挂载一次 CodeMirror 抓回
   CSS 与 DOM，写进 `editor-css` / `editor-dom` 标记之间，手改这两段会被覆盖。
