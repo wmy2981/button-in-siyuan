@@ -74,7 +74,7 @@ export default defineConfig(({mode}) => {
             // 开发模式输出到仓库根，根目录当然不能清空
             emptyOutDir: production,
             target: "es2019",
-            minify: production ? "esbuild" : false,
+            minify: production,
             sourcemap: production ? false : "inline",
             lib: {
                 entry: path.join(root, "src/index.ts"),
@@ -83,7 +83,7 @@ export default defineConfig(({mode}) => {
                 fileName: () => "index.js",
                 cssFileName: "index",
             },
-            rollupOptions: {
+            rolldownOptions: {
                 // siyuan 由宿主注入，绝不打包
                 external: ["siyuan"],
             },
